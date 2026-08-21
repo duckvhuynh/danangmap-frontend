@@ -106,6 +106,8 @@ test("layer configuration lifecycle keeps version domains isolated and recovers 
   const reviewerContext = await browser.newContext(contextOptions);
   const publisherContext = await browser.newContext(contextOptions);
   const extraContexts: BrowserContext[] = [];
+  const externalEditorContext = await browser.newContext(contextOptions);
+  extraContexts.push(externalEditorContext);
 
   try {
     const editorPage = await editorContext.newPage();
@@ -162,7 +164,9 @@ test("layer configuration lifecycle keeps version domains isolated and recovers 
     expect(catalogSave.request().headers()["if-match"]).toBe(layerBeforeCatalog.etag);
 
     const currentLayer = await browserGet(editorPage, `/api/v1/admin/layers/${layerId}`);
-    const externalUpdate = await browserMutation(editorPage, { path: `/api/v1/admin/layers/${layerId}`, method: "PATCH", ifMatch: currentLayer.etag!, operationKey: randomUUID(), body: { displayOrder: 91 } });
+    const externalEditorPage = await externalEditorContext.newPage();
+    await login(externalEditorPage, "EDITOR");
+    const externalUpdate = await browserMutation(externalEditorPage, { path: `/api/v1/admin/layers/${layerId}`, method: "PATCH", ifMatch: currentLayer.etag!, operationKey: randomUUID(), body: { displayOrder: 91 } });
     expect(externalUpdate.status).toBe(200);
     await editorPage.getByLabel("Bật lớp mặc định khi mở bản đồ").click();
     const stalePromise = editorPage.waitForResponse((response) => response.url().endsWith(`/api/v1/admin/layers/${layerId}`) && response.request().method() === "PATCH");
