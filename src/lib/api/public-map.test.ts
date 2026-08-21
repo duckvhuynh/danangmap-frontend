@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { aggregatePublicCatalog, DANANG_PUBLIC_BBOX, PUBLIC_GEOJSON_LIMIT, type PublicApiTransport } from "./public-map";
+import { aggregatePublicCatalog, DANANG_PUBLIC_BBOX, decodePublicFeatureDetail, PUBLIC_GEOJSON_LIMIT, type PublicApiTransport } from "./public-map";
 
 const rawLayers = [
   { id: "wards", slug: "wards", title: "Ranh giới", description: "", geometryMode: "polygon", featureCount: 1, updatedAt: "2026-08-21T00:00:00.000Z", sourceKind: "geojson", geoJsonUrl: "/api/v1/public/layers/wards/features", tileUrlTemplate: "/api/v1/public/tiles/wards/1/{z}/{x}/{y}.pbf", sourceLayer: "features", minZoom: 0, maxZoom: 18, cluster: false, style: { polygon: { fillColor: "#137333" } }, popupConfig: { titleField: "name", fieldKeys: ["address"] } },
@@ -54,5 +54,12 @@ describe("public catalog aggregation", () => {
     expect(result.layers).toHaveLength(2);
     expect(result.features).toEqual([]);
     expect(result.issues).toEqual([expect.objectContaining({ layerId: "wards", code: "FEATURES_UNAVAILABLE" })]);
+  });
+
+  it("decodes an individually fetched MVT feature with the catalog popup schema", async () => {
+    const catalog = await aggregatePublicCatalog(transport());
+    const feature = decodePublicFeatureDetail({ type: "Feature", id: "33333333-3333-4333-8333-333333333333", geometry: { type: "Point", coordinates: [108.21, 16.08] }, properties: { title: "Điểm dữ liệu lớn", address: "Hải Châu", nested: { hidden: true } }, meta: { geometryKind: "point", radiusM: null } }, catalog.layers[1]);
+    expect(feature).toMatchObject({ properties: { id: "33333333-3333-4333-8333-333333333333", layerId: "large", name: "Điểm dữ liệu lớn", kind: "Dữ liệu lớn", metadata: { title: "Điểm dữ liệu lớn", address: "Hải Châu" } } });
+    expect(feature.properties.metadata).not.toHaveProperty("nested");
   });
 });
