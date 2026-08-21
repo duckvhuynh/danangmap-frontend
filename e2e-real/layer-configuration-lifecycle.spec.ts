@@ -119,7 +119,7 @@ test("layer configuration lifecycle keeps version domains isolated and recovers 
     const revisionBeforeConfig = await browserGet(editorPage, `/api/v1/admin/revisions/${revisionId}`);
     expect(revisionBeforeConfig.etag).toBeTruthy();
     await editorPage.getByRole("tab", { name: "Geometry" }).click();
-    await editorPage.getByRole("radio", { name: /Polygon/u }).check();
+    await editorPage.getByRole("radio", { name: /^Polygon\b/u }).check();
     const impactPromise = editorPage.waitForResponse((response) => response.url().endsWith(`/api/v1/admin/revisions/${revisionId}/config:impact`) && response.request().method() === "POST");
     await editorPage.getByRole("button", { name: "Lưu cấu hình" }).click();
     const blockedImpact = await impactPromise;
@@ -128,7 +128,7 @@ test("layer configuration lifecycle keeps version domains isolated and recovers 
     await expect(editorPage.getByText("Không thể áp dụng cấu hình")).toBeVisible();
     await expect(editorPage.getByText(/Kiểu geometry đang được dữ liệu hiện có sử dụng/u)).toBeVisible();
 
-    await editorPage.getByRole("radio", { name: /Point/u }).check();
+    await editorPage.getByRole("radio", { name: /^Point\b/u }).check();
     await editorPage.getByRole("tab", { name: "Thông tin" }).click();
     await editorPage.getByLabel("Tên lớp").fill(`${title} updated`);
     await editorPage.getByRole("tab", { name: "Hiển thị" }).click();
