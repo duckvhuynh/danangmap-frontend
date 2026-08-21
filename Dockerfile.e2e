@@ -14,7 +14,7 @@ RUN npm run api:check
 
 COPY playwright.real.config.ts ./
 COPY e2e-real ./e2e-real
-RUN if grep -R -E 'page\.route\(|NEXT_PUBLIC_DANANGMAP_(DEMO_MODE|AUTH_E2E_MODE|USER_IMPORT_E2E_MODE)' playwright.real.config.ts e2e-real; then \
+RUN if grep -R -E 'page\.route\(|context\.route\(|route\.(fulfill|abort|fallback)\(|NEXT_PUBLIC_DANANGMAP_(DEMO_MODE|AUTH_E2E_MODE|USER_IMPORT_E2E_MODE)' playwright.real.config.ts e2e-real; then \
       echo "Real-stack tests must not use route mocks or demo E2E modes." >&2; \
       exit 1; \
     fi
