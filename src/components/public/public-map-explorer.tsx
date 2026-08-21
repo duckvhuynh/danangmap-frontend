@@ -16,7 +16,6 @@ import {
   IconPlus,
   IconRefresh,
   IconSearch,
-  IconShield,
   IconX,
 } from "@tabler/icons-react";
 import { BrandMark } from "@/components/brand-mark";
@@ -25,7 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getPublicMapData } from "@/lib/api/public-map";
 import { sampleMapData } from "@/lib/data/sample-map";
-import type { PublicFeature, PublicLayer } from "@/lib/domain/map";
+import type { PublicFeature, PublicLayer, PublicMapData } from "@/lib/domain/map";
 import type { MapCommand } from "@/components/map/public-map-canvas";
 import { cn } from "@/lib/utils";
 
@@ -37,8 +36,7 @@ const PublicMapCanvas = dynamic(() => import("@/components/map/public-map-canvas
 type MobileSheet = "layers" | "list" | "detail" | null;
 
 function layerIcon(layer: PublicLayer) {
-  if (layer.id === "police") return IconShield;
-  if (layer.type === "point") return IconBuildingCommunity;
+  if (layer.type === "point" || layer.type === "circle") return IconBuildingCommunity;
   return IconLayersIntersect;
 }
 
@@ -78,6 +76,7 @@ function FeatureDetail({ feature, layer, onClose, showClose = true }: { feature:
       </div>
       <dl className="mt-5 space-y-4 text-sm">
         {layer?.fields.map((field) => { const value = feature.properties.metadata[field.key]; if (value === null || value === undefined || value === "") return null; return <div key={field.key}><dt className="text-muted-foreground">{field.name}</dt><dd className={cn("mt-1 font-medium", field.type === "status" && "text-success")}>{field.type === "phone" ? <a className="text-primary underline-offset-4 hover:underline" href={`tel:${value}`}>{value}</a> : String(value)}</dd></div>; })}
+        {feature.properties.geometryKind === "circle" && typeof feature.properties.radiusM === "number" && <div><dt className="text-muted-foreground">Bán kính</dt><dd className="mt-1 font-medium">{feature.properties.radiusM.toLocaleString("vi-VN")} mét</dd></div>}
         <div><dt className="text-muted-foreground">Loại dữ liệu</dt><dd className="mt-1 font-medium">{feature.geometry.type}</dd></div>
       </dl>
     </div>
@@ -86,8 +85,8 @@ function FeatureDetail({ feature, layer, onClose, showClose = true }: { feature:
 
 export function PublicMapExplorer() {
   const demoMode = process.env.NEXT_PUBLIC_DANANGMAP_DEMO_MODE === "true";
-  const [data, setData] = useState(() => demoMode ? sampleMapData : { ...sampleMapData, source: "api" as const, layers: [], features: [] });
-  const [dataState, setDataState] = useState<"loading" | "ready" | "error">("loading");
+  const [data, setData] = useState<PublicMapData>(() => demoMode ? sampleMapData : { source: "api", layers: [], features: [], issues: [] });
+  const [dataState, setDataState] = useState<"loading" | "ready" | "partial" | "error">("loading");
   const [retryId, setRetryId] = useState(0);
   const [query, setQuery] = useState("");
   const [hiddenLayers, setHiddenLayers] = useState<Set<string>>(new Set());
@@ -100,9 +99,9 @@ export function PublicMapExplorer() {
 
   useEffect(() => {
     const controller = new AbortController();
-    getPublicMapData(controller.signal).then((next) => { setData(next); setDataState("ready"); }).catch((error: unknown) => {
+    getPublicMapData(controller.signal).then((next) => { setData(next); setDataState(next.issues.length ? "partial" : "ready"); }).catch((error: unknown) => {
       if (error instanceof DOMException && error.name === "AbortError") return;
-      setData({ ...sampleMapData, source: "api", layers: [], features: [] });
+      setData({ source: "api", layers: [], features: [], issues: [] });
       setDataState("error");
     });
     return () => controller.abort();
@@ -119,6 +118,10 @@ export function PublicMapExplorer() {
   const selected = data.features.find((feature) => feature.properties.id === selectedId) ?? null;
   const selectedLayer = selected ? data.layers.find((layer) => layer.id === selected.properties.layerId) : undefined;
   const layerColors = useMemo(() => Object.fromEntries(data.layers.map((layer) => [layer.id, layer.color])), [data.layers]);
+  const mapFeatures = useMemo(() => {
+    const geoJsonLayerIds = new Set(data.layers.filter((layer) => layer.sourceKind === "geojson").map((layer) => layer.id));
+    return visibleFeatures.filter((feature) => geoJsonLayerIds.has(feature.properties.layerId));
+  }, [data.layers, visibleFeatures]);
 
   function toggleLayer(id: string) {
     setHiddenLayers((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next; });
@@ -129,7 +132,7 @@ export function PublicMapExplorer() {
   return (
     <main className="relative h-[100dvh] min-h-[560px] overflow-hidden bg-surface-subtle">
       <h1 className="sr-only">Bản đồ số Đà Nẵng</h1>
-      <div className="absolute inset-0"><PublicMapCanvas features={visibleFeatures} layerColors={layerColors} basemap={basemap} command={command} onFeatureSelect={selectFeature} onError={setMapMessage} /></div>
+      <div className="absolute inset-0"><PublicMapCanvas features={mapFeatures} layers={data.layers} hiddenLayerIds={hiddenLayers} layerColors={layerColors} basemap={basemap} command={command} onFeatureSelect={selectFeature} onError={setMapMessage} /></div>
 
       <header className="pointer-events-none absolute inset-x-0 top-0 z-20 flex flex-col items-start gap-3 border-b bg-surface p-3 md:flex-row md:border-0 md:bg-transparent md:p-4">
         <Link href="/" className="pointer-events-auto md:hidden"><BrandMark /></Link>
@@ -144,10 +147,11 @@ export function PublicMapExplorer() {
 
       {demoMode && dataState === "ready" && <div className="absolute left-1/2 top-[124px] z-30 -translate-x-1/2 rounded-control border border-warning/30 bg-surface px-3 py-2 text-xs font-medium text-warning map-control-shadow md:top-[72px]" role="status">Chế độ demo · Không phải dữ liệu công bố</div>}
       {dataState === "error" && <div className="absolute left-1/2 top-[124px] z-30 flex max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-3 rounded-control border border-warning/30 bg-surface px-3 py-2 text-sm map-control-shadow md:top-[72px]" role="alert"><IconInfoCircle className="shrink-0 text-warning" size={20} stroke={1.75} /><span>Không tải được dữ liệu công bố. Bản đồ nền vẫn có thể sử dụng.</span><Button size="sm" variant="outline" onClick={() => { setDataState("loading"); setRetryId((value) => value + 1); }}>Thử lại</Button></div>}
+      {dataState === "partial" && <div className="absolute left-1/2 top-[124px] z-30 flex max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-3 rounded-control border border-warning/30 bg-surface px-3 py-2 text-sm map-control-shadow md:top-[72px]" role="status"><IconInfoCircle className="shrink-0 text-warning" size={20} stroke={1.75} /><span>Một phần dữ liệu chưa tải được ({data.issues.length} cảnh báo). Các lớp còn lại vẫn sử dụng được.</span><Button size="sm" variant="outline" onClick={() => { setDataState("loading"); setRetryId((value) => value + 1); }}>Tải lại</Button></div>}
 
       <aside className="absolute bottom-5 left-4 top-24 z-10 hidden w-[300px] flex-col overflow-hidden rounded-panel border bg-surface map-panel-shadow md:flex" aria-label="Lớp dữ liệu">
         <div className="border-b p-4"><div className="flex items-center justify-between"><h2 className="font-semibold">Lớp dữ liệu</h2><Badge>{data.layers.length} lớp</Badge></div><p className="mt-1 text-xs text-muted-foreground">Bật hoặc tắt lớp trên bản đồ</p></div>
-        <div className="flex-1 overflow-y-auto p-2">{dataState === "loading" ? <p className="p-4 text-sm text-muted-foreground" role="status">Đang tải lớp dữ liệu...</p> : dataState === "error" ? <p className="p-4 text-sm leading-6 text-muted-foreground">Danh sách chưa khả dụng. Hãy thử lại sau.</p> : <LayerList layers={data.layers} hidden={hiddenLayers} onToggle={toggleLayer} />}</div>
+        <div className="flex-1 overflow-y-auto p-2">{dataState === "loading" ? <p className="p-4 text-sm text-muted-foreground" role="status">Đang tải lớp dữ liệu...</p> : dataState === "error" ? <p className="p-4 text-sm leading-6 text-muted-foreground">Danh sách chưa khả dụng. Hãy thử lại sau.</p> : data.layers.length === 0 ? <p className="p-4 text-sm leading-6 text-muted-foreground">Chưa có lớp dữ liệu được công bố.</p> : <LayerList layers={data.layers} hidden={hiddenLayers} onToggle={toggleLayer} />}</div>
         <div className="border-t p-3"><Button variant="outline" className="w-full" onClick={() => setListOpen((value) => !value)}><IconList stroke={1.75} />{listOpen ? "Ẩn danh sách" : "Xem danh sách"}</Button></div>
       </aside>
 

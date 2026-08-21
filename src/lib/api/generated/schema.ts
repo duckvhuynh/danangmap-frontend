@@ -1,19 +1,1958 @@
-// PROVISIONAL generated-client boundary. Replace this file from the pinned backend
-// OpenAPI artifact and enforce a drift check in CI before production release.
+// This file is generated. Do not edit it by hand.
+// Source: openapi/openapi.json
+// Source SHA-256: 7c2f46d0cc5b6a9e5a0da6a85cca8e862a635366f6c475e19c490761d641cc53
 export interface paths {
-  "/auth/login": {
-    post: {
-      requestBody: { content: { "application/json": { username: string; password: string } } };
-      responses: {
-        200: { content: { "application/json": { next: "mfa" | "authenticated" } } };
-      };
+    "/api/v1/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-  };
-  "/public/map": {
-    get: {
-      responses: {
-        200: { content: { "application/json": import("@/lib/domain/map").PublicMapData } };
-      };
+    "/api/v1/auth/mfa/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["verifyMfa"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-  };
+    "/api/v1/auth/csrf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["rotateCsrf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getCurrentUser"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["logout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listUsers"];
+        put?: never;
+        post: operations["createUser"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/invites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["createInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/layer-groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listLayerGroups"];
+        put?: never;
+        post: operations["createLayerGroup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/layers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listAdminLayers"];
+        put?: never;
+        post: operations["createLayer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/revisions/{revisionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getRevision"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/revisions/{revisionId}/workspace": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getRevisionWorkspace"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/revisions/{revisionId}/features": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listAdminFeatures"];
+        put?: never;
+        post: operations["createFeature"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/revisions/{revisionId}/features/{featureId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["deleteFeature"];
+        options?: never;
+        head?: never;
+        patch: operations["updateFeature"];
+        trace?: never;
+    };
+    "/api/v1/admin/revisions/{revisionId}:submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["submitRevision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/revisions/{revisionId}:approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["approveRevision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/revisions/{revisionId}:request-changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["requestRevisionChanges"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/revisions/{revisionId}:publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["publishRevision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/layers/{layerId}:rollback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["rollbackLayer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/layers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listPublicLayers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/layers/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getPublicLayer"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/layers/{slug}/features": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listPublicFeatures"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/layers/{slug}/features/{featureId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getPublicFeature"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/tiles/{slug}/{generation}/{z}/{x}/{y}.pbf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getPublicTile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["searchPublicMap"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/places/{placeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getExternalPlace"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/revisions/{revisionId}/imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["createSpatialImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/imports/{importId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getSpatialImport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/health/live": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getLiveness"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/health/ready": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getReadiness"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+}
+export type webhooks = Record<string, never>;
+export interface components {
+    schemas: {
+        LoginDto: {
+            /** @example editor@example.gov.vn */
+            login: string;
+            password: string;
+        };
+        VerifyMfaDto: {
+            /**
+             * @default totp
+             * @enum {string}
+             */
+            method: "totp" | "recovery_code";
+            code: string;
+        };
+        CreateUserDto: {
+            /** @example editor@example.gov.vn */
+            email: string;
+            /** @example editor01 */
+            username: string;
+            /** @example Biên tập viên 01 */
+            displayName: string;
+            /** @enum {string} */
+            role: "system_admin" | "editor" | "reviewer" | "publisher";
+            /** @enum {string} */
+            delivery: "manual" | "invite";
+            temporaryPassword?: string;
+        };
+        CreateInviteDto: {
+            /** @example reviewer@example.gov.vn */
+            email: string;
+            /** @example reviewer01 */
+            username: string;
+            /** @example Kiểm duyệt viên 01 */
+            displayName: string;
+            /** @enum {string} */
+            role: "system_admin" | "editor" | "reviewer" | "publisher";
+            /** @default 72 */
+            expiresInHours: number;
+        };
+        CreateLayerGroupDto: {
+            /** @example government */
+            slug: string;
+            /** @example Cơ quan hành chính */
+            title: string;
+            description?: string;
+            /** @default 0 */
+            displayOrder: number;
+            /** @default true */
+            defaultVisible: boolean;
+        };
+        LayerFieldDto: {
+            /** @example address */
+            key: string;
+            /** @example Địa chỉ */
+            label: string;
+            description?: string;
+            /** @enum {string} */
+            type: "text" | "long_text" | "number" | "integer" | "boolean" | "date" | "datetime" | "url" | "email" | "phone" | "enum" | "multi_enum" | "address" | "image" | "attachment";
+            /** @example map-pin */
+            icon?: string;
+            /** @default false */
+            required: boolean;
+            /** @default true */
+            public: boolean;
+            /** @default false */
+            searchable: boolean;
+            /** @default false */
+            filterable: boolean;
+            /** @default false */
+            sortable: boolean;
+            /** @default false */
+            sensitive: boolean;
+            /** @default true */
+            offlineCache: boolean;
+            defaultValue?: (string | number | boolean | {
+                [key: string]: unknown;
+            } | unknown[]) | null;
+            /** @default {} */
+            validation: {
+                [key: string]: unknown;
+            };
+            /** @default [] */
+            options: unknown[];
+            /** @default 0 */
+            displayOrder: number;
+        };
+        CreateLayerDto: {
+            /** @example administrative-offices */
+            slug: string;
+            /** Format: uuid */
+            groupId?: string;
+            /** @default 0 */
+            displayOrder: number;
+            /** @example Trụ sở hành chính */
+            title: string;
+            description?: string;
+            /** @enum {string} */
+            geometryMode: "point" | "circle" | "polyline" | "polygon" | "mixed";
+            allowedGeometryKinds: ("point" | "multipoint" | "line" | "multiline" | "polygon" | "multipolygon" | "circle")[];
+            fields: components["schemas"]["LayerFieldDto"][];
+            /** @default {} */
+            style: {
+                [key: string]: unknown;
+            };
+            /** @default {} */
+            renderConfig: {
+                [key: string]: unknown;
+            };
+            /** @default {} */
+            popupConfig: {
+                [key: string]: unknown;
+            };
+        };
+        FeatureMutationDto: {
+            /**
+             * @example {
+             *       "type": "Point",
+             *       "coordinates": [
+             *         108.2208,
+             *         16.0678
+             *       ]
+             *     }
+             */
+            geometry: {
+                [key: string]: unknown;
+            };
+            /** @enum {string} */
+            geometryKind: "point" | "multipoint" | "line" | "multiline" | "polygon" | "multipolygon" | "circle";
+            radiusM?: number | null;
+            externalSource?: string;
+            externalId?: string;
+            properties: {
+                [key: string]: unknown;
+            };
+        };
+        UpdateFeatureDto: {
+            geometry?: {
+                [key: string]: unknown;
+            };
+            /** @enum {string} */
+            geometryKind?: "point" | "multipoint" | "line" | "multiline" | "polygon" | "multipolygon" | "circle";
+            radiusM?: number | null;
+            properties?: {
+                [key: string]: unknown;
+            };
+        };
+        SubmitRevisionDto: {
+            summary: string;
+            reviewerNote?: string;
+        };
+        WorkflowCommentDto: {
+            comment?: string;
+        };
+        RequestChangesDto: {
+            comment: string;
+        };
+        PublishRevisionDto: {
+            releaseNote: string;
+        };
+        RollbackDto: {
+            /** Format: uuid */
+            targetSnapshotId: string;
+            reason: string;
+        };
+    };
+    responses: never;
+    parameters: never;
+    requestBodies: never;
+    headers: never;
+    pathItems: never;
+}
+export type $defs = Record<string, never>;
+export interface operations {
+    login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @enum {string} */
+                            status: "mfa_required";
+                            mfaEnrollmentRequired: boolean;
+                            /** Format: date-time */
+                            challengeExpiresAt: string;
+                        };
+                        meta: {
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    verifyMfa: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerifyMfaDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: email */
+                            email: string;
+                            username: string;
+                            displayName: string;
+                            /** @enum {string} */
+                            role: "editor" | "reviewer" | "publisher" | "system_admin";
+                            status: string;
+                            mfaEnabled: boolean;
+                            mustChangePassword: boolean;
+                        };
+                        meta: {
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    rotateCsrf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            csrfToken: string;
+                        };
+                        meta: {
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    getCurrentUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: email */
+                            email: string;
+                            username: string;
+                            displayName: string;
+                            /** @enum {string} */
+                            role: "editor" | "reviewer" | "publisher" | "system_admin";
+                            status: string;
+                            mfaEnabled: boolean;
+                            mustChangePassword: boolean;
+                        };
+                        meta: {
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @enum {string} */
+                            status: "logged_out";
+                            /** @enum {string} */
+                            recoveryAction: "delete";
+                        };
+                        meta: {
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    listUsers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: email */
+                            email: string;
+                            username: string;
+                            displayName: string;
+                            /** @enum {string} */
+                            role: "editor" | "reviewer" | "publisher" | "system_admin";
+                            status: string;
+                            mfaEnabled: boolean;
+                            mustChangePassword: boolean;
+                        }[];
+                        meta: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    createUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateUserDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            [key: string]: unknown;
+                        };
+                        meta: {
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    createInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateInviteDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            [key: string]: unknown;
+                        };
+                        meta: {
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    listLayerGroups: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            [key: string]: unknown;
+                        }[];
+                        meta: {
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    createLayerGroup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateLayerGroupDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            [key: string]: unknown;
+                        };
+                        meta: {
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    listAdminLayers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            [key: string]: unknown;
+                        }[];
+                        meta: {
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    createLayer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateLayerDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            [key: string]: unknown;
+                        };
+                        meta: {
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    getRevision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                revisionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            [key: string]: unknown;
+                        };
+                        meta: {
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    getRevisionWorkspace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                revisionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            [key: string]: unknown;
+                        };
+                        meta: {
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    listAdminFeatures: {
+        parameters: {
+            query: {
+                bbox: string;
+            };
+            header?: never;
+            path: {
+                revisionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            [key: string]: unknown;
+                        }[];
+                        meta: {
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    createFeature: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                revisionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeatureMutationDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            [key: string]: unknown;
+                        };
+                        meta: {
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    deleteFeature: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                revisionId: string;
+                featureId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            [key: string]: unknown;
+                        };
+                        meta: {
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    updateFeature: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                revisionId: string;
+                featureId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateFeatureDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            [key: string]: unknown;
+                        };
+                        meta: {
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    submitRevision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                revisionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitRevisionDto"];
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            revisionId?: string;
+                            /** Format: uuid */
+                            layerId?: string;
+                            /** Format: uuid */
+                            snapshotId?: string;
+                            generation?: number;
+                            status?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                        meta: {
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    approveRevision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                revisionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkflowCommentDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            revisionId?: string;
+                            /** Format: uuid */
+                            layerId?: string;
+                            /** Format: uuid */
+                            snapshotId?: string;
+                            generation?: number;
+                            status?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                        meta: {
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    requestRevisionChanges: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                revisionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestChangesDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            revisionId?: string;
+                            /** Format: uuid */
+                            layerId?: string;
+                            /** Format: uuid */
+                            snapshotId?: string;
+                            generation?: number;
+                            status?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                        meta: {
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    publishRevision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                revisionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublishRevisionDto"];
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            revisionId?: string;
+                            /** Format: uuid */
+                            layerId?: string;
+                            /** Format: uuid */
+                            snapshotId?: string;
+                            generation?: number;
+                            status?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                        meta: {
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    rollbackLayer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                layerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RollbackDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            revisionId?: string;
+                            /** Format: uuid */
+                            layerId?: string;
+                            /** Format: uuid */
+                            snapshotId?: string;
+                            generation?: number;
+                            status?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                        meta: {
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    listPublicLayers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            id: string;
+                            slug: string;
+                            group: {
+                                /** Format: uuid */
+                                id: string;
+                                slug: string;
+                                title: string;
+                                displayOrder: number;
+                            } | null;
+                            displayOrder: number;
+                            title: string;
+                            description?: string | null;
+                            /** @enum {string} */
+                            geometryMode: "point" | "circle" | "polyline" | "polygon" | "mixed";
+                            allowedGeometryKinds: string[];
+                            /** Format: uuid */
+                            snapshotId: string;
+                            /** Format: uuid */
+                            revisionId: string;
+                            generation: number;
+                            featureCount: number;
+                            bounds?: number[] | null;
+                            /** @enum {string} */
+                            sourceKind: "geojson" | "mvt" | "hybrid";
+                            geoJsonUrl: string;
+                            tileUrlTemplate: string;
+                            sourceLayer: string;
+                            minZoom: number;
+                            maxZoom: number;
+                            cluster: boolean;
+                            style: {
+                                [key: string]: unknown;
+                            };
+                            popupConfig: {
+                                [key: string]: unknown;
+                            };
+                            filterCapabilities: {
+                                fieldKeys: string[];
+                                maxFilters: number;
+                            };
+                            searchCapabilities: {
+                                enabled: boolean;
+                                fieldKeys: string[];
+                            };
+                            /** Format: date-time */
+                            updatedAt: string;
+                        }[];
+                        meta: {
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    getPublicLayer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            id: string;
+                            slug: string;
+                            group: {
+                                /** Format: uuid */
+                                id: string;
+                                slug: string;
+                                title: string;
+                                displayOrder: number;
+                            } | null;
+                            displayOrder: number;
+                            title: string;
+                            description?: string | null;
+                            /** @enum {string} */
+                            geometryMode: "point" | "circle" | "polyline" | "polygon" | "mixed";
+                            allowedGeometryKinds: string[];
+                            /** Format: uuid */
+                            snapshotId: string;
+                            /** Format: uuid */
+                            revisionId: string;
+                            generation: number;
+                            featureCount: number;
+                            bounds?: number[] | null;
+                            /** @enum {string} */
+                            sourceKind: "geojson" | "mvt" | "hybrid";
+                            geoJsonUrl: string;
+                            tileUrlTemplate: string;
+                            sourceLayer: string;
+                            minZoom: number;
+                            maxZoom: number;
+                            cluster: boolean;
+                            style: {
+                                [key: string]: unknown;
+                            };
+                            popupConfig: {
+                                [key: string]: unknown;
+                            };
+                            filterCapabilities: {
+                                fieldKeys: string[];
+                                maxFilters: number;
+                            };
+                            searchCapabilities: {
+                                enabled: boolean;
+                                fieldKeys: string[];
+                            };
+                            /** Format: date-time */
+                            updatedAt: string;
+                            fields: {
+                                /** Format: uuid */
+                                id: string;
+                                key: string;
+                                label: string;
+                                description?: string | null;
+                                type: string;
+                                icon?: string | null;
+                                required: boolean;
+                                searchable: boolean;
+                                filterable: boolean;
+                                sortable?: boolean;
+                                defaultValue?: unknown;
+                                validation?: {
+                                    [key: string]: unknown;
+                                };
+                                options?: unknown[];
+                                displayOrder?: number;
+                            }[];
+                        };
+                        meta: {
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    listPublicFeatures: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        type: "FeatureCollection";
+                        features: {
+                            /** @enum {string} */
+                            type: "Feature";
+                            /** Format: uuid */
+                            id: string;
+                            geometry: {
+                                type: string;
+                            } & {
+                                [key: string]: unknown;
+                            };
+                            properties: {
+                                [key: string]: unknown;
+                            };
+                            geometryKind?: string;
+                            radiusM?: number | null;
+                        }[];
+                        meta: {
+                            layerSlug: string;
+                            generation: number;
+                            returned: number;
+                            truncated: boolean;
+                            nextCursor: string | null;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    getPublicFeature: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+                featureId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @enum {string} */
+                            type: "Feature";
+                            /** Format: uuid */
+                            id: string;
+                            geometry: {
+                                type: string;
+                            } & {
+                                [key: string]: unknown;
+                            };
+                            properties: {
+                                [key: string]: unknown;
+                            };
+                            geometryKind?: string;
+                            radiusM?: number | null;
+                            attachments: {
+                                [key: string]: unknown;
+                            }[];
+                            meta: {
+                                layerSlug: string;
+                                /** Format: uuid */
+                                snapshotId: string;
+                                generation: number;
+                                geometryKind: string;
+                                radiusM: number | null;
+                            };
+                        };
+                        meta: {
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    getPublicTile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+                generation: number;
+                z: number;
+                x: number;
+                y: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.mapbox-vector-tile": string;
+                };
+            };
+        };
+    };
+    searchPublicMap: {
+        parameters: {
+            query: {
+                q: string;
+                sources: string;
+                layerIds: string;
+                center: string;
+                radiusM: string;
+                limit: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @enum {string} */
+                            source: "internal" | "geo_service";
+                            /** @enum {string} */
+                            kind: "feature" | "place";
+                            title: string;
+                            subtitle?: string | null;
+                            position: {
+                                longitude: number;
+                                latitude: number;
+                            };
+                            bbox?: number[] | null;
+                            layer: {
+                                [key: string]: unknown;
+                            } | null;
+                            /** Format: uuid */
+                            featureId: string | null;
+                            providerPlaceId: string | null;
+                            score: number;
+                            highlights: string[];
+                        }[];
+                        meta: {
+                            partial: boolean;
+                            sources: {
+                                [key: string]: {
+                                    /** @enum {string} */
+                                    status: "ok" | "skipped" | "unavailable";
+                                    count: number;
+                                };
+                            };
+                            warnings: {
+                                code: string;
+                                message: string;
+                            }[];
+                            nextCursor: string | null;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    getExternalPlace: {
+        parameters: {
+            query: {
+                fields: string;
+            };
+            header?: never;
+            path: {
+                placeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            address?: string | null;
+                            position: {
+                                longitude: number;
+                                latitude: number;
+                            };
+                            phone?: string | null;
+                            website?: string | null;
+                            /** @enum {string} */
+                            source: "geo_service";
+                        };
+                        meta: {
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    createSpatialImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                revisionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                    /** @enum {string} */
+                    format?: "csv" | "xlsx" | "geojson" | "kml";
+                    /** @enum {string} */
+                    mode: "append" | "replace" | "upsert";
+                    /** Format: uuid */
+                    clientRequestId: string;
+                };
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            revisionId: string;
+                            status: string;
+                            /** @enum {string} */
+                            format: "csv" | "xlsx" | "geojson" | "kml";
+                            /** @enum {string} */
+                            mode: "append" | "replace" | "upsert";
+                            file: {
+                                name: string;
+                                sizeBytes: number;
+                            };
+                            progress: number;
+                            counts: {
+                                [key: string]: number;
+                            };
+                            failureCode?: string | null;
+                            /** Format: date-time */
+                            createdAt?: string;
+                            /** Format: date-time */
+                            updatedAt?: string;
+                        };
+                        meta: {
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    getSpatialImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                importId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            revisionId: string;
+                            status: string;
+                            /** @enum {string} */
+                            format: "csv" | "xlsx" | "geojson" | "kml";
+                            /** @enum {string} */
+                            mode: "append" | "replace" | "upsert";
+                            file: {
+                                name: string;
+                                sizeBytes: number;
+                            };
+                            progress: number;
+                            counts: {
+                                [key: string]: number;
+                            };
+                            failureCode?: string | null;
+                            /** Format: date-time */
+                            createdAt?: string;
+                            /** Format: date-time */
+                            updatedAt?: string;
+                        };
+                        meta: {
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    getLiveness: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        status: "ok";
+                        version: string;
+                    };
+                };
+            };
+        };
+    };
+    getReadiness: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        status: "ok";
+                        version: string;
+                        checks: {
+                            [key: string]: "up" | "down" | "degraded" | "current";
+                        };
+                    };
+                };
+            };
+        };
+    };
 }

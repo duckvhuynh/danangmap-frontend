@@ -7,7 +7,7 @@ FROM node:24-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-ARG NEXT_PUBLIC_API_BASE_URL=http://localhost:3001/api/v1
+ARG NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
 ARG NEXT_PUBLIC_MAPBOX_TOKEN
 ARG NEXT_PUBLIC_DANANGMAP_DEMO_MODE=false
 ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL

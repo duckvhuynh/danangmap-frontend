@@ -1,10 +1,16 @@
 # DanangMap Frontend
 
+## OpenAPI contract
+
+`openapi/openapi.json` pins the backend contract used by this repository. After a reviewed backend contract change, run `npm run api:sync` from a checkout where `danangmap-backend` is the sibling directory. Normal generation and CI drift checks use `npm run api:generate` and `npm run api:check`; they do not depend on a running backend.
+
+The current pin was synced from backend commit `7ec3bc7`. Browser requests use the full generated `/api/v1/...` paths, so `NEXT_PUBLIC_API_BASE_URL` is only the API origin (local default `http://localhost:4000`) and must not include `/api/v1`.
+
 Ứng dụng Next.js phục vụ bản đồ công khai tại `/` và khu vực quản trị tại `/admin` cho DanangMap v2.
 
 ## Trạng thái
 
-Thiết kế đang ở gate `AWAITING_SELECTION`. Ba hướng visual nằm trong [`docs/visual-directions`](docs/visual-directions); chưa được scaffold hoặc triển khai UI cho tới khi chủ sản phẩm chọn một hướng.
+Thiết kế `Direction 1 - Civic Focus (refined)` đã được chọn và vertical slice public/admin đang được triển khai. Design QA bản đồ thật vẫn cần Mapbox public token giới hạn theo URL để chụp đúng trạng thái nguồn.
 
 ## Tài liệu nguồn
 

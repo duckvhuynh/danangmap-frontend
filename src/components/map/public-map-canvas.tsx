@@ -2,40 +2,38 @@
 
 import { useEffect, useRef } from "react";
 import mapboxgl, { type Map as MapboxMap } from "mapbox-gl";
-import type { FeatureCollection, Geometry } from "geojson";
-import type { PublicFeature } from "@/lib/domain/map";
-import { ensurePublicCustomLayers, publicLayerIds } from "@/components/map/map-style";
+import type { PublicFeature, PublicLayer } from "@/lib/domain/map";
+import { renderableFeatureCollection } from "@/components/map/map-geometry";
+import { ensurePublicCustomLayers, interactivePublicLayerIds } from "@/components/map/map-style";
 
 export type MapCommand = { id: number; type: "zoom-in" | "zoom-out" | "locate" | "reset" };
 
 interface PublicMapCanvasProps {
   features: PublicFeature[];
   layerColors: Record<string, string>;
+  layers: PublicLayer[];
+  hiddenLayerIds: Set<string>;
   basemap: "street" | "light";
   command: MapCommand;
   onFeatureSelect: (id: string) => void;
   onError: (message: string) => void;
 }
 
-const interactiveLayers = [publicLayerIds[0], publicLayerIds[2], publicLayerIds[3]];
-
-function collection(features: PublicFeature[]): FeatureCollection<Geometry> {
-  return { type: "FeatureCollection", features };
-}
-
-export default function PublicMapCanvas({ features, layerColors, basemap, command, onFeatureSelect, onError }: PublicMapCanvasProps) {
+export default function PublicMapCanvas({ features, layerColors, layers, hiddenLayerIds, basemap, command, onFeatureSelect, onError }: PublicMapCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapboxMap | null>(null);
   const onSelectRef = useRef(onFeatureSelect);
   const onErrorRef = useRef(onError);
   const featuresRef = useRef(features);
   const colorsRef = useRef(layerColors);
+  const layersRef = useRef(layers);
+  const hiddenRef = useRef(hiddenLayerIds);
   const basemapRef = useRef(basemap);
   const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
   useEffect(() => { onSelectRef.current = onFeatureSelect; }, [onFeatureSelect]);
   useEffect(() => { onErrorRef.current = onError; }, [onError]);
-  useEffect(() => { featuresRef.current = features; colorsRef.current = layerColors; }, [features, layerColors]);
+  useEffect(() => { featuresRef.current = features; colorsRef.current = layerColors; layersRef.current = layers; hiddenRef.current = hiddenLayerIds; }, [features, layerColors, layers, hiddenLayerIds]);
 
   useEffect(() => {
     if (!containerRef.current || !token || mapRef.current) return;
@@ -53,23 +51,28 @@ export default function PublicMapCanvas({ features, layerColors, basemap, comman
 
     const handleError = (event: mapboxgl.ErrorEvent) => onErrorRef.current(event.error?.message ?? "Không tải được bản đồ nền.");
     map.on("error", handleError);
-    const ensureLatestLayers = () => ensurePublicCustomLayers(map, collection(featuresRef.current), colorsRef.current);
+    const ensureLatestLayers = () => ensurePublicCustomLayers(map, renderableFeatureCollection(featuresRef.current), colorsRef.current, layersRef.current, hiddenRef.current);
+    const renderedAt = (point: mapboxgl.PointLike) => {
+      const layerIds = interactivePublicLayerIds(layersRef.current).filter((layerId) => map.getLayer(layerId));
+      return layerIds.length ? map.queryRenderedFeatures(point, { layers: layerIds })[0] : undefined;
+    };
+    const handlePointer = (event: mapboxgl.MapMouseEvent) => { map.getCanvas().style.cursor = renderedAt(event.point) ? "pointer" : ""; };
+    const handleClick = (event: mapboxgl.MapMouseEvent) => {
+      const properties = renderedAt(event.point)?.properties;
+      const id = properties?.id ?? properties?.feature_id;
+      if (typeof id === "string" || typeof id === "number") onSelectRef.current(String(id));
+    };
     map.on("style.load", ensureLatestLayers);
-    map.on("load", () => {
-      ensureLatestLayers();
-      for (const layerId of interactiveLayers) {
-        map.on("mouseenter", layerId, () => { map.getCanvas().style.cursor = "pointer"; });
-        map.on("mouseleave", layerId, () => { map.getCanvas().style.cursor = ""; });
-        map.on("click", layerId, (event) => {
-          const id = event.features?.[0]?.properties?.id;
-          if (typeof id === "string") onSelectRef.current(id);
-        });
-      }
-    });
+    map.on("load", ensureLatestLayers);
+    map.on("mousemove", handlePointer);
+    map.on("click", handleClick);
 
     return () => {
       map.off("error", handleError);
       map.off("style.load", ensureLatestLayers);
+      map.off("load", ensureLatestLayers);
+      map.off("mousemove", handlePointer);
+      map.off("click", handleClick);
       map.remove();
       mapRef.current = null;
     };
@@ -78,8 +81,8 @@ export default function PublicMapCanvas({ features, layerColors, basemap, comman
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    if (map.isStyleLoaded()) ensurePublicCustomLayers(map, collection(features), layerColors);
-  }, [features, layerColors]);
+    if (map.isStyleLoaded()) ensurePublicCustomLayers(map, renderableFeatureCollection(features), layerColors, layers, hiddenLayerIds);
+  }, [features, hiddenLayerIds, layerColors, layers]);
 
   useEffect(() => {
     const map = mapRef.current;
