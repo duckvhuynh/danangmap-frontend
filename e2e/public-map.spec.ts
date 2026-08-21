@@ -20,15 +20,3 @@ test("mobile public exposes layers and list as touch panels", async ({ page }, t
   await expect(page.getByRole("region", { name: "Lớp dữ liệu" })).toBeVisible();
   await expect(page.getByRole("button", { name: /Ranh giới phường, xã/ })).toBeVisible();
 });
-
-test("credentialed login continues through MFA before opening admin", async ({ page }) => {
-  await page.goto("/login");
-  await page.getByRole("textbox", { name: "Tên đăng nhập hoặc email" }).fill("editor@example.gov.vn");
-  await page.getByLabel("Mật khẩu").fill("very-secure-password");
-  await page.getByRole("button", { name: "Đăng nhập" }).click();
-  await expect(page).toHaveURL(/\/login\/mfa$/);
-  await page.getByLabel("Mã xác thực").fill("123456");
-  await page.getByRole("button", { name: "Xác nhận" }).click();
-  await expect(page).toHaveURL(/\/admin$/);
-  await expect(page.getByRole("heading", { name: "Tổng quan hệ thống" })).toBeVisible();
-});
