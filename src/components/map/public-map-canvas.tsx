@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import mapboxgl, { type Map as MapboxMap } from "mapbox-gl";
 import type { PublicFeature, PublicLayer } from "@/lib/domain/map";
-import { renderableFeatureCollection } from "@/components/map/map-geometry";
+import { renderableFeatureCollection, sharedGeoJsonFeatures } from "@/components/map/map-geometry";
 import { ensurePublicCustomLayers, interactivePublicLayerIds } from "@/components/map/map-style";
 
 export type MapCommand = { id: number; type: "zoom-in" | "zoom-out" | "locate" | "reset" };
@@ -51,7 +51,7 @@ export default function PublicMapCanvas({ features, layerColors, layers, hiddenL
 
     const handleError = (event: mapboxgl.ErrorEvent) => onErrorRef.current(event.error?.message ?? "Không tải được bản đồ nền.");
     map.on("error", handleError);
-    const ensureLatestLayers = () => ensurePublicCustomLayers(map, renderableFeatureCollection(featuresRef.current), colorsRef.current, layersRef.current, hiddenRef.current);
+    const ensureLatestLayers = () => ensurePublicCustomLayers(map, renderableFeatureCollection(sharedGeoJsonFeatures(featuresRef.current, layersRef.current)), colorsRef.current, layersRef.current, hiddenRef.current);
     const renderedAt = (point: mapboxgl.PointLike) => {
       const layerIds = interactivePublicLayerIds(layersRef.current).filter((layerId) => map.getLayer(layerId));
       return layerIds.length ? map.queryRenderedFeatures(point, { layers: layerIds })[0] : undefined;
@@ -81,7 +81,7 @@ export default function PublicMapCanvas({ features, layerColors, layers, hiddenL
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    if (map.isStyleLoaded()) ensurePublicCustomLayers(map, renderableFeatureCollection(features), layerColors, layers, hiddenLayerIds);
+    if (map.isStyleLoaded()) ensurePublicCustomLayers(map, renderableFeatureCollection(sharedGeoJsonFeatures(features, layers)), layerColors, layers, hiddenLayerIds);
   }, [features, hiddenLayerIds, layerColors, layers]);
 
   useEffect(() => {

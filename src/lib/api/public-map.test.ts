@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { aggregatePublicCatalog, type PublicApiTransport } from "./public-map";
+import { aggregatePublicCatalog, DANANG_PUBLIC_BBOX, PUBLIC_GEOJSON_LIMIT, type PublicApiTransport } from "./public-map";
 
 const rawLayers = [
   { id: "wards", slug: "wards", title: "Ranh giới", description: "", geometryMode: "polygon", featureCount: 1, updatedAt: "2026-08-21T00:00:00.000Z", sourceKind: "geojson", geoJsonUrl: "/api/v1/public/layers/wards/features", tileUrlTemplate: "/api/v1/public/tiles/wards/1/{z}/{x}/{y}.pbf", sourceLayer: "features", minZoom: 0, maxZoom: 18, cluster: false, style: { polygon: { fillColor: "#137333" } }, popupConfig: { titleField: "name", fieldKeys: ["address"] } },
@@ -35,7 +35,17 @@ describe("public catalog aggregation", () => {
     expect(result.features[0].properties).toMatchObject({ id: "ward-1", name: "Phường Hải Châu", geometryKind: "circle", radiusM: 100, metadata: { address: "Đà Nẵng" } });
     expect(result.features[0].properties.metadata).not.toHaveProperty("privateNote");
     expect(api.getFeatures).toHaveBeenCalledTimes(1);
+    expect(api.getFeatures).toHaveBeenCalledWith("wards", DANANG_PUBLIC_BBOX, PUBLIC_GEOJSON_LIMIT, undefined);
     expect(result.issues).toEqual([]);
+  });
+
+  it("keeps a >1000 feature hybrid layer query bounded while retaining its MVT descriptor", async () => {
+    const hybrid = { ...rawLayers[0], id: "hybrid", slug: "hybrid", sourceKind: "hybrid", featureCount: 1001 };
+    const api = transport({ listLayers: vi.fn(async () => ({ data: [hybrid], meta: {} })) });
+    const result = await aggregatePublicCatalog(api);
+    expect(api.getFeatures).toHaveBeenCalledWith("hybrid", DANANG_PUBLIC_BBOX, 1000, undefined);
+    expect(result.layers[0]).toMatchObject({ sourceKind: "hybrid", featureCount: 1001 });
+    expect(result.features).toHaveLength(1);
   });
 
   it("keeps the usable catalog and other layers when one GeoJSON request fails", async () => {

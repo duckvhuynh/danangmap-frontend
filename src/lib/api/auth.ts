@@ -31,12 +31,12 @@ export async function login(login: string, password: string, client: ApiClient =
   }
   const result = await client.POST("/api/v1/auth/login", { body: { login, password } });
   if (!result.response.ok || result.error) throw new Error("Tên đăng nhập hoặc mật khẩu không đúng.");
-  return decodeLogin(result.data as unknown);
+  return decodeLogin(result.data);
 }
 
 export async function verifyMfa(method: MfaMethod, code: string, client: ApiClient = apiClient): Promise<Record<string, unknown>> {
   if (process.env.NEXT_PUBLIC_DANANGMAP_DEMO_MODE === "true") return { id: "demo-admin", role: "system_admin" };
   const result = await client.POST("/api/v1/auth/mfa/verify", { body: { method, code } });
   if (!result.response.ok || result.error) throw new Error("Mã xác thực không hợp lệ hoặc đã hết hạn.");
-  return unwrapEnvelope(result.data as unknown);
+  return unwrapEnvelope(result.data);
 }

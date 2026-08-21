@@ -1,6 +1,6 @@
 // This file is generated. Do not edit it by hand.
 // Source: openapi/openapi.json
-// Source SHA-256: 7c2f46d0cc5b6a9e5a0da6a85cca8e862a635366f6c475e19c490761d641cc53
+// Source SHA-256: 0b81e0e273992df3ae7c954a9dc962f83ec59909e85afae72f308b3f6d6e6030
 export interface paths {
     "/api/v1/auth/login": {
         parameters: {
@@ -434,6 +434,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/imports/{importId}/mapping": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["updateSpatialImportMapping"];
+        trace?: never;
+    };
+    "/api/v1/admin/imports/{importId}:validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["validateSpatialImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/imports/{importId}/issues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listSpatialImportIssues"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/imports/{importId}:apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["applySpatialImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health/live": {
         parameters: {
             query?: never;
@@ -632,6 +696,40 @@ export interface components {
             /** Format: uuid */
             targetSnapshotId: string;
             reason: string;
+        };
+        ImportGeometryMappingDto: {
+            /** @enum {string} */
+            kind: "geojson" | "coordinates" | "wkt" | "kml_geometry";
+            longitudeColumn?: string;
+            latitudeColumn?: string;
+            geometryColumn?: string;
+        };
+        ImportUpsertMappingDto: {
+            /** @enum {string} */
+            matchBy: "external_identity";
+        };
+        UpdateImportMappingDto: {
+            /**
+             * @example EPSG:4326
+             * @enum {string}
+             */
+            sourceCrs?: "EPSG:4326";
+            geometry: components["schemas"]["ImportGeometryMappingDto"];
+            fields: {
+                [key: string]: string;
+            };
+            /**
+             * @default ignore
+             * @enum {string}
+             */
+            unmappedColumnPolicy: "ignore";
+            upsert?: components["schemas"]["ImportUpsertMappingDto"];
+        };
+        ApplyImportDto: {
+            /** @default false */
+            skipInvalid: boolean;
+            /** @default [] */
+            acknowledgedWarningCodes: string[];
         };
     };
     responses: never;
@@ -919,7 +1017,19 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: {
-                            [key: string]: unknown;
+                            /** Format: uuid */
+                            id: string;
+                            slug: string;
+                            title: string;
+                            description?: string | null;
+                            displayOrder: number;
+                            defaultVisible: boolean;
+                            /** Format: date-time */
+                            archivedAt?: string | null;
+                            /** Format: date-time */
+                            createdAt?: string;
+                            /** Format: date-time */
+                            updatedAt?: string;
                         }[];
                         meta: {
                             requestId: string;
@@ -932,7 +1042,9 @@ export interface operations {
     createLayerGroup: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                "X-CSRF-Token": string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -949,7 +1061,19 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: {
-                            [key: string]: unknown;
+                            /** Format: uuid */
+                            id: string;
+                            slug: string;
+                            title: string;
+                            description?: string | null;
+                            displayOrder: number;
+                            defaultVisible: boolean;
+                            /** Format: date-time */
+                            archivedAt?: string | null;
+                            /** Format: date-time */
+                            createdAt?: string;
+                            /** Format: date-time */
+                            updatedAt?: string;
                         };
                         meta: {
                             requestId: string;
@@ -975,7 +1099,21 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: {
-                            [key: string]: unknown;
+                            /** Format: uuid */
+                            id: string;
+                            slug: string;
+                            /** Format: uuid */
+                            groupId?: string | null;
+                            displayOrder: number;
+                            /** Format: date-time */
+                            archivedAt?: string | null;
+                            /** Format: uuid */
+                            revisionId?: string | null;
+                            title?: string | null;
+                            status?: string | null;
+                            geometryMode?: string | null;
+                            /** Format: date-time */
+                            updatedAt?: string | null;
                         }[];
                         meta: {
                             requestId: string;
@@ -988,7 +1126,10 @@ export interface operations {
     createLayer: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                "X-CSRF-Token": string;
+                "Idempotency-Key": string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1005,7 +1146,61 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: {
-                            [key: string]: unknown;
+                            layer: {
+                                /** Format: uuid */
+                                id: string;
+                                slug: string;
+                                /** Format: uuid */
+                                groupId: string | null;
+                                displayOrder: number;
+                                /** Format: uuid */
+                                createdBy: string;
+                                /** Format: date-time */
+                                archivedAt: string | null;
+                                /** Format: date-time */
+                                createdAt?: string;
+                                /** Format: date-time */
+                                updatedAt?: string;
+                            };
+                            draftRevision: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                layerId: string;
+                                revisionNo: number;
+                                status: string;
+                                title: string;
+                                description?: string | null;
+                                /** @enum {string} */
+                                geometryMode: "point" | "circle" | "polyline" | "polygon" | "mixed";
+                                allowedGeometryKinds: string[];
+                                style: {
+                                    [key: string]: unknown;
+                                };
+                                renderConfig: {
+                                    [key: string]: unknown;
+                                };
+                                popupConfig: {
+                                    [key: string]: unknown;
+                                };
+                                schemaVersion: number;
+                                lockVersion: number;
+                                cursorSeq: string;
+                                /** Format: uuid */
+                                createdBy: string;
+                                /** Format: uuid */
+                                supersedesRevisionId?: string | null;
+                                /** Format: date-time */
+                                submittedAt?: string | null;
+                                /** Format: date-time */
+                                approvedAt?: string | null;
+                                /** Format: date-time */
+                                publishedAt?: string | null;
+                                /** Format: date-time */
+                                createdAt?: string;
+                                /** Format: date-time */
+                                updatedAt?: string;
+                            };
                         };
                         meta: {
                             requestId: string;
@@ -1033,7 +1228,69 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: {
-                            [key: string]: unknown;
+                            revision: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                layerId: string;
+                                revisionNo: number;
+                                status: string;
+                                title: string;
+                                description?: string | null;
+                                /** @enum {string} */
+                                geometryMode: "point" | "circle" | "polyline" | "polygon" | "mixed";
+                                allowedGeometryKinds: string[];
+                                style: {
+                                    [key: string]: unknown;
+                                };
+                                renderConfig: {
+                                    [key: string]: unknown;
+                                };
+                                popupConfig: {
+                                    [key: string]: unknown;
+                                };
+                                schemaVersion: number;
+                                lockVersion: number;
+                                cursorSeq: string;
+                                /** Format: uuid */
+                                createdBy: string;
+                                /** Format: uuid */
+                                supersedesRevisionId?: string | null;
+                                /** Format: date-time */
+                                submittedAt?: string | null;
+                                /** Format: date-time */
+                                approvedAt?: string | null;
+                                /** Format: date-time */
+                                publishedAt?: string | null;
+                                /** Format: date-time */
+                                createdAt?: string;
+                                /** Format: date-time */
+                                updatedAt?: string;
+                            };
+                            fields: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                revisionId: string;
+                                key: string;
+                                label: string;
+                                description?: string | null;
+                                type: string;
+                                icon?: string | null;
+                                required: boolean;
+                                public: boolean;
+                                searchable: boolean;
+                                filterable: boolean;
+                                sortable: boolean;
+                                sensitive: boolean;
+                                offlineCache: boolean;
+                                defaultValue?: unknown;
+                                validation: {
+                                    [key: string]: unknown;
+                                };
+                                options: unknown[];
+                                displayOrder: number;
+                            }[];
                         };
                         meta: {
                             requestId: string;
@@ -1061,7 +1318,17 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: {
-                            [key: string]: unknown;
+                            /** Format: uuid */
+                            revisionId: string;
+                            /** Format: uuid */
+                            layerId: string;
+                            status: string;
+                            serverCursor: string;
+                            featureCount: number;
+                            bounds: number[] | null;
+                            schemaVersion: number;
+                            /** Format: date-time */
+                            updatedAt: string;
                         };
                         meta: {
                             requestId: string;
@@ -1091,7 +1358,31 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: {
-                            [key: string]: unknown;
+                            /** @enum {string} */
+                            type: "Feature";
+                            /** Format: uuid */
+                            id: string;
+                            geometry: {
+                                type: string;
+                            } & {
+                                [key: string]: unknown;
+                            };
+                            properties: {
+                                [key: string]: unknown;
+                            };
+                            attachments: {
+                                [key: string]: unknown;
+                            }[];
+                            meta: {
+                                geometryKind: string;
+                                radiusM: number | null;
+                                externalSource: string | null;
+                                externalId: string | null;
+                                /** Format: uuid */
+                                versionId: string;
+                                /** Format: date-time */
+                                updatedAt: string;
+                            };
                         }[];
                         meta: {
                             requestId: string;
@@ -1104,7 +1395,12 @@ export interface operations {
     createFeature: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                "X-CSRF-Token": string;
+                "Idempotency-Key": string;
+                /** @description Revision ETag. */
+                "If-Match": string;
+            };
             path: {
                 revisionId: string;
             };
@@ -1123,7 +1419,34 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: {
-                            [key: string]: unknown;
+                            feature: {
+                                /** @enum {string} */
+                                type: "Feature";
+                                /** Format: uuid */
+                                id: string;
+                                geometry: {
+                                    type: string;
+                                } & {
+                                    [key: string]: unknown;
+                                };
+                                properties: {
+                                    [key: string]: unknown;
+                                };
+                                attachments: {
+                                    [key: string]: unknown;
+                                }[];
+                                meta: {
+                                    geometryKind: string;
+                                    radiusM: number | null;
+                                    externalSource: string | null;
+                                    externalId: string | null;
+                                    /** Format: uuid */
+                                    versionId: string;
+                                    /** Format: date-time */
+                                    updatedAt: string;
+                                };
+                            };
+                            serverCursor: string;
                         };
                         meta: {
                             requestId: string;
@@ -1136,7 +1459,11 @@ export interface operations {
     deleteFeature: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                "X-CSRF-Token": string;
+                /** @description Revision ETag. */
+                "If-Match": string;
+            };
             path: {
                 revisionId: string;
                 featureId: string;
@@ -1152,7 +1479,9 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: {
-                            [key: string]: unknown;
+                            /** @enum {string} */
+                            status: "deleted";
+                            serverCursor: string;
                         };
                         meta: {
                             requestId: string;
@@ -1165,7 +1494,11 @@ export interface operations {
     updateFeature: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                "X-CSRF-Token": string;
+                /** @description Revision ETag. */
+                "If-Match": string;
+            };
             path: {
                 revisionId: string;
                 featureId: string;
@@ -1185,7 +1518,34 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: {
-                            [key: string]: unknown;
+                            feature: {
+                                /** @enum {string} */
+                                type: "Feature";
+                                /** Format: uuid */
+                                id: string;
+                                geometry: {
+                                    type: string;
+                                } & {
+                                    [key: string]: unknown;
+                                };
+                                properties: {
+                                    [key: string]: unknown;
+                                };
+                                attachments: {
+                                    [key: string]: unknown;
+                                }[];
+                                meta: {
+                                    geometryKind: string;
+                                    radiusM: number | null;
+                                    externalSource: string | null;
+                                    externalId: string | null;
+                                    /** Format: uuid */
+                                    versionId: string;
+                                    /** Format: date-time */
+                                    updatedAt: string;
+                                };
+                            };
+                            serverCursor: string;
                         };
                         meta: {
                             requestId: string;
@@ -1198,7 +1558,10 @@ export interface operations {
     submitRevision: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                "X-CSRF-Token": string;
+                "Idempotency-Key": string;
+            };
             path: {
                 revisionId: string;
             };
@@ -1218,15 +1581,26 @@ export interface operations {
                     "application/json": {
                         data: {
                             /** Format: uuid */
-                            revisionId?: string;
+                            revisionId: string;
+                            status: string;
+                        } | {
                             /** Format: uuid */
-                            layerId?: string;
+                            originalRevisionId: string;
                             /** Format: uuid */
-                            snapshotId?: string;
-                            generation?: number;
-                            status?: string;
-                        } & {
-                            [key: string]: unknown;
+                            draftRevisionId: string;
+                            /** Format: uuid */
+                            supersedesRevisionId: string;
+                            originalStatus: string;
+                            draftStatus: string;
+                            draftEtag: string;
+                        } | {
+                            /** Format: uuid */
+                            publicationId?: string;
+                            /** Format: uuid */
+                            snapshotId: string;
+                            generation: number;
+                            /** @enum {string} */
+                            status: "completed";
                         };
                         meta: {
                             requestId: string;
@@ -1239,7 +1613,10 @@ export interface operations {
     approveRevision: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                "X-CSRF-Token": string;
+                "Idempotency-Key": string;
+            };
             path: {
                 revisionId: string;
             };
@@ -1259,15 +1636,26 @@ export interface operations {
                     "application/json": {
                         data: {
                             /** Format: uuid */
-                            revisionId?: string;
+                            revisionId: string;
+                            status: string;
+                        } | {
                             /** Format: uuid */
-                            layerId?: string;
+                            originalRevisionId: string;
                             /** Format: uuid */
-                            snapshotId?: string;
-                            generation?: number;
-                            status?: string;
-                        } & {
-                            [key: string]: unknown;
+                            draftRevisionId: string;
+                            /** Format: uuid */
+                            supersedesRevisionId: string;
+                            originalStatus: string;
+                            draftStatus: string;
+                            draftEtag: string;
+                        } | {
+                            /** Format: uuid */
+                            publicationId?: string;
+                            /** Format: uuid */
+                            snapshotId: string;
+                            generation: number;
+                            /** @enum {string} */
+                            status: "completed";
                         };
                         meta: {
                             requestId: string;
@@ -1280,7 +1668,10 @@ export interface operations {
     requestRevisionChanges: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                "X-CSRF-Token": string;
+                "Idempotency-Key": string;
+            };
             path: {
                 revisionId: string;
             };
@@ -1300,15 +1691,26 @@ export interface operations {
                     "application/json": {
                         data: {
                             /** Format: uuid */
-                            revisionId?: string;
+                            revisionId: string;
+                            status: string;
+                        } | {
                             /** Format: uuid */
-                            layerId?: string;
+                            originalRevisionId: string;
                             /** Format: uuid */
-                            snapshotId?: string;
-                            generation?: number;
-                            status?: string;
-                        } & {
-                            [key: string]: unknown;
+                            draftRevisionId: string;
+                            /** Format: uuid */
+                            supersedesRevisionId: string;
+                            originalStatus: string;
+                            draftStatus: string;
+                            draftEtag: string;
+                        } | {
+                            /** Format: uuid */
+                            publicationId?: string;
+                            /** Format: uuid */
+                            snapshotId: string;
+                            generation: number;
+                            /** @enum {string} */
+                            status: "completed";
                         };
                         meta: {
                             requestId: string;
@@ -1321,7 +1723,10 @@ export interface operations {
     publishRevision: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                "X-CSRF-Token": string;
+                "Idempotency-Key": string;
+            };
             path: {
                 revisionId: string;
             };
@@ -1341,15 +1746,26 @@ export interface operations {
                     "application/json": {
                         data: {
                             /** Format: uuid */
-                            revisionId?: string;
+                            revisionId: string;
+                            status: string;
+                        } | {
                             /** Format: uuid */
-                            layerId?: string;
+                            originalRevisionId: string;
                             /** Format: uuid */
-                            snapshotId?: string;
-                            generation?: number;
-                            status?: string;
-                        } & {
-                            [key: string]: unknown;
+                            draftRevisionId: string;
+                            /** Format: uuid */
+                            supersedesRevisionId: string;
+                            originalStatus: string;
+                            draftStatus: string;
+                            draftEtag: string;
+                        } | {
+                            /** Format: uuid */
+                            publicationId?: string;
+                            /** Format: uuid */
+                            snapshotId: string;
+                            generation: number;
+                            /** @enum {string} */
+                            status: "completed";
                         };
                         meta: {
                             requestId: string;
@@ -1362,7 +1778,10 @@ export interface operations {
     rollbackLayer: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                "X-CSRF-Token": string;
+                "Idempotency-Key": string;
+            };
             path: {
                 layerId: string;
             };
@@ -1382,15 +1801,26 @@ export interface operations {
                     "application/json": {
                         data: {
                             /** Format: uuid */
-                            revisionId?: string;
+                            revisionId: string;
+                            status: string;
+                        } | {
                             /** Format: uuid */
-                            layerId?: string;
+                            originalRevisionId: string;
                             /** Format: uuid */
-                            snapshotId?: string;
-                            generation?: number;
-                            status?: string;
-                        } & {
-                            [key: string]: unknown;
+                            draftRevisionId: string;
+                            /** Format: uuid */
+                            supersedesRevisionId: string;
+                            originalStatus: string;
+                            draftStatus: string;
+                            draftEtag: string;
+                        } | {
+                            /** Format: uuid */
+                            publicationId?: string;
+                            /** Format: uuid */
+                            snapshotId: string;
+                            generation: number;
+                            /** @enum {string} */
+                            status: "completed";
                         };
                         meta: {
                             requestId: string;
@@ -1567,7 +1997,11 @@ export interface operations {
     };
     listPublicFeatures: {
         parameters: {
-            query?: never;
+            query?: {
+                filter?: string;
+                limit?: number;
+                bbox?: string;
+            };
             header?: never;
             path: {
                 slug: string;
@@ -1694,11 +2128,12 @@ export interface operations {
         parameters: {
             query: {
                 q: string;
-                sources: string;
-                layerIds: string;
-                center: string;
-                radiusM: string;
-                limit: string;
+                sources?: string;
+                /** @description Comma-separated UUIDs; tối đa 20 layer. */
+                layerIds?: string;
+                center?: string;
+                radiusM?: number;
+                limit?: number;
             };
             header?: never;
             path?: never;
@@ -1757,8 +2192,8 @@ export interface operations {
     };
     getExternalPlace: {
         parameters: {
-            query: {
-                fields: string;
+            query?: {
+                fields?: string;
             };
             header?: never;
             path: {
@@ -1798,7 +2233,12 @@ export interface operations {
     createSpatialImport: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                "X-CSRF-Token": string;
+                "Idempotency-Key": string;
+                /** @description Revision ETag. */
+                "If-Match": string;
+            };
             path: {
                 revisionId: string;
             };
@@ -1841,8 +2281,18 @@ export interface operations {
                             };
                             progress: number;
                             counts: {
+                                total?: number;
+                                valid?: number;
+                                warning?: number;
+                                invalid?: number;
+                                matched?: number;
+                                new?: number;
+                                applied?: number;
+                                skipped?: number;
+                            } & {
                                 [key: string]: number;
                             };
+                            canApplyWithSkipInvalid: boolean;
                             failureCode?: string | null;
                             /** Format: date-time */
                             createdAt?: string;
@@ -1890,8 +2340,251 @@ export interface operations {
                             };
                             progress: number;
                             counts: {
+                                total?: number;
+                                valid?: number;
+                                warning?: number;
+                                invalid?: number;
+                                matched?: number;
+                                new?: number;
+                                applied?: number;
+                                skipped?: number;
+                            } & {
                                 [key: string]: number;
                             };
+                            canApplyWithSkipInvalid: boolean;
+                            failureCode?: string | null;
+                            /** Format: date-time */
+                            createdAt?: string;
+                            /** Format: date-time */
+                            updatedAt?: string;
+                        };
+                        meta: {
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    updateSpatialImportMapping: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-CSRF-Token": string;
+            };
+            path: {
+                importId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateImportMappingDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            revisionId: string;
+                            status: string;
+                            /** @enum {string} */
+                            format: "csv" | "xlsx" | "geojson" | "kml";
+                            /** @enum {string} */
+                            mode: "append" | "replace" | "upsert";
+                            file: {
+                                name: string;
+                                sizeBytes: number;
+                            };
+                            progress: number;
+                            counts: {
+                                total?: number;
+                                valid?: number;
+                                warning?: number;
+                                invalid?: number;
+                                matched?: number;
+                                new?: number;
+                                applied?: number;
+                                skipped?: number;
+                            } & {
+                                [key: string]: number;
+                            };
+                            canApplyWithSkipInvalid: boolean;
+                            failureCode?: string | null;
+                            /** Format: date-time */
+                            createdAt?: string;
+                            /** Format: date-time */
+                            updatedAt?: string;
+                        };
+                        meta: {
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    validateSpatialImport: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-CSRF-Token": string;
+            };
+            path: {
+                importId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            revisionId: string;
+                            status: string;
+                            /** @enum {string} */
+                            format: "csv" | "xlsx" | "geojson" | "kml";
+                            /** @enum {string} */
+                            mode: "append" | "replace" | "upsert";
+                            file: {
+                                name: string;
+                                sizeBytes: number;
+                            };
+                            progress: number;
+                            counts: {
+                                total?: number;
+                                valid?: number;
+                                warning?: number;
+                                invalid?: number;
+                                matched?: number;
+                                new?: number;
+                                applied?: number;
+                                skipped?: number;
+                            } & {
+                                [key: string]: number;
+                            };
+                            canApplyWithSkipInvalid: boolean;
+                            failureCode?: string | null;
+                            /** Format: date-time */
+                            createdAt?: string;
+                            /** Format: date-time */
+                            updatedAt?: string;
+                        };
+                        meta: {
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    listSpatialImportIssues: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: number;
+            };
+            header?: never;
+            path: {
+                importId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            rowNumber: number;
+                            /** @enum {string} */
+                            severity: "warning" | "error";
+                            code: string;
+                            field?: string | null;
+                        }[];
+                        meta: {
+                            requestId: string;
+                            nextCursor: string | null;
+                            hasMore: boolean;
+                            limit: number;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    applySpatialImport: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-CSRF-Token": string;
+                "Idempotency-Key": string;
+                /** @description Revision ETag. */
+                "If-Match": string;
+            };
+            path: {
+                importId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApplyImportDto"];
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            revisionId: string;
+                            status: string;
+                            /** @enum {string} */
+                            format: "csv" | "xlsx" | "geojson" | "kml";
+                            /** @enum {string} */
+                            mode: "append" | "replace" | "upsert";
+                            file: {
+                                name: string;
+                                sizeBytes: number;
+                            };
+                            progress: number;
+                            counts: {
+                                total?: number;
+                                valid?: number;
+                                warning?: number;
+                                invalid?: number;
+                                matched?: number;
+                                new?: number;
+                                applied?: number;
+                                skipped?: number;
+                            } & {
+                                [key: string]: number;
+                            };
+                            canApplyWithSkipInvalid: boolean;
                             failureCode?: string | null;
                             /** Format: date-time */
                             createdAt?: string;

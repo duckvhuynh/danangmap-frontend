@@ -17,8 +17,11 @@ type ApiClient = ReturnType<typeof createDanangMapClient>;
 export interface PublicApiTransport {
   listLayers(signal?: AbortSignal): Promise<unknown>;
   getLayer(slug: string, signal?: AbortSignal): Promise<unknown>;
-  getFeatures(slug: string, signal?: AbortSignal): Promise<unknown>;
+  getFeatures(slug: string, bbox: string, limit: number, signal?: AbortSignal): Promise<unknown>;
 }
+
+export const DANANG_PUBLIC_BBOX = "107.8,15.8,108.6,16.4";
+export const PUBLIC_GEOJSON_LIMIT = 1000;
 
 type RawCatalogLayer = Omit<PublicLayer, "name" | "description" | "type" | "color" | "fields" | "popupConfig"> & {
   title: string;
@@ -36,6 +39,27 @@ const asNumber = (value: unknown, field: string) => {
   if (typeof value !== "number" || !Number.isFinite(value)) throw new Error(`Phản hồi API thiếu trường ${field}.`);
   return value;
 };
+
+function decodePosition(value: unknown): number[] {
+  if (!Array.isArray(value) || value.length < 2 || value.some((coordinate) => typeof coordinate !== "number" || !Number.isFinite(coordinate))) throw new Error("Tọa độ GeoJSON không hợp lệ.");
+  return value;
+}
+function decodePositions(value: unknown): number[][] { if (!Array.isArray(value)) throw new Error("Mảng tọa độ GeoJSON không hợp lệ."); return value.map(decodePosition); }
+function decodeLines(value: unknown): number[][][] { if (!Array.isArray(value)) throw new Error("Mảng đường GeoJSON không hợp lệ."); return value.map(decodePositions); }
+function decodePolygons(value: unknown): number[][][][] { if (!Array.isArray(value)) throw new Error("Mảng polygon GeoJSON không hợp lệ."); return value.map(decodeLines); }
+
+function decodeGeometry(value: unknown): Geometry {
+  if (!isRecord(value) || typeof value.type !== "string") throw new Error("Geometry GeoJSON không hợp lệ.");
+  const coordinates = value.coordinates;
+  if (value.type === "Point") return { type: "Point", coordinates: decodePosition(coordinates) };
+  if (value.type === "MultiPoint") return { type: "MultiPoint", coordinates: decodePositions(coordinates) };
+  if (value.type === "LineString") return { type: "LineString", coordinates: decodePositions(coordinates) };
+  if (value.type === "MultiLineString") return { type: "MultiLineString", coordinates: decodeLines(coordinates) };
+  if (value.type === "Polygon") return { type: "Polygon", coordinates: decodeLines(coordinates) };
+  if (value.type === "MultiPolygon") return { type: "MultiPolygon", coordinates: decodePolygons(coordinates) };
+  if (value.type === "GeometryCollection" && Array.isArray(value.geometries)) return { type: "GeometryCollection", geometries: value.geometries.map(decodeGeometry) };
+  throw new Error("Geometry GeoJSON không được hỗ trợ.");
+}
 
 function unwrapEnvelope(value: unknown): unknown {
   if (!isRecord(value) || !("data" in value)) throw new Error("Phản hồi API không đúng định dạng envelope.");
@@ -123,7 +147,7 @@ function decodeFeatures(value: unknown, layer: RawCatalogLayer): PublicFeature[]
     return [{
       type: "Feature" as const,
       id: rawId,
-      geometry: feature.geometry as unknown as Geometry,
+      geometry: decodeGeometry(feature.geometry),
       properties: {
         id: rawId,
         layerId: layer.id,
@@ -169,17 +193,17 @@ export function createPublicApiTransport(client: ApiClient = apiClient): PublicA
     async listLayers(signal) {
       const result = await client.GET("/api/v1/public/layers", { signal });
       requestFailed(result.response, result.error);
-      return result.data as unknown;
+      return result.data;
     },
     async getLayer(slug, signal) {
       const result = await client.GET("/api/v1/public/layers/{slug}", { params: { path: { slug } }, signal });
       requestFailed(result.response, result.error);
-      return result.data as unknown;
+      return result.data;
     },
-    async getFeatures(slug, signal) {
-      const result = await client.GET("/api/v1/public/layers/{slug}/features", { params: { path: { slug } }, signal });
+    async getFeatures(slug, bbox, limit, signal) {
+      const result = await client.GET("/api/v1/public/layers/{slug}/features", { params: { path: { slug }, query: { bbox, limit } }, signal });
       requestFailed(result.response, result.error);
-      return result.data as unknown;
+      return result.data;
     },
   };
 }
@@ -193,7 +217,7 @@ export async function aggregatePublicCatalog(transport: PublicApiTransport, sign
   await Promise.all(catalog.map(async (catalogLayer) => {
     const [detail, featureCollection] = await Promise.allSettled([
       transport.getLayer(catalogLayer.slug, signal),
-      catalogLayer.sourceKind === "mvt" ? Promise.resolve(null) : transport.getFeatures(catalogLayer.slug, signal),
+      catalogLayer.sourceKind === "mvt" ? Promise.resolve(null) : transport.getFeatures(catalogLayer.slug, DANANG_PUBLIC_BBOX, PUBLIC_GEOJSON_LIMIT, signal),
     ]);
     let fields: MetadataField[] = [];
     if (detail.status === "fulfilled") {

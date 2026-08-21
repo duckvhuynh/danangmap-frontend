@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { geodesicCircle, renderableFeatureCollection } from "./map-geometry";
-import type { PublicFeature } from "@/lib/domain/map";
+import { geodesicCircle, renderableFeatureCollection, sharedGeoJsonFeatures } from "./map-geometry";
+import type { PublicFeature, PublicLayer } from "@/lib/domain/map";
 
 function distanceM(a: number[], b: number[]) {
   const radians = (value: number) => value * Math.PI / 180;
@@ -23,5 +23,12 @@ describe("metre-accurate circle rendering", () => {
     const canonical = { type: "Feature", id: "circle-1", geometry: { type: "Point", coordinates: center }, properties: { id: "circle-1", layerId: "circles", name: "Vùng 100 m", kind: "Vùng", geometryKind: "circle", radiusM: 100, metadata: {} } } as PublicFeature;
     expect(renderableFeatureCollection([canonical]).features[0].geometry.type).toBe("Polygon");
     expect(canonical.geometry).toEqual({ type: "Point", coordinates: center });
+  });
+
+  it("excludes hybrid list/detail features from the shared GeoJSON render source", () => {
+    const feature = { type: "Feature", id: "hybrid-1", geometry: { type: "Point", coordinates: [108.22, 16.06] }, properties: { id: "hybrid-1", layerId: "hybrid", name: "Hybrid", kind: "Hybrid", metadata: {} } } as PublicFeature;
+    const layer = { id: "hybrid", sourceKind: "hybrid" } as PublicLayer;
+    expect(sharedGeoJsonFeatures([feature], [layer])).toEqual([]);
+    expect(sharedGeoJsonFeatures([feature], [{ ...layer, sourceKind: "geojson" }])).toEqual([feature]);
   });
 });

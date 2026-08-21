@@ -1,5 +1,5 @@
 import type { FeatureCollection, Geometry, Polygon, Position } from "geojson";
-import type { PublicFeature } from "@/lib/domain/map";
+import type { PublicFeature, PublicLayer } from "@/lib/domain/map";
 
 const earthRadiusM = 6_371_008.8;
 
@@ -27,4 +27,9 @@ export function renderableFeatureCollection(features: PublicFeature[]): FeatureC
       return { ...feature, geometry: geodesicCircle(feature.geometry.coordinates, radiusM) };
     }),
   };
+}
+
+export function sharedGeoJsonFeatures(features: PublicFeature[], layers: PublicLayer[]) {
+  const geoJsonLayerIds = new Set(layers.filter((layer) => layer.sourceKind === "geojson").map((layer) => layer.id));
+  return features.filter((feature) => geoJsonLayerIds.has(feature.properties.layerId));
 }

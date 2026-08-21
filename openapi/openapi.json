@@ -601,7 +601,49 @@
                       "type": "array",
                       "items": {
                         "type": "object",
-                        "additionalProperties": true
+                        "additionalProperties": false,
+                        "required": [
+                          "id",
+                          "slug",
+                          "title",
+                          "displayOrder",
+                          "defaultVisible"
+                        ],
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "slug": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "displayOrder": {
+                            "type": "integer"
+                          },
+                          "defaultVisible": {
+                            "type": "boolean"
+                          },
+                          "archivedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "nullable": true
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        }
                       }
                     },
                     "meta": {
@@ -633,7 +675,16 @@
       },
       "post": {
         "operationId": "createLayerGroup",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -658,7 +709,49 @@
                   "properties": {
                     "data": {
                       "type": "object",
-                      "additionalProperties": true
+                      "additionalProperties": false,
+                      "required": [
+                        "id",
+                        "slug",
+                        "title",
+                        "displayOrder",
+                        "defaultVisible"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "slug": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "displayOrder": {
+                          "type": "integer"
+                        },
+                        "defaultVisible": {
+                          "type": "boolean"
+                        },
+                        "archivedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "nullable": true
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      }
                     },
                     "meta": {
                       "type": "object",
@@ -708,7 +801,56 @@
                       "type": "array",
                       "items": {
                         "type": "object",
-                        "additionalProperties": true
+                        "additionalProperties": false,
+                        "required": [
+                          "id",
+                          "slug",
+                          "displayOrder"
+                        ],
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "slug": {
+                            "type": "string"
+                          },
+                          "groupId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "nullable": true
+                          },
+                          "displayOrder": {
+                            "type": "integer"
+                          },
+                          "archivedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "nullable": true
+                          },
+                          "revisionId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "nullable": true
+                          },
+                          "title": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "status": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "geometryMode": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "nullable": true
+                          }
+                        }
                       }
                     },
                     "meta": {
@@ -740,7 +882,25 @@
       },
       "post": {
         "operationId": "createLayer",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -765,7 +925,171 @@
                   "properties": {
                     "data": {
                       "type": "object",
-                      "additionalProperties": true
+                      "additionalProperties": false,
+                      "required": [
+                        "layer",
+                        "draftRevision"
+                      ],
+                      "properties": {
+                        "layer": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "id",
+                            "slug",
+                            "groupId",
+                            "displayOrder",
+                            "createdBy",
+                            "archivedAt"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "slug": {
+                              "type": "string"
+                            },
+                            "groupId": {
+                              "type": "string",
+                              "format": "uuid",
+                              "nullable": true
+                            },
+                            "displayOrder": {
+                              "type": "integer"
+                            },
+                            "createdBy": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "archivedAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "nullable": true
+                            },
+                            "createdAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "updatedAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            }
+                          }
+                        },
+                        "draftRevision": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "id",
+                            "layerId",
+                            "revisionNo",
+                            "status",
+                            "title",
+                            "geometryMode",
+                            "allowedGeometryKinds",
+                            "style",
+                            "renderConfig",
+                            "popupConfig",
+                            "schemaVersion",
+                            "lockVersion",
+                            "cursorSeq",
+                            "createdBy"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "layerId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "revisionNo": {
+                              "type": "integer"
+                            },
+                            "status": {
+                              "type": "string"
+                            },
+                            "title": {
+                              "type": "string"
+                            },
+                            "description": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "geometryMode": {
+                              "type": "string",
+                              "enum": [
+                                "point",
+                                "circle",
+                                "polyline",
+                                "polygon",
+                                "mixed"
+                              ]
+                            },
+                            "allowedGeometryKinds": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "style": {
+                              "type": "object",
+                              "additionalProperties": true
+                            },
+                            "renderConfig": {
+                              "type": "object",
+                              "additionalProperties": true
+                            },
+                            "popupConfig": {
+                              "type": "object",
+                              "additionalProperties": true
+                            },
+                            "schemaVersion": {
+                              "type": "integer"
+                            },
+                            "lockVersion": {
+                              "type": "integer"
+                            },
+                            "cursorSeq": {
+                              "type": "string"
+                            },
+                            "createdBy": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "supersedesRevisionId": {
+                              "type": "string",
+                              "format": "uuid",
+                              "nullable": true
+                            },
+                            "submittedAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "nullable": true
+                            },
+                            "approvedAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "nullable": true
+                            },
+                            "publishedAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "nullable": true
+                            },
+                            "createdAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "updatedAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            }
+                          }
+                        }
+                      }
                     },
                     "meta": {
                       "type": "object",
@@ -822,7 +1146,211 @@
                   "properties": {
                     "data": {
                       "type": "object",
-                      "additionalProperties": true
+                      "additionalProperties": false,
+                      "required": [
+                        "revision",
+                        "fields"
+                      ],
+                      "properties": {
+                        "revision": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "id",
+                            "layerId",
+                            "revisionNo",
+                            "status",
+                            "title",
+                            "geometryMode",
+                            "allowedGeometryKinds",
+                            "style",
+                            "renderConfig",
+                            "popupConfig",
+                            "schemaVersion",
+                            "lockVersion",
+                            "cursorSeq",
+                            "createdBy"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "layerId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "revisionNo": {
+                              "type": "integer"
+                            },
+                            "status": {
+                              "type": "string"
+                            },
+                            "title": {
+                              "type": "string"
+                            },
+                            "description": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "geometryMode": {
+                              "type": "string",
+                              "enum": [
+                                "point",
+                                "circle",
+                                "polyline",
+                                "polygon",
+                                "mixed"
+                              ]
+                            },
+                            "allowedGeometryKinds": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "style": {
+                              "type": "object",
+                              "additionalProperties": true
+                            },
+                            "renderConfig": {
+                              "type": "object",
+                              "additionalProperties": true
+                            },
+                            "popupConfig": {
+                              "type": "object",
+                              "additionalProperties": true
+                            },
+                            "schemaVersion": {
+                              "type": "integer"
+                            },
+                            "lockVersion": {
+                              "type": "integer"
+                            },
+                            "cursorSeq": {
+                              "type": "string"
+                            },
+                            "createdBy": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "supersedesRevisionId": {
+                              "type": "string",
+                              "format": "uuid",
+                              "nullable": true
+                            },
+                            "submittedAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "nullable": true
+                            },
+                            "approvedAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "nullable": true
+                            },
+                            "publishedAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "nullable": true
+                            },
+                            "createdAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "updatedAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            }
+                          }
+                        },
+                        "fields": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "id",
+                              "revisionId",
+                              "key",
+                              "label",
+                              "type",
+                              "required",
+                              "public",
+                              "searchable",
+                              "filterable",
+                              "sortable",
+                              "sensitive",
+                              "offlineCache",
+                              "validation",
+                              "options",
+                              "displayOrder"
+                            ],
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "revisionId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "key": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "description": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "type": {
+                                "type": "string"
+                              },
+                              "icon": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "required": {
+                                "type": "boolean"
+                              },
+                              "public": {
+                                "type": "boolean"
+                              },
+                              "searchable": {
+                                "type": "boolean"
+                              },
+                              "filterable": {
+                                "type": "boolean"
+                              },
+                              "sortable": {
+                                "type": "boolean"
+                              },
+                              "sensitive": {
+                                "type": "boolean"
+                              },
+                              "offlineCache": {
+                                "type": "boolean"
+                              },
+                              "defaultValue": {
+                                "nullable": true
+                              },
+                              "validation": {
+                                "type": "object",
+                                "additionalProperties": true
+                              },
+                              "options": {
+                                "type": "array",
+                                "items": {}
+                              },
+                              "displayOrder": {
+                                "type": "integer"
+                              }
+                            }
+                          }
+                        }
+                      }
                     },
                     "meta": {
                       "type": "object",
@@ -879,7 +1407,53 @@
                   "properties": {
                     "data": {
                       "type": "object",
-                      "additionalProperties": true
+                      "additionalProperties": false,
+                      "required": [
+                        "revisionId",
+                        "layerId",
+                        "status",
+                        "serverCursor",
+                        "featureCount",
+                        "bounds",
+                        "schemaVersion",
+                        "updatedAt"
+                      ],
+                      "properties": {
+                        "revisionId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "layerId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "serverCursor": {
+                          "type": "string"
+                        },
+                        "featureCount": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "bounds": {
+                          "type": "array",
+                          "nullable": true,
+                          "minItems": 4,
+                          "maxItems": 4,
+                          "items": {
+                            "type": "number"
+                          }
+                        },
+                        "schemaVersion": {
+                          "type": "integer"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      }
                     },
                     "meta": {
                       "type": "object",
@@ -946,7 +1520,87 @@
                       "type": "array",
                       "items": {
                         "type": "object",
-                        "additionalProperties": true
+                        "additionalProperties": false,
+                        "required": [
+                          "type",
+                          "id",
+                          "geometry",
+                          "properties",
+                          "attachments",
+                          "meta"
+                        ],
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "Feature"
+                            ]
+                          },
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "geometry": {
+                            "type": "object",
+                            "required": [
+                              "type"
+                            ],
+                            "additionalProperties": true,
+                            "properties": {
+                              "type": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "properties": {
+                            "type": "object",
+                            "additionalProperties": true
+                          },
+                          "attachments": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "additionalProperties": true
+                            }
+                          },
+                          "meta": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "geometryKind",
+                              "radiusM",
+                              "externalSource",
+                              "externalId",
+                              "versionId",
+                              "updatedAt"
+                            ],
+                            "properties": {
+                              "geometryKind": {
+                                "type": "string"
+                              },
+                              "radiusM": {
+                                "type": "number",
+                                "nullable": true
+                              },
+                              "externalSource": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "externalId": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "versionId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "updatedAt": {
+                                "type": "string",
+                                "format": "date-time"
+                              }
+                            }
+                          }
+                        }
                       }
                     },
                     "meta": {
@@ -986,6 +1640,32 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "Revision ETag.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -1012,7 +1692,100 @@
                   "properties": {
                     "data": {
                       "type": "object",
-                      "additionalProperties": true
+                      "additionalProperties": false,
+                      "required": [
+                        "feature",
+                        "serverCursor"
+                      ],
+                      "properties": {
+                        "feature": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "type",
+                            "id",
+                            "geometry",
+                            "properties",
+                            "attachments",
+                            "meta"
+                          ],
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": [
+                                "Feature"
+                              ]
+                            },
+                            "id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "geometry": {
+                              "type": "object",
+                              "required": [
+                                "type"
+                              ],
+                              "additionalProperties": true,
+                              "properties": {
+                                "type": {
+                                  "type": "string"
+                                }
+                              }
+                            },
+                            "properties": {
+                              "type": "object",
+                              "additionalProperties": true
+                            },
+                            "attachments": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "additionalProperties": true
+                              }
+                            },
+                            "meta": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "geometryKind",
+                                "radiusM",
+                                "externalSource",
+                                "externalId",
+                                "versionId",
+                                "updatedAt"
+                              ],
+                              "properties": {
+                                "geometryKind": {
+                                  "type": "string"
+                                },
+                                "radiusM": {
+                                  "type": "number",
+                                  "nullable": true
+                                },
+                                "externalSource": {
+                                  "type": "string",
+                                  "nullable": true
+                                },
+                                "externalId": {
+                                  "type": "string",
+                                  "nullable": true
+                                },
+                                "versionId": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                "updatedAt": {
+                                  "type": "string",
+                                  "format": "date-time"
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "serverCursor": {
+                          "type": "string"
+                        }
+                      }
                     },
                     "meta": {
                       "type": "object",
@@ -1061,6 +1834,23 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "Revision ETag.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -1087,7 +1877,100 @@
                   "properties": {
                     "data": {
                       "type": "object",
-                      "additionalProperties": true
+                      "additionalProperties": false,
+                      "required": [
+                        "feature",
+                        "serverCursor"
+                      ],
+                      "properties": {
+                        "feature": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "type",
+                            "id",
+                            "geometry",
+                            "properties",
+                            "attachments",
+                            "meta"
+                          ],
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": [
+                                "Feature"
+                              ]
+                            },
+                            "id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "geometry": {
+                              "type": "object",
+                              "required": [
+                                "type"
+                              ],
+                              "additionalProperties": true,
+                              "properties": {
+                                "type": {
+                                  "type": "string"
+                                }
+                              }
+                            },
+                            "properties": {
+                              "type": "object",
+                              "additionalProperties": true
+                            },
+                            "attachments": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "additionalProperties": true
+                              }
+                            },
+                            "meta": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "geometryKind",
+                                "radiusM",
+                                "externalSource",
+                                "externalId",
+                                "versionId",
+                                "updatedAt"
+                              ],
+                              "properties": {
+                                "geometryKind": {
+                                  "type": "string"
+                                },
+                                "radiusM": {
+                                  "type": "number",
+                                  "nullable": true
+                                },
+                                "externalSource": {
+                                  "type": "string",
+                                  "nullable": true
+                                },
+                                "externalId": {
+                                  "type": "string",
+                                  "nullable": true
+                                },
+                                "versionId": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                "updatedAt": {
+                                  "type": "string",
+                                  "format": "date-time"
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "serverCursor": {
+                          "type": "string"
+                        }
+                      }
                     },
                     "meta": {
                       "type": "object",
@@ -1134,6 +2017,23 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "Revision ETag.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1150,7 +2050,22 @@
                   "properties": {
                     "data": {
                       "type": "object",
-                      "additionalProperties": true
+                      "additionalProperties": false,
+                      "required": [
+                        "status",
+                        "serverCursor"
+                      ],
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "deleted"
+                          ]
+                        },
+                        "serverCursor": {
+                          "type": "string"
+                        }
+                      }
                     },
                     "meta": {
                       "type": "object",
@@ -1191,6 +2106,23 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         ],
         "requestBody": {
@@ -1216,28 +2148,88 @@
                   ],
                   "properties": {
                     "data": {
-                      "type": "object",
-                      "additionalProperties": true,
-                      "properties": {
-                        "revisionId": {
-                          "type": "string",
-                          "format": "uuid"
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "revisionId",
+                            "status"
+                          ],
+                          "properties": {
+                            "revisionId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "status": {
+                              "type": "string"
+                            }
+                          }
                         },
-                        "layerId": {
-                          "type": "string",
-                          "format": "uuid"
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "originalRevisionId",
+                            "draftRevisionId",
+                            "supersedesRevisionId",
+                            "originalStatus",
+                            "draftStatus",
+                            "draftEtag"
+                          ],
+                          "properties": {
+                            "originalRevisionId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "draftRevisionId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "supersedesRevisionId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "originalStatus": {
+                              "type": "string"
+                            },
+                            "draftStatus": {
+                              "type": "string"
+                            },
+                            "draftEtag": {
+                              "type": "string"
+                            }
+                          }
                         },
-                        "snapshotId": {
-                          "type": "string",
-                          "format": "uuid"
-                        },
-                        "generation": {
-                          "type": "integer"
-                        },
-                        "status": {
-                          "type": "string"
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "snapshotId",
+                            "generation",
+                            "status"
+                          ],
+                          "properties": {
+                            "publicationId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "snapshotId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "generation": {
+                              "type": "integer"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "completed"
+                              ]
+                            }
+                          }
                         }
-                      }
+                      ]
                     },
                     "meta": {
                       "type": "object",
@@ -1278,6 +2270,23 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         ],
         "requestBody": {
@@ -1303,28 +2312,88 @@
                   ],
                   "properties": {
                     "data": {
-                      "type": "object",
-                      "additionalProperties": true,
-                      "properties": {
-                        "revisionId": {
-                          "type": "string",
-                          "format": "uuid"
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "revisionId",
+                            "status"
+                          ],
+                          "properties": {
+                            "revisionId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "status": {
+                              "type": "string"
+                            }
+                          }
                         },
-                        "layerId": {
-                          "type": "string",
-                          "format": "uuid"
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "originalRevisionId",
+                            "draftRevisionId",
+                            "supersedesRevisionId",
+                            "originalStatus",
+                            "draftStatus",
+                            "draftEtag"
+                          ],
+                          "properties": {
+                            "originalRevisionId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "draftRevisionId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "supersedesRevisionId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "originalStatus": {
+                              "type": "string"
+                            },
+                            "draftStatus": {
+                              "type": "string"
+                            },
+                            "draftEtag": {
+                              "type": "string"
+                            }
+                          }
                         },
-                        "snapshotId": {
-                          "type": "string",
-                          "format": "uuid"
-                        },
-                        "generation": {
-                          "type": "integer"
-                        },
-                        "status": {
-                          "type": "string"
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "snapshotId",
+                            "generation",
+                            "status"
+                          ],
+                          "properties": {
+                            "publicationId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "snapshotId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "generation": {
+                              "type": "integer"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "completed"
+                              ]
+                            }
+                          }
                         }
-                      }
+                      ]
                     },
                     "meta": {
                       "type": "object",
@@ -1365,6 +2434,23 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         ],
         "requestBody": {
@@ -1390,28 +2476,88 @@
                   ],
                   "properties": {
                     "data": {
-                      "type": "object",
-                      "additionalProperties": true,
-                      "properties": {
-                        "revisionId": {
-                          "type": "string",
-                          "format": "uuid"
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "revisionId",
+                            "status"
+                          ],
+                          "properties": {
+                            "revisionId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "status": {
+                              "type": "string"
+                            }
+                          }
                         },
-                        "layerId": {
-                          "type": "string",
-                          "format": "uuid"
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "originalRevisionId",
+                            "draftRevisionId",
+                            "supersedesRevisionId",
+                            "originalStatus",
+                            "draftStatus",
+                            "draftEtag"
+                          ],
+                          "properties": {
+                            "originalRevisionId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "draftRevisionId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "supersedesRevisionId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "originalStatus": {
+                              "type": "string"
+                            },
+                            "draftStatus": {
+                              "type": "string"
+                            },
+                            "draftEtag": {
+                              "type": "string"
+                            }
+                          }
                         },
-                        "snapshotId": {
-                          "type": "string",
-                          "format": "uuid"
-                        },
-                        "generation": {
-                          "type": "integer"
-                        },
-                        "status": {
-                          "type": "string"
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "snapshotId",
+                            "generation",
+                            "status"
+                          ],
+                          "properties": {
+                            "publicationId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "snapshotId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "generation": {
+                              "type": "integer"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "completed"
+                              ]
+                            }
+                          }
                         }
-                      }
+                      ]
                     },
                     "meta": {
                       "type": "object",
@@ -1452,6 +2598,23 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         ],
         "requestBody": {
@@ -1477,28 +2640,88 @@
                   ],
                   "properties": {
                     "data": {
-                      "type": "object",
-                      "additionalProperties": true,
-                      "properties": {
-                        "revisionId": {
-                          "type": "string",
-                          "format": "uuid"
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "revisionId",
+                            "status"
+                          ],
+                          "properties": {
+                            "revisionId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "status": {
+                              "type": "string"
+                            }
+                          }
                         },
-                        "layerId": {
-                          "type": "string",
-                          "format": "uuid"
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "originalRevisionId",
+                            "draftRevisionId",
+                            "supersedesRevisionId",
+                            "originalStatus",
+                            "draftStatus",
+                            "draftEtag"
+                          ],
+                          "properties": {
+                            "originalRevisionId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "draftRevisionId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "supersedesRevisionId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "originalStatus": {
+                              "type": "string"
+                            },
+                            "draftStatus": {
+                              "type": "string"
+                            },
+                            "draftEtag": {
+                              "type": "string"
+                            }
+                          }
                         },
-                        "snapshotId": {
-                          "type": "string",
-                          "format": "uuid"
-                        },
-                        "generation": {
-                          "type": "integer"
-                        },
-                        "status": {
-                          "type": "string"
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "snapshotId",
+                            "generation",
+                            "status"
+                          ],
+                          "properties": {
+                            "publicationId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "snapshotId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "generation": {
+                              "type": "integer"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "completed"
+                              ]
+                            }
+                          }
                         }
-                      }
+                      ]
                     },
                     "meta": {
                       "type": "object",
@@ -1539,6 +2762,23 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         ],
         "requestBody": {
@@ -1564,28 +2804,88 @@
                   ],
                   "properties": {
                     "data": {
-                      "type": "object",
-                      "additionalProperties": true,
-                      "properties": {
-                        "revisionId": {
-                          "type": "string",
-                          "format": "uuid"
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "revisionId",
+                            "status"
+                          ],
+                          "properties": {
+                            "revisionId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "status": {
+                              "type": "string"
+                            }
+                          }
                         },
-                        "layerId": {
-                          "type": "string",
-                          "format": "uuid"
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "originalRevisionId",
+                            "draftRevisionId",
+                            "supersedesRevisionId",
+                            "originalStatus",
+                            "draftStatus",
+                            "draftEtag"
+                          ],
+                          "properties": {
+                            "originalRevisionId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "draftRevisionId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "supersedesRevisionId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "originalStatus": {
+                              "type": "string"
+                            },
+                            "draftStatus": {
+                              "type": "string"
+                            },
+                            "draftEtag": {
+                              "type": "string"
+                            }
+                          }
                         },
-                        "snapshotId": {
-                          "type": "string",
-                          "format": "uuid"
-                        },
-                        "generation": {
-                          "type": "integer"
-                        },
-                        "status": {
-                          "type": "string"
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "snapshotId",
+                            "generation",
+                            "status"
+                          ],
+                          "properties": {
+                            "publicationId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "snapshotId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "generation": {
+                              "type": "integer"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "completed"
+                              ]
+                            }
+                          }
                         }
-                      }
+                      ]
                     },
                     "meta": {
                       "type": "object",
@@ -2151,6 +3451,34 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "filter",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "type:eq:Phường",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 5000,
+              "type": "number"
+            }
+          },
+          {
+            "name": "bbox",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "108.1,15.9,108.4,16.2",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -2471,47 +3799,56 @@
             "required": true,
             "in": "query",
             "schema": {
+              "minLength": 2,
+              "maxLength": 200,
               "type": "string"
             }
           },
           {
             "name": "sources",
-            "required": true,
+            "required": false,
             "in": "query",
             "schema": {
+              "example": "internal,place",
               "type": "string"
             }
           },
           {
             "name": "layerIds",
-            "required": true,
+            "required": false,
             "in": "query",
+            "description": "Comma-separated UUIDs; tối đa 20 layer.",
             "schema": {
               "type": "string"
             }
           },
           {
             "name": "center",
-            "required": true,
+            "required": false,
             "in": "query",
             "schema": {
+              "example": "16.0544,108.2022",
               "type": "string"
             }
           },
           {
             "name": "radiusM",
-            "required": true,
+            "required": false,
             "in": "query",
             "schema": {
-              "type": "string"
+              "minimum": 1,
+              "maximum": 50000,
+              "type": "number"
             }
           },
           {
             "name": "limit",
-            "required": true,
+            "required": false,
             "in": "query",
             "schema": {
-              "type": "string"
+              "minimum": 1,
+              "maximum": 30,
+              "type": "number"
             }
           }
         ],
@@ -2708,9 +4045,10 @@
           },
           {
             "name": "fields",
-            "required": true,
+            "required": false,
             "in": "query",
             "schema": {
+              "example": "name,address,position",
               "type": "string"
             }
           }
@@ -2811,6 +4149,32 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "Revision ETag.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -2877,7 +4241,8 @@
                         "mode",
                         "file",
                         "progress",
-                        "counts"
+                        "counts",
+                        "canApplyWithSkipInvalid"
                       ],
                       "properties": {
                         "id": {
@@ -2932,7 +4297,36 @@
                           "type": "object",
                           "additionalProperties": {
                             "type": "number"
+                          },
+                          "properties": {
+                            "total": {
+                              "type": "integer"
+                            },
+                            "valid": {
+                              "type": "integer"
+                            },
+                            "warning": {
+                              "type": "integer"
+                            },
+                            "invalid": {
+                              "type": "integer"
+                            },
+                            "matched": {
+                              "type": "integer"
+                            },
+                            "new": {
+                              "type": "integer"
+                            },
+                            "applied": {
+                              "type": "integer"
+                            },
+                            "skipped": {
+                              "type": "integer"
+                            }
                           }
+                        },
+                        "canApplyWithSkipInvalid": {
+                          "type": "boolean"
                         },
                         "failureCode": {
                           "type": "string",
@@ -3011,7 +4405,8 @@
                         "mode",
                         "file",
                         "progress",
-                        "counts"
+                        "counts",
+                        "canApplyWithSkipInvalid"
                       ],
                       "properties": {
                         "id": {
@@ -3066,7 +4461,714 @@
                           "type": "object",
                           "additionalProperties": {
                             "type": "number"
+                          },
+                          "properties": {
+                            "total": {
+                              "type": "integer"
+                            },
+                            "valid": {
+                              "type": "integer"
+                            },
+                            "warning": {
+                              "type": "integer"
+                            },
+                            "invalid": {
+                              "type": "integer"
+                            },
+                            "matched": {
+                              "type": "integer"
+                            },
+                            "new": {
+                              "type": "integer"
+                            },
+                            "applied": {
+                              "type": "integer"
+                            },
+                            "skipped": {
+                              "type": "integer"
+                            }
                           }
+                        },
+                        "canApplyWithSkipInvalid": {
+                          "type": "boolean"
+                        },
+                        "failureCode": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "required": [
+                        "requestId"
+                      ],
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "imports"
+        ]
+      }
+    },
+    "/api/v1/admin/imports/{importId}/mapping": {
+      "patch": {
+        "operationId": "updateSpatialImportMapping",
+        "parameters": [
+          {
+            "name": "importId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateImportMappingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "required": [
+                        "id",
+                        "revisionId",
+                        "status",
+                        "format",
+                        "mode",
+                        "file",
+                        "progress",
+                        "counts",
+                        "canApplyWithSkipInvalid"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "revisionId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "format": {
+                          "type": "string",
+                          "enum": [
+                            "csv",
+                            "xlsx",
+                            "geojson",
+                            "kml"
+                          ]
+                        },
+                        "mode": {
+                          "type": "string",
+                          "enum": [
+                            "append",
+                            "replace",
+                            "upsert"
+                          ]
+                        },
+                        "file": {
+                          "type": "object",
+                          "required": [
+                            "name",
+                            "sizeBytes"
+                          ],
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "sizeBytes": {
+                              "type": "integer"
+                            }
+                          }
+                        },
+                        "progress": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 100
+                        },
+                        "counts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "number"
+                          },
+                          "properties": {
+                            "total": {
+                              "type": "integer"
+                            },
+                            "valid": {
+                              "type": "integer"
+                            },
+                            "warning": {
+                              "type": "integer"
+                            },
+                            "invalid": {
+                              "type": "integer"
+                            },
+                            "matched": {
+                              "type": "integer"
+                            },
+                            "new": {
+                              "type": "integer"
+                            },
+                            "applied": {
+                              "type": "integer"
+                            },
+                            "skipped": {
+                              "type": "integer"
+                            }
+                          }
+                        },
+                        "canApplyWithSkipInvalid": {
+                          "type": "boolean"
+                        },
+                        "failureCode": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "required": [
+                        "requestId"
+                      ],
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "imports"
+        ]
+      }
+    },
+    "/api/v1/admin/imports/{importId}:validate": {
+      "post": {
+        "operationId": "validateSpatialImport",
+        "parameters": [
+          {
+            "name": "importId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "required": [
+                        "id",
+                        "revisionId",
+                        "status",
+                        "format",
+                        "mode",
+                        "file",
+                        "progress",
+                        "counts",
+                        "canApplyWithSkipInvalid"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "revisionId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "format": {
+                          "type": "string",
+                          "enum": [
+                            "csv",
+                            "xlsx",
+                            "geojson",
+                            "kml"
+                          ]
+                        },
+                        "mode": {
+                          "type": "string",
+                          "enum": [
+                            "append",
+                            "replace",
+                            "upsert"
+                          ]
+                        },
+                        "file": {
+                          "type": "object",
+                          "required": [
+                            "name",
+                            "sizeBytes"
+                          ],
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "sizeBytes": {
+                              "type": "integer"
+                            }
+                          }
+                        },
+                        "progress": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 100
+                        },
+                        "counts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "number"
+                          },
+                          "properties": {
+                            "total": {
+                              "type": "integer"
+                            },
+                            "valid": {
+                              "type": "integer"
+                            },
+                            "warning": {
+                              "type": "integer"
+                            },
+                            "invalid": {
+                              "type": "integer"
+                            },
+                            "matched": {
+                              "type": "integer"
+                            },
+                            "new": {
+                              "type": "integer"
+                            },
+                            "applied": {
+                              "type": "integer"
+                            },
+                            "skipped": {
+                              "type": "integer"
+                            }
+                          }
+                        },
+                        "canApplyWithSkipInvalid": {
+                          "type": "boolean"
+                        },
+                        "failureCode": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "required": [
+                        "requestId"
+                      ],
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "imports"
+        ]
+      }
+    },
+    "/api/v1/admin/imports/{importId}/issues": {
+      "get": {
+        "operationId": "listSpatialImportIssues",
+        "parameters": [
+          {
+            "name": "importId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 200,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "id",
+                          "rowNumber",
+                          "severity",
+                          "code"
+                        ],
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "rowNumber": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "severity": {
+                            "type": "string",
+                            "enum": [
+                              "warning",
+                              "error"
+                            ]
+                          },
+                          "code": {
+                            "type": "string"
+                          },
+                          "field": {
+                            "type": "string",
+                            "nullable": true
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "requestId",
+                        "nextCursor",
+                        "hasMore",
+                        "limit"
+                      ],
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "nextCursor": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "hasMore": {
+                          "type": "boolean"
+                        },
+                        "limit": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 200
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "imports"
+        ]
+      }
+    },
+    "/api/v1/admin/imports/{importId}:apply": {
+      "post": {
+        "operationId": "applySpatialImport",
+        "parameters": [
+          {
+            "name": "importId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "Revision ETag.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplyImportDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "required": [
+                        "id",
+                        "revisionId",
+                        "status",
+                        "format",
+                        "mode",
+                        "file",
+                        "progress",
+                        "counts",
+                        "canApplyWithSkipInvalid"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "revisionId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "format": {
+                          "type": "string",
+                          "enum": [
+                            "csv",
+                            "xlsx",
+                            "geojson",
+                            "kml"
+                          ]
+                        },
+                        "mode": {
+                          "type": "string",
+                          "enum": [
+                            "append",
+                            "replace",
+                            "upsert"
+                          ]
+                        },
+                        "file": {
+                          "type": "object",
+                          "required": [
+                            "name",
+                            "sizeBytes"
+                          ],
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "sizeBytes": {
+                              "type": "integer"
+                            }
+                          }
+                        },
+                        "progress": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 100
+                        },
+                        "counts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "number"
+                          },
+                          "properties": {
+                            "total": {
+                              "type": "integer"
+                            },
+                            "valid": {
+                              "type": "integer"
+                            },
+                            "warning": {
+                              "type": "integer"
+                            },
+                            "invalid": {
+                              "type": "integer"
+                            },
+                            "matched": {
+                              "type": "integer"
+                            },
+                            "new": {
+                              "type": "integer"
+                            },
+                            "applied": {
+                              "type": "integer"
+                            },
+                            "skipped": {
+                              "type": "integer"
+                            }
+                          }
+                        },
+                        "canApplyWithSkipInvalid": {
+                          "type": "boolean"
                         },
                         "failureCode": {
                           "type": "string",
@@ -3723,6 +5825,101 @@
         "required": [
           "targetSnapshotId",
           "reason"
+        ]
+      },
+      "ImportGeometryMappingDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "geojson",
+              "coordinates",
+              "wkt",
+              "kml_geometry"
+            ]
+          },
+          "longitudeColumn": {
+            "type": "string"
+          },
+          "latitudeColumn": {
+            "type": "string"
+          },
+          "geometryColumn": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "ImportUpsertMappingDto": {
+        "type": "object",
+        "properties": {
+          "matchBy": {
+            "type": "string",
+            "enum": [
+              "external_identity"
+            ]
+          }
+        },
+        "required": [
+          "matchBy"
+        ]
+      },
+      "UpdateImportMappingDto": {
+        "type": "object",
+        "properties": {
+          "sourceCrs": {
+            "type": "string",
+            "enum": [
+              "EPSG:4326"
+            ],
+            "example": "EPSG:4326"
+          },
+          "geometry": {
+            "$ref": "#/components/schemas/ImportGeometryMappingDto"
+          },
+          "fields": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "unmappedColumnPolicy": {
+            "type": "string",
+            "enum": [
+              "ignore"
+            ],
+            "default": "ignore"
+          },
+          "upsert": {
+            "$ref": "#/components/schemas/ImportUpsertMappingDto"
+          }
+        },
+        "required": [
+          "geometry",
+          "fields",
+          "unmappedColumnPolicy"
+        ]
+      },
+      "ApplyImportDto": {
+        "type": "object",
+        "properties": {
+          "skipInvalid": {
+            "type": "boolean",
+            "default": false
+          },
+          "acknowledgedWarningCodes": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "skipInvalid"
         ]
       }
     }

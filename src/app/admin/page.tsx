@@ -1,18 +1,24 @@
-import Link from "next/link";
-import { IconAlertTriangle, IconArrowRight, IconDatabase, IconMapPin, IconProgressCheck, IconUserCheck } from "@tabler/icons-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+"use client";
 
-const metrics = [
-  { label: "Lớp đã xuất bản", value: "12", detail: "3 lớp cập nhật tuần này", icon: IconDatabase, color: "text-primary" },
-  { label: "Tổng đối tượng", value: "2.846", detail: "Trên 12 lớp công khai", icon: IconMapPin, color: "text-success" },
-  { label: "Chờ duyệt", value: "4", detail: "2 thay đổi cần ưu tiên", icon: IconProgressCheck, color: "text-warning" },
-  { label: "Người dùng hoạt động", value: "18", detail: "Editor, reviewer, publisher", icon: IconUserCheck, color: "text-primary" },
-];
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { IconArrowRight, IconDatabase, IconProgressCheck, IconRosetteDiscountCheck, IconUserCheck } from "@tabler/icons-react";
+import { AdminErrorNotice, useAdminSession } from "@/components/admin/admin-session";
+import { Button } from "@/components/ui/button";
+import { listAdminLayers, type AdminLayer } from "@/lib/api/admin";
 
 export default function AdminDashboardPage() {
-  return <main className="mx-auto max-w-[1440px] p-4 pb-24 sm:p-6 md:p-8"><div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-sm text-muted-foreground">Thứ Sáu, 21 tháng 8</p><h1 className="mt-1 text-2xl font-semibold tracking-[-0.02em]">Tổng quan hệ thống</h1><p className="mt-2 text-sm text-muted-foreground">Theo dõi dữ liệu, công việc kiểm duyệt và tình trạng xuất bản.</p></div><Button asChild><Link href="/admin/layers">Quản lý lớp dữ liệu<IconArrowRight stroke={1.75} /></Link></Button></div>
-  <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Chỉ số hệ thống">{metrics.map(({ label, value, detail, icon: Icon, color }) => <article key={label} className="rounded-panel border bg-surface p-5"><div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">{label}</span><Icon className={color} stroke={1.75} /></div><p className="mt-4 text-3xl font-semibold tracking-[-0.03em]">{value}</p><p className="mt-1 text-xs text-muted-foreground">{detail}</p></article>)}</section>
-  <div className="mt-6 grid gap-6 xl:grid-cols-[1.4fr_1fr]"><section className="rounded-panel border bg-surface"><div className="flex items-center justify-between border-b p-5"><div><h2 className="font-semibold">Hoạt động gần đây</h2><p className="mt-1 text-xs text-muted-foreground">Các thay đổi quan trọng trong hệ thống</p></div><Button asChild variant="ghost" size="sm"><Link href="/admin/layers">Xem tất cả</Link></Button></div><ul className="divide-y">{["Ranh giới phường, xã đã được gửi duyệt","Trụ sở hành chính đã xuất bản revision 18","5 đối tượng được nhập vào lớp Công an phường"].map((item, index) => <li key={item} className="flex items-start gap-3 p-5"><span className="mt-1.5 size-2 rounded-full bg-primary"/><div className="flex-1"><p className="text-sm font-medium">{item}</p><p className="mt-1 text-xs text-muted-foreground">{index + 1} giờ trước · bởi Nguyễn Văn An</p></div>{index === 0 && <Badge>Chờ duyệt</Badge>}</li>)}</ul></section>
-  <section className="rounded-panel border bg-surface p-5"><div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-control bg-amber-50 text-warning"><IconAlertTriangle stroke={1.75} /></span><div><h2 className="font-semibold">Cần xử lý</h2><p className="text-xs text-muted-foreground">Công việc đang chờ bạn</p></div></div><div className="mt-5 space-y-3"><Link href="/admin/layers/wards/edit" className="block rounded-control border p-4 hover:bg-surface-subtle"><div className="flex justify-between gap-3"><p className="text-sm font-medium">Kiểm tra ranh giới phường Hải Châu</p><Badge>Ưu tiên</Badge></div><p className="mt-2 text-xs text-muted-foreground">Có 3 geometry thay đổi · Revision 19</p></Link><Link href="/admin/layers" className="block rounded-control border p-4 hover:bg-surface-subtle"><p className="text-sm font-medium">Xác nhận dữ liệu import</p><p className="mt-2 text-xs text-muted-foreground">12 dòng được bỏ qua do thiếu địa chỉ</p></Link></div></section></div></main>;
+  const { principal } = useAdminSession();
+  const [layers, setLayers] = useState<AdminLayer[] | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  useEffect(() => { let active = true; listAdminLayers().then((data) => { if (active) setLayers(data); }).catch((reason: unknown) => { if (active) setError(reason); }); return () => { active = false; }; }, []);
+  const metrics = layers ? [
+    { label: "Lớp trong catalog", value: layers.length, icon: IconDatabase },
+    { label: "Đã công bố", value: layers.filter((layer) => layer.status === "published").length, icon: IconRosetteDiscountCheck },
+    { label: "Chờ duyệt", value: layers.filter((layer) => layer.status === "in_review").length, icon: IconProgressCheck },
+  ] : [];
+  return <main className="mx-auto max-w-[1200px] p-4 pb-24 sm:p-6 md:p-8"><div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-sm text-muted-foreground">Phiên quản trị đã xác thực</p><h1 className="mt-1 text-2xl font-semibold tracking-[-0.02em]">Tổng quan hệ thống</h1><p className="mt-2 text-sm text-muted-foreground">Dữ liệu hiển thị trực tiếp từ catalog quản trị.</p></div><Button asChild><Link href="/admin/layers">Quản lý lớp dữ liệu<IconArrowRight stroke={1.75}/></Link></Button></div>
+  {error !== null && <div className="mt-6"><AdminErrorNotice error={error}/></div>}
+  <section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-label="Chỉ số catalog">{layers === null && error === null ? <p className="text-sm text-muted-foreground" role="status">Đang tải catalog...</p> : metrics.map(({ label, value, icon: Icon }) => <article key={label} className="rounded-panel border bg-surface p-5"><div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">{label}</span><Icon className="text-primary" stroke={1.75}/></div><p className="mt-4 text-3xl font-semibold tracking-[-0.03em]">{value}</p></article>)}<article className="rounded-panel border bg-surface p-5"><div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Vai trò hiện tại</span><IconUserCheck className="text-primary" stroke={1.75}/></div><p className="mt-4 text-lg font-semibold capitalize">{principal.role.replace("_", " ")}</p><p className="mt-1 truncate text-xs text-muted-foreground">{principal.displayName}</p></article></section>
+  <section className="mt-6 rounded-panel border bg-surface p-5"><h2 className="font-semibold">Khả năng theo vai trò</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Editor biên tập và gửi duyệt; Reviewer duyệt hoặc yêu cầu chỉnh sửa trên cả mobile; Publisher công bố revision đã duyệt trên desktop; System Admin quản lý tài khoản nội bộ.</p><Button asChild variant="outline" className="mt-5"><Link href="/admin/layers">Mở catalog thật</Link></Button></section></main>;
 }
