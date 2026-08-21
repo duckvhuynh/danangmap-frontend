@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("desktop Editor creates a mixed layer and lands on its persisted revision route", async ({ page }, testInfo) => {
+test("desktop Editor creates a mixed layer and lands on its persisted layer configuration route", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name.includes("mobile"), "Desktop configuration authoring");
   await page.goto("/admin/layers");
   await page.getByRole("link", { name: "Tạo lớp" }).click();
@@ -12,7 +12,7 @@ test("desktop Editor creates a mixed layer and lands on its persisted revision r
   await page.getByRole("checkbox", { name: "LineString", exact: true }).click();
   await page.getByRole("checkbox", { name: /Circle, tâm Point/u }).click();
   await page.getByRole("button", { name: "Tạo layer" }).click();
-  await expect(page).toHaveURL(/\/admin\/layers\/99999999-9999-4999-8999-999999999999\/edit$/u);
+  await expect(page).toHaveURL(/\/admin\/layers\/88888888-8888-4888-8888-888888888888$/u);
   await expect(page.getByRole("heading", { name: "Ranh giới phường, xã" })).toBeVisible();
 });
 

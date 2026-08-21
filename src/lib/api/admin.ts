@@ -43,6 +43,7 @@ export class AdminApiError extends Error {
     readonly code: string,
     message: string,
     readonly requestId?: string,
+    readonly details: Record<string, unknown> = {},
   ) {
     super(message);
     this.name = "AdminApiError";
@@ -104,7 +105,8 @@ function problem(error: unknown, response: Response) {
   const code = typeof body.code === "string" ? body.code : `HTTP_${status}`;
   const message = typeof body.message === "string" ? body.message : status >= 500 ? "Dịch vụ quản trị tạm thời không khả dụng." : "Yêu cầu không thể xử lý.";
   const requestId = typeof body.requestId === "string" ? body.requestId : response.headers.get("x-request-id") ?? undefined;
-  return new AdminApiError(status, code, message, requestId);
+  const details = isRecord(body.details) ? body.details : {};
+  return new AdminApiError(status, code, message, requestId, details);
 }
 
 function resultData(result: { data?: unknown; error?: unknown; response: Response }) {
@@ -123,6 +125,13 @@ export function adminErrorMessage(error: unknown) {
   const prefix = ({
     SLUG_CONFLICT: "Mã lớp đã tồn tại.",
     SCHEMA_VIOLATION: "Cấu hình chưa hợp lệ.",
+    CONFIG_IMPACT_BLOCKED: "Cấu hình mới ảnh hưởng dữ liệu hiện có.",
+    DRAFT_ALREADY_EXISTS: "Layer đã có chuỗi biên tập đang hoạt động.",
+    PUBLISHED_REVISION_REQUIRED: "Layer chưa có revision đã công bố.",
+    REVISION_NOT_EDITABLE: "Revision không còn ở trạng thái có thể chỉnh sửa.",
+    PUBLICATION_BASE_STALE: "Revision dựa trên publication không còn hiện hành.",
+    GROUP_ARCHIVED: "Nhóm layer đã được lưu trữ.",
+    LAYER_ARCHIVED: "Layer đã được lưu trữ.",
   } as Record<string, string>)[error.code] ?? ({
     401: "Phiên đăng nhập đã hết hạn.",
     403: "Bạn không có quyền thực hiện thao tác này.",

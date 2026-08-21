@@ -176,13 +176,15 @@ test("CMS-1 creates and reloads a private draft while every non-authoring capabi
     const created = record(envelopeData(await createResponse.json()));
     const layer = record(created.layer);
     const draftRevision = record(created.draftRevision);
+    const layerId = String(layer.id);
     const revisionId = String(draftRevision.id);
     expect(layer).toMatchObject({ slug, displayOrder: 73, defaultVisible: false, groupId: submitted.groupId });
     expect(draftRevision).toMatchObject({ status: "draft", title, geometryMode: "mixed", allowedGeometryKinds: ["point", "polygon", "circle"] });
-    await expect(editorPage).toHaveURL(new RegExp(`/admin/layers/${revisionId}/edit$`, "u"));
+    await expect(editorPage).toHaveURL(new RegExp(`/admin/layers/${layerId}$`, "u"));
     await editorPage.reload();
     await expect(editorPage.getByRole("heading", { name: title })).toBeVisible();
-    await expect(editorPage.getByText("2 trường metadata", { exact: false })).toBeVisible();
+    await editorPage.getByRole("tab", { name: "Schema" }).click();
+    await expect(editorPage.getByLabel("Key", { exact: true }).nth(1)).toHaveValue("internal_note");
 
     const persistedResponse = await browserGet(editorPage, `/api/v1/admin/revisions/${revisionId}`);
     expect(persistedResponse.status).toBe(200);

@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { IconAlertCircle, IconRefresh } from "@tabler/icons-react";
-import { acquireCsrfToken, adminErrorMessage, getAdminSession, type AdminPrincipal } from "@/lib/api/admin";
+import { acquireCsrfToken, AdminApiError, adminErrorMessage, getAdminSession, type AdminPrincipal } from "@/lib/api/admin";
 import { Button } from "@/components/ui/button";
 
 interface AdminSessionValue {
@@ -15,7 +15,7 @@ interface AdminSessionValue {
 const AdminSessionContext = createContext<AdminSessionValue | null>(null);
 
 export function AdminErrorNotice({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
-  return <div className="flex items-start gap-3 rounded-control border border-destructive/25 bg-red-50 p-4 text-sm text-destructive" role="alert"><IconAlertCircle className="mt-0.5 shrink-0" size={20} stroke={1.75}/><div className="min-w-0 flex-1"><p className="font-medium">Không thể hoàn tất yêu cầu</p><p className="mt-1 leading-6">{adminErrorMessage(error)}</p></div>{onRetry && <Button type="button" variant="outline" size="sm" onClick={onRetry}><IconRefresh stroke={1.75}/>Thử lại</Button>}</div>;
+  return <div className="flex items-start gap-3 rounded-control border border-destructive/25 bg-red-50 p-4 text-sm text-destructive" role="alert"><IconAlertCircle className="mt-0.5 shrink-0" size={20} stroke={1.75}/><div className="min-w-0 flex-1"><p className="font-medium">Không thể hoàn tất yêu cầu</p><p className="mt-1 leading-6">{adminErrorMessage(error)}</p>{error instanceof AdminApiError && Object.keys(error.details).length > 0 && <details className="mt-2"><summary className="cursor-pointer font-medium">Chi tiết từ máy chủ</summary><pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap text-xs">{JSON.stringify(error.details, null, 2)}</pre></details>}</div>{onRetry && <Button type="button" variant="outline" size="sm" onClick={onRetry}><IconRefresh stroke={1.75}/>Thử lại</Button>}</div>;
 }
 
 export function AdminSessionProvider({ children }: { children: React.ReactNode }) {

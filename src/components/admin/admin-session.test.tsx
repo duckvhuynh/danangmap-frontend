@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { AdminErrorNotice } from "./admin-session";
 import { AdminApiError } from "@/lib/api/admin";
@@ -16,5 +16,12 @@ describe("admin trust-state feedback", () => {
     render(<AdminErrorNotice error={new AdminApiError(status, `HTTP_${status}`, "Chi tiết API", `request-${status}`)}/>);
     expect(screen.getByRole("alert")).toHaveTextContent(expected);
     expect(screen.getByRole("alert")).toHaveTextContent(`request-${status}`);
+  });
+
+  it("retains structured conflict details for recovery decisions", () => {
+    render(<AdminErrorNotice error={new AdminApiError(409, "PUBLICATION_BASE_STALE", "Publication base stale.", "request-stale", { baseRevisionId: "base-revision", activeRevisionId: "active-revision" })}/>);
+    fireEvent.click(screen.getByText("Chi tiết từ máy chủ"));
+    expect(screen.getByRole("alert")).toHaveTextContent("base-revision");
+    expect(screen.getByRole("alert")).toHaveTextContent("active-revision");
   });
 });
