@@ -103,7 +103,7 @@ async function configureMixedLayer(page: Page, slug: string, title: string) {
 
   await page.getByRole("tab", { name: "Schema" }).click();
   await page.getByRole("button", { name: "Thêm trường" }).click();
-  await page.getByLabel("Key").nth(1).fill("internal_note");
+  await page.getByLabel("Key", { exact: true }).nth(1).fill("internal_note");
   await page.getByLabel("Nhãn tiếng Việt").nth(1).fill("Ghi chú nội bộ");
   await page.getByLabel("Công khai").nth(1).click();
 
