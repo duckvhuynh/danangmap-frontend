@@ -55,14 +55,14 @@ test("publisher action requires a desktop pointer and release note", async ({ pa
   await page.addInitScript(() => window.sessionStorage.setItem("danangmap-demo-role", "publisher"));
   await page.goto("/admin/layers/wards/review");
   const publish = page.getByRole("button", { name: "Công bố revision" });
-  await page.getByLabel("Ghi chú công bố").fill("Công bố dữ liệu đã duyệt");
   if (testInfo.project.name.includes("mobile")) {
-    await expect(publish).toBeDisabled();
-    await expect(page.getByText(/chỉ có thể công bố trên desktop/)).toBeVisible();
+    await expect(page.getByLabel("Ghi chú công bố")).not.toBeAttached();
+    await expect(publish).not.toBeAttached();
   } else {
+    await page.getByLabel("Ghi chú công bố").fill("Công bố dữ liệu đã duyệt");
     await expect(publish).toBeEnabled();
     await publish.click();
-    await expect(page.getByRole("status").filter({ hasText: "Đã bắt đầu công bố revision" })).toBeVisible();
+    await expect(page.getByRole("status").filter({ hasText: "Đã công bố revision" })).toBeVisible();
   }
 });
 
