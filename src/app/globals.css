@@ -1,0 +1,63 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-subtle: var(--surface-subtle);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-pressed: var(--primary-pressed);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent-subtle: var(--accent-subtle);
+  --color-accent-strong: var(--accent-strong);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-destructive: var(--destructive);
+  --color-warning: var(--warning);
+  --color-success: var(--success);
+  --color-ring: var(--focus-ring);
+  --radius-control: 8px;
+  --radius-map-control: 10px;
+  --radius-panel: 12px;
+  --font-sans: var(--font-roboto), Arial, sans-serif;
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #202124;
+  --surface: #ffffff;
+  --surface-subtle: #f8fafd;
+  --border: #dadce0;
+  --primary: #1a73e8;
+  --primary-hover: #1765cc;
+  --primary-pressed: #1558b0;
+  --primary-foreground: #ffffff;
+  --accent-subtle: #eaf3ff;
+  --accent-strong: #d2e3fc;
+  --muted-foreground: #5f6368;
+  --destructive: #c5221f;
+  --warning: #b06000;
+  --success: #137333;
+  --focus-ring: #0b57d0;
+  --shadow-control: 0 1px 2px rgb(60 64 67 / 0.18), 0 1px 3px 1px rgb(60 64 67 / 0.12);
+  --shadow-panel: 0 2px 6px 2px rgb(60 64 67 / 0.15);
+}
+
+* { border-color: var(--border); }
+html, body { min-height: 100%; }
+body { margin: 0; background: var(--background); color: var(--foreground); }
+button, input, select, textarea { font: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+::selection { background: var(--accent-strong); }
+
+.map-control-shadow { box-shadow: var(--shadow-control); }
+.map-panel-shadow { box-shadow: var(--shadow-panel); }
+.safe-bottom { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+.mapboxgl-ctrl-logo, .mapboxgl-ctrl-attrib { font-size: 10px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+}
