@@ -1,9 +1,10 @@
 # DanangMap v2 - DESIGN
 
-> Trạng thái: `AWAITING_SELECTION`
+> Trạng thái: `SELECTED_READY_TO_SCAFFOLD`
 > Phạm vi: `danangmap-frontend`, gồm bản đồ công khai tại `/` và quản trị tại `/admin`
 > Nguồn tham chiếu: DanangMap v1, nhận diện thành phố Đà Nẵng và mô hình thao tác của geojson.io
 > Cập nhật: 2026-08-21
+> Quyết định: Product owner đã phê duyệt **Direction 1 - Civic Focus (refined)** ngày 2026-08-21
 
 ## 1. Mục đích tài liệu
 
@@ -35,15 +36,36 @@ Taste skill chỉ áp dụng cho public map, đăng nhập, loading, empty và e
 
 ## 4. Cổng thiết kế trước khi triển khai
 
-Không scaffold UI, sinh theme/component hiển thị hoặc triển khai visual production trước khi hoàn tất cổng này. Ba artifact visual direction cho public desktop đã được sinh ở cùng viewport, cùng dữ liệu và cùng trạng thái chính:
+Ba artifact visual direction public desktop ban đầu đã được sinh ở cùng viewport, cùng dữ liệu và cùng trạng thái chính:
 
 1. **Civic Focus:** kế thừa nhận biết của DanangMap v1, dùng floating layer panel và feature detail ổn định. Artifact: `docs/visual-directions/direction-1.png`.
 2. **Layer Dock:** dùng navigation rail, search command panel và dock layer thấp để giảm che bản đồ. Artifact: `docs/visual-directions/direction-2.png`.
 3. **Civic Atlas:** nhấn mạnh phân loại layer, metadata và khả năng đọc như một atlas hành chính số. Artifact: `docs/visual-directions/direction-3.png`.
 
-Ba hướng đều giữ trắng, xanh thương hiệu, không gradient, cùng radius scale và cùng yêu cầu accessibility. Chủ sản phẩm phải chọn đúng một hướng public desktop trước. Chỉ sau lựa chọn đó nhóm thiết kế mới dẫn xuất public mobile, admin desktop, admin review mobile, login, loading, empty và error states từ cùng một ngôn ngữ visual.
+Ba hướng đều giữ trắng, xanh thương hiệu, không gradient, cùng radius scale và cùng yêu cầu accessibility. Product owner đã chọn Direction 1, sau đó phê duyệt vòng refined dùng hình học control, radius và elevation tham chiếu Google Maps web, Tabler Icons và primary blue `#1A73E8`.
 
-Không trộn các phần của nhiều hướng sau khi chọn nếu chưa qua một vòng review mới. Sau khi triển khai phải đặt source mock và screenshot implementation cạnh nhau ở cùng kích thước để design QA. Trạng thái tài liệu chỉ được chuyển khỏi `AWAITING_SELECTION` sau khi lựa chọn được ghi nhận.
+### 4.1 Selection record
+
+| Thuộc tính | Giá trị |
+| --- | --- |
+| Hướng được chọn | Direction 1 - Civic Focus |
+| Source of truth public desktop | `docs/visual-directions/direction-1-refined.png` |
+| Quyết định bởi | Product owner `duckvhuynh` |
+| Ngày phê duyệt | 2026-08-21 |
+| Phạm vi phê duyệt | Bố cục map-first, Google Maps-like controls/shadows/radius, Tabler Icons, lighter civic blue |
+| Không được trộn | Direction 2, Direction 3 hoặc visual system khác nếu chưa mở design review mới |
+
+### 4.2 Derived source targets
+
+Ba source target bắt buộc đã được dẫn xuất trực tiếp từ Direction 1 refined:
+
+| Target | Artifact | Viewport triển khai | Quy tắc khóa |
+| --- | --- | ---: | --- |
+| Public mobile | `docs/visual-directions/direction-1-public-mobile.png` | 390 x 844 CSS px | Map full-screen, một bottom sheet tại một thời điểm, touch target tối thiểu 44 px |
+| Admin editor desktop | `docs/visual-directions/direction-1-admin-editor-desktop.png` | 1440 x 1024 CSS px | Layout biên tập tham chiếu geojson.io, Terra Draw rail, explorer, inspector và data panel |
+| Admin review mobile | `docs/visual-directions/direction-1-admin-review-mobile.png` | 390 x 844 CSS px | Chỉ xem, comment, approve hoặc request changes; không có high-impact mutation |
+
+Các artifact được kiểm tra mở được, cùng ngôn ngữ trắng/xanh, không glassmorphism, không decorative gradient và không đưa satellite vào UI. GATE-DESIGN đã hoàn tất `C-016`; UI scaffold được phép bắt đầu sau commit ghi nhận quyết định này. Sau khi triển khai phải đặt source mock và screenshot implementation cạnh nhau ở cùng viewport/state để chạy design QA. Không trộn các phần của nhiều hướng nếu chưa qua vòng review mới.
 
 ## 5. Visual system
 
@@ -54,27 +76,29 @@ Không trộn các phần của nhiều hướng sau khi chọn nếu chưa qua 
 - Không có satellite trong phạm vi hiện tại.
 - Không gradient dưới mọi hình thức trong UI, marker, chart, skeleton hoặc background.
 - Không dùng ảnh nền trang trí. Bản đồ và dữ liệu địa lý là visual chính.
-- Màu thương hiệu chính thức phải được trích từ logo hoặc brand guideline đã được duyệt. Giá trị từ DanangMap v1 chỉ là baseline tạm, không tự nhận là màu chính thức.
+- Primary blue được product owner phê duyệt cho v2 là `#1A73E8`. Khi thành phố ban hành brand guideline mới, thay đổi token phải qua design review, kiểm tra contrast và visual regression.
 
 ### 5.2 Semantic color tokens
 
 Component không được tham chiếu trực tiếp `blue-500`, mã hex hoặc màu Mapbox. Chúng chỉ dùng semantic tokens. Giá trị cụ thể được đặt một lần tại global theme.
 
-| Token | Vai trò |
-| --- | --- |
-| `background` | Nền ứng dụng trắng |
-| `foreground` | Văn bản chính, gần đen lạnh |
-| `surface` | Panel và control nổi |
-| `surface-subtle` | Nền phụ của row, hover nhẹ và grouped content |
-| `border` | Viền panel, input và separator |
-| `primary` | Xanh thương hiệu Đà Nẵng |
-| `primary-foreground` | Chữ và icon trên nền primary |
-| `accent-subtle` | Nền xanh rất nhạt cho selected hoặc focus context |
-| `muted-foreground` | Metadata thứ cấp |
-| `destructive` | Xóa, geometry lỗi hoặc thao tác không thể phục hồi |
-| `warning` | Dữ liệu cần xem lại, conflict hoặc import có dòng lỗi |
-| `success` | Đã đồng bộ, đã duyệt hoặc tác vụ hoàn tất |
-| `focus-ring` | Focus indicator có độ tương phản rõ trên mọi surface |
+| Token | Giá trị khóa | Vai trò |
+| --- | --- | --- |
+| `background` | `#FFFFFF` | Nền ứng dụng trắng |
+| `foreground` | `#202124` | Văn bản chính, gần đen lạnh |
+| `surface` | `#FFFFFF` | Panel và control nổi |
+| `surface-subtle` | `#F8FAFD` | Nền phụ của row, hover nhẹ và grouped content |
+| `border` | `#DADCE0` | Viền panel, input và separator |
+| `primary` | `#1A73E8` | Xanh civic chính |
+| `primary-hover` | `#1765CC` | Hover của primary action |
+| `primary-pressed` | `#1558B0` | Pressed của primary action |
+| `primary-foreground` | `#FFFFFF` | Chữ và icon trên nền primary |
+| `accent-subtle` | `#EAF3FF` | Nền xanh rất nhạt cho selected hoặc focus context |
+| `muted-foreground` | `#5F6368` | Metadata thứ cấp |
+| `destructive` | `#C5221F` | Xóa, geometry lỗi hoặc thao tác không thể phục hồi |
+| `warning` | `#B06000` | Dữ liệu cần xem lại, conflict hoặc import có dòng lỗi |
+| `success` | `#137333` | Đã đồng bộ, đã duyệt hoặc tác vụ hoàn tất |
+| `focus-ring` | `#0B57D0` | Focus indicator có độ tương phản rõ trên mọi surface |
 
 Màu chuyên đề của layer là dữ liệu cấu hình, không phải màu UI. Admin phải xem trước độ tương phản của fill, stroke, symbol và label trên cả Street lẫn Light. Hệ thống cảnh báo khi màu layer trùng nền hoặc không đủ phân biệt.
 
@@ -93,16 +117,25 @@ Radius là một hệ có quy tắc, không dùng tùy hứng:
 | Token | Giá trị | Áp dụng |
 | --- | ---: | --- |
 | `radius-control` | 8 px | Button, input, select, menu item |
-| `radius-map-control` | 12 px | Nhóm zoom, basemap, draw tool |
-| `radius-panel` | 16 px | Floating panel, inspector, feature detail |
-| `radius-overlay` | 20 px | Dialog, mobile drawer, import wizard |
+| `radius-map-control` | 10 px | Nhóm zoom, basemap, draw tool |
+| `radius-panel` | 12 px | Floating panel, inspector, feature detail |
+| `radius-overlay` | 12 px | Dialog, mobile drawer, import wizard |
 
 - Khoảng cách dùng base unit 4 px.
-- Shadow chỉ dùng để tách control khỏi bản đồ, có tint xanh xám rất nhẹ; không dùng shadow đen đậm.
+- Shadow control dùng `0 1px 2px rgb(60 64 67 / 0.15), 0 1px 3px 1px rgb(60 64 67 / 0.08)`.
+- Shadow panel dùng `0 2px 6px 2px rgb(60 64 67 / 0.12)`; dialog có thể dùng `0 8px 24px rgb(60 64 67 / 0.16)`.
+- Shadow chỉ dùng để tách control khỏi bản đồ, dùng neutral elevation, không tint xanh và không dùng pure-black shadow.
 - Border 1 px là cách phân tầng mặc định. Card chỉ xuất hiện khi có một nhóm nội dung thật sự độc lập.
 - Button không dùng pill shape.
 
-### 5.5 Motion và feedback
+### 5.5 Iconography
+
+- Chỉ dùng `@tabler/icons-react`; không cài hoặc import Lucide và không trộn icon family.
+- Stroke mặc định `1.75`, line cap/line join giữ theo Tabler. Trạng thái active được phân biệt bằng surface, label và focus, không tăng stroke tùy ý.
+- Icon trong shadcn control dùng `data-icon`; icon-only control luôn có accessible name và tooltip.
+- Không tự vẽ SVG path, CSS art, emoji hoặc text glyph thay icon.
+
+### 5.6 Motion và feedback
 
 - Motion chỉ giải thích thay đổi trạng thái: panel mở, sheet chuyển mức, feature được chọn hoặc save hoàn tất.
 - Duration khuyến nghị 120-180 ms cho control, 180-240 ms cho panel.
@@ -111,7 +144,7 @@ Radius là một hệ có quy tắc, không dùng tùy hứng:
 - Press state dùng thay đổi nền hoặc translate tối đa 1 px. Không dùng scale mạnh, bounce hoặc perpetual animation.
 - Durable error hiển thị tại đúng ngữ cảnh; toast chỉ dùng cho phản hồi ngắn hạn.
 
-### 5.6 Layering và z-index
+### 5.7 Layering và z-index
 
 Z-index dùng thang cố định:
 
