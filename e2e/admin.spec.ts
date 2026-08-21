@@ -25,7 +25,7 @@ test("reviewer can approve or request changes on mobile", async ({ page }, testI
   await page.getByLabel("Bình luận review").fill("Cần kiểm tra nhãn");
   await expect(page.getByRole("button", { name: "Yêu cầu chỉnh sửa" })).toBeEnabled();
   await page.getByRole("button", { name: "Duyệt thay đổi" }).click();
-  await expect(page.getByRole("status")).toContainText("Đã duyệt revision");
+  await expect(page.getByRole("status").filter({ hasText: "Đã duyệt revision" })).toContainText("Đã duyệt revision");
 });
 
 test("publisher action requires a desktop pointer and release note", async ({ page }, testInfo) => {

@@ -111,6 +111,12 @@ function resultData(result: { data?: unknown; error?: unknown; response: Respons
   return result.data;
 }
 
+export function assertAdminResult<T>(result: { data?: T; error?: unknown; response: Response }): T {
+  if (!result.response.ok || result.error !== undefined) throw problem(result.error, result.response);
+  if (result.data === undefined) throw new AdminApiError(502, "CONTRACT_INVALID", "Phản hồi API không có dữ liệu.");
+  return result.data;
+}
+
 export function adminErrorMessage(error: unknown) {
   if (!(error instanceof AdminApiError)) return error instanceof Error ? error.message : "Không thể hoàn tất yêu cầu.";
   const prefix = ({
