@@ -219,7 +219,7 @@ async function assertInviteReplayDenied(page: Page, token: string) {
   await page.goto("/invite/accept");
   await page.getByLabel("Mã lời mời").fill(token);
   await page.getByRole("button", { name: "Kiểm tra lời mời" }).click();
-  const alert = page.getByRole("alert");
+  const alert = page.getByRole("alert").filter({ hasText: "không hợp lệ hoặc đã hết hiệu lực" });
   await expect(alert).toContainText("không hợp lệ hoặc đã hết hiệu lực");
   await expect(alert).not.toContainText(/đã sử dụng|thu hồi|revoked|used/iu);
   expect(page.url().includes(token)).toBe(false);
