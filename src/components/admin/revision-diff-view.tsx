@@ -232,6 +232,6 @@ export function RevisionDiffView({ revisionId, transport = defaultTransport }: {
       <AdminErrorNotice error={error} onRetry={loadMore}/>
     )}
     {diff.hasMore && <Button type="button" variant="outline" disabled={loadingMore} onClick={loadMore} className="self-start">{loadingMore ? "Đang tải thêm..." : "Tải thêm feature thay đổi"}</Button>}
-    <p className="text-xs text-muted-foreground">History ETag: <code>{resource.historyEtag}</code></p>
+    <p className="text-xs text-muted-foreground">History ETag: <code className="break-all">{resource.historyEtag}</code></p>
   </div>;
 }

@@ -44,10 +44,16 @@ test("reviewer can approve or request changes on mobile", async ({ page }, testI
   test.skip(testInfo.project.name.includes("desktop"), "Mobile review capability");
   await page.addInitScript(() => window.sessionStorage.setItem("danangmap-demo-role", "reviewer"));
   await page.goto("/admin/layers/wards/review");
-  await expect(page.getByRole("button", { name: "Duyệt thay đổi" })).toBeEnabled();
+  const approve = page.getByRole("button", { name: "Duyệt thay đổi" });
+  await expect(approve).toBeEnabled();
   await page.getByLabel("Bình luận review").fill("Cần kiểm tra nhãn");
   await expect(page.getByRole("button", { name: "Yêu cầu chỉnh sửa" })).toBeEnabled();
-  await page.getByRole("button", { name: "Duyệt thay đổi" }).click();
+  expect(await approve.evaluate((button) => {
+    const bounds = button.getBoundingClientRect();
+    const hit = document.elementFromPoint(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2);
+    return hit === button || button.contains(hit);
+  })).toBe(true);
+  await approve.click();
   await expect(page.getByRole("status").filter({ hasText: "Đã duyệt revision" })).toBeVisible();
 });
 

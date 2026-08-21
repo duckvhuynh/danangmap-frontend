@@ -82,6 +82,15 @@ describe("revision diff view", () => {
     expect(screen.getByText("So sánh tệp đính kèm chưa khả dụng")).toBeInTheDocument();
   });
 
+  it("wraps an opaque history ETag instead of widening the mobile review viewport", async () => {
+    const resource = diffResource({ entries: [], nextCursor: null, hasMore: false });
+    resource.historyEtag = `"history-${"a".repeat(64)}"`;
+    const load = vi.fn().mockResolvedValue(resource);
+    render(<RevisionDiffView revisionId={revisionId} transport={{ load } as RevisionDiffTransport}/>);
+
+    expect(await screen.findByText(resource.historyEtag)).toHaveClass("break-all");
+  });
+
   it("renders only public schema keys and an aggregate redaction count independent of entry flags", async () => {
     const entry = { ...diffResource().data.entries[0]!, redactedChange: false };
     const load = vi.fn().mockResolvedValue(diffResource({
