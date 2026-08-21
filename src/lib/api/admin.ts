@@ -172,7 +172,9 @@ export async function acquireCsrfToken(client: ApiClient = apiClient) {
 
 export async function logout(auth: MutationAuth, client: ApiClient = apiClient) {
   if (process.env.NEXT_PUBLIC_DANANGMAP_DEMO_MODE === "true") return;
-  const result = await client.POST("/api/v1/auth/logout", { headers: { "X-CSRF-Token": auth.csrfToken } });
+  const result = await client.POST("/api/v1/auth/logout", {
+    params: { header: { "X-CSRF-Token": auth.csrfToken } },
+  });
   resultData(result);
 }
 

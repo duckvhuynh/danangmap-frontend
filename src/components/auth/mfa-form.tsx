@@ -8,7 +8,6 @@ import {
   IconClipboard,
   IconDownload,
   IconKey,
-  IconLock,
   IconQrcode,
 } from "@tabler/icons-react";
 import { REGEXP_ONLY_DIGITS } from "input-otp";
@@ -68,16 +67,6 @@ function InlineError({ message, errorRef }: { message: string; errorRef: React.R
   );
 }
 
-function PasswordChangeGap() {
-  return (
-    <Alert className="border-warning/30 bg-surface-subtle text-warning">
-      <IconLock size={18} stroke={1.75} />
-      <AlertTitle>Cần đổi mật khẩu trước khi tiếp tục</AlertTitle>
-      <AlertDescription>Backend đánh dấu tài khoản phải đổi mật khẩu, nhưng contract hiện chưa có API đổi mật khẩu. Vì an toàn, DanangMap chưa mở trang quản trị cho phiên này. Vui lòng liên hệ System Admin.</AlertDescription>
-    </Alert>
-  );
-}
-
 function ExistingMfaForm() {
   const router = useRouter();
   const errorRef = useRef<HTMLDivElement>(null);
@@ -85,15 +74,12 @@ function ExistingMfaForm() {
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-  const [passwordChangeRequired, setPasswordChangeRequired] = useState(false);
 
   const changeMethod = (nextMethod: MfaMethod) => {
     setMethod(nextMethod);
     setCode("");
     setError(null);
   };
-
-  if (passwordChangeRequired) return <div className="mt-6"><PasswordChangeGap /></div>;
 
   return (
     <form className="mt-6 flex flex-col gap-4" onSubmit={async (event) => {
@@ -104,7 +90,7 @@ function ExistingMfaForm() {
       try {
         const principal = await verifyMfa(method, code);
         if (principal.mustChangePassword) {
-          setPasswordChangeRequired(true);
+          router.replace("/login/password-change");
           return;
         }
         router.replace("/admin");
@@ -138,8 +124,7 @@ type EnrollmentStage =
   | { name: "intro" }
   | { name: "setup"; setup: ParsedEnrollmentUri }
   | { name: "recovery"; principal: AuthPrincipal; codes: string[] }
-  | { name: "restart"; message: string }
-  | { name: "password-change" };
+  | { name: "restart"; message: string };
 
 function mustRestartEnrollment(error: unknown) {
   return error instanceof AuthApiError && (error.ambiguous || error.status === 401 || error.status === 403 || error.status === 409 || error.status >= 500);
@@ -237,8 +222,6 @@ function EnrollmentFlow() {
     );
   }
 
-  if (stage.name === "password-change") return <div className="mt-6"><PasswordChangeGap /></div>;
-
   if (stage.name === "recovery") {
     return (
       <div className="mt-6 flex flex-col gap-5">
@@ -264,8 +247,8 @@ function EnrollmentFlow() {
         </Field>
         <Button disabled={!acknowledged} onClick={() => {
           const mustChangePassword = stage.principal.mustChangePassword;
-          setStage(mustChangePassword ? { name: "password-change" } : { name: "intro" });
-          if (!mustChangePassword) router.replace("/admin");
+          setStage({ name: "intro" });
+          router.replace(mustChangePassword ? "/login/password-change" : "/admin");
         }} type="button">Tiếp tục vào trang quản trị</Button>
       </div>
     );

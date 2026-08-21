@@ -39,3 +39,8 @@ export function shouldAutosaveDraft({ ready, recoveryPending, dirty }: { ready: 
 export function draftMatchesWorkspace(draft: Pick<LayerDraft, "baseEtag" | "serverCursor">, workspace: { etag: string; serverCursor: string }) {
   return draft.baseEtag === workspace.etag && draft.serverCursor === workspace.serverCursor;
 }
+
+export async function clearPrincipalRecovery(principalId: string) {
+  if (!principalId) return;
+  await draftDb.drafts.where("principalId").equals(principalId).delete();
+}

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { draftDb, draftKey, draftMatchesWorkspace, shouldAutosaveDraft } from "./draft-db";
+import { clearPrincipalRecovery, draftDb, draftKey, draftMatchesWorkspace, shouldAutosaveDraft } from "./draft-db";
 
 describe("editor recovery store", () => {
   afterEach(async () => { await draftDb.drafts.clear(); });
@@ -31,5 +31,28 @@ describe("editor recovery store", () => {
     const draft = { baseEtag: '"rev-wards-v19"', serverCursor: "19" };
     expect(draftMatchesWorkspace(draft, { etag: '"rev-wards-v19"', serverCursor: "19" })).toBe(true);
     expect(draftMatchesWorkspace(draft, { etag: '"rev-wards-v20"', serverCursor: "20" })).toBe(false);
+  });
+
+  it("clears only the active principal recovery after an explicit security logout", async () => {
+    const base = {
+      layerId: "wards",
+      draftRevision: 20,
+      baseRevision: 19,
+      baseEtag: '"rev-wards-v19"',
+      serverCursor: "19",
+      updatedAt: "2026-08-21T08:00:00.000Z",
+      title: "Ranh giới",
+      description: "Bản nháp",
+      features: [],
+    };
+    await draftDb.drafts.bulkPut([
+      { ...base, id: draftKey("admin-a", "wards", 20), principalId: "admin-a" },
+      { ...base, id: draftKey("admin-b", "wards", 20), principalId: "admin-b" },
+    ]);
+
+    await clearPrincipalRecovery("admin-a");
+
+    expect(await draftDb.drafts.get(draftKey("admin-a", "wards", 20))).toBeUndefined();
+    expect(await draftDb.drafts.get(draftKey("admin-b", "wards", 20))).toBeDefined();
   });
 });

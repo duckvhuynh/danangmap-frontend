@@ -8,6 +8,7 @@ import { BrandMark } from "@/components/brand-mark";
 import { AdminSessionProvider, useAdminSession } from "@/components/admin/admin-session";
 import { Button } from "@/components/ui/button";
 import { logout } from "@/lib/api/admin";
+import { clearPrincipalRecovery } from "@/lib/editor/draft-db";
 import { cn } from "@/lib/utils";
 
 const items = [
@@ -20,14 +21,19 @@ const items = [
 function AdminShellContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { principal, csrfToken } = useAdminSession();
+  const { principal, csrfToken, clearClientPrincipal } = useAdminSession();
   const [loggingOut, setLoggingOut] = useState(false);
   const visibleItems = items.filter((item) => !item.systemAdminOnly || principal.role === "system_admin");
   const initials = principal.displayName.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toLocaleUpperCase("vi");
 
   async function handleLogout() {
     setLoggingOut(true);
-    try { await logout({ csrfToken }); } finally { router.replace("/login"); router.refresh(); }
+    try { await logout({ csrfToken }); } finally {
+      await clearPrincipalRecovery(principal.id).catch(() => undefined);
+      clearClientPrincipal();
+      router.replace("/login");
+      router.refresh();
+    }
   }
 
   return (

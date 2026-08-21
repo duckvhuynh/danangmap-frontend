@@ -97,6 +97,26 @@ describe("MFA enrollment privacy and one-time workflow", () => {
     await waitFor(() => expect(revokeObjectURL).toHaveBeenCalledWith("blob:recovery-codes"));
   });
 
+  it("clears one-time recovery codes before routing a newly enrolled temporary-password principal", async () => {
+    vi.mocked(startMfaEnrollment).mockResolvedValue({ status: "pending", enrollmentUri });
+    vi.mocked(confirmMfaEnrollment).mockResolvedValue({
+      principal: { ...principal, mustChangePassword: true },
+      recoveryCodes,
+    });
+    render(<MfaForm enrollmentRequired />);
+    fireEvent.click(screen.getByRole("button", { name: /Bắt đầu thiết lập MFA/ }));
+    fireEvent.change(await screen.findByLabelText("Mã xác nhận 6 số"), { target: { value: "123456" } });
+    fireEvent.click(screen.getByRole("button", { name: "Xác nhận và tạo mã khôi phục" }));
+    await screen.findByRole("list", { name: "10 mã khôi phục" });
+    fireEvent.click(screen.getByRole("checkbox", { name: /Tôi đã lưu mã khôi phục/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Tiếp tục vào trang quản trị" }));
+
+    expect(screen.queryByRole("list", { name: "10 mã khôi phục" })).not.toBeInTheDocument();
+    expect(document.body).not.toHaveTextContent(recoveryCodes[0]);
+    expect(router.replace).toHaveBeenCalledWith("/login/password-change");
+    expect(router.replace).not.toHaveBeenCalledWith("/admin");
+  });
+
   it("keeps clipboard-denied recovery feedback visible and keyboard-focusable", async () => {
     vi.mocked(startMfaEnrollment).mockResolvedValue({ status: "pending", enrollmentUri });
     vi.mocked(confirmMfaEnrollment).mockResolvedValue({ principal, recoveryCodes });
@@ -149,13 +169,13 @@ describe("existing MFA verification", () => {
     expect(router.replace).toHaveBeenCalledWith("/admin");
   });
 
-  it("does not silently bypass a required password change", async () => {
+  it("routes an authenticated principal to the required password change", async () => {
     vi.mocked(verifyMfa).mockResolvedValue({ ...principal, mustChangePassword: true });
     render(<MfaForm enrollmentRequired={false} />);
     fireEvent.change(screen.getByLabelText("Mã xác thực 6 số"), { target: { value: "123456" } });
     fireEvent.click(screen.getByRole("button", { name: "Xác nhận" }));
-    expect(await screen.findByText("Cần đổi mật khẩu trước khi tiếp tục")).toBeInTheDocument();
-    expect(router.replace).not.toHaveBeenCalled();
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/login/password-change"));
+    expect(router.replace).not.toHaveBeenCalledWith("/admin");
   });
 
   it.each([
