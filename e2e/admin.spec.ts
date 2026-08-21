@@ -1,5 +1,28 @@
 import { expect, test } from "@playwright/test";
 
+test("desktop Editor creates a mixed layer and lands on its persisted revision route", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name.includes("mobile"), "Desktop configuration authoring");
+  await page.goto("/admin/layers");
+  await page.getByRole("link", { name: "Tạo lớp" }).click();
+  await expect(page).toHaveURL(/\/admin\/layers\/new$/u);
+  await page.getByLabel("Mã lớp").fill("tru-so-hanh-chinh");
+  await page.getByLabel("Tên lớp").fill("Trụ sở hành chính");
+  await page.getByRole("tab", { name: "Geometry" }).click();
+  await page.getByRole("radio", { name: /Mixed/u }).check();
+  await page.getByRole("checkbox", { name: "LineString", exact: true }).click();
+  await page.getByRole("checkbox", { name: /Circle, tâm Point/u }).click();
+  await page.getByRole("button", { name: "Tạo layer" }).click();
+  await expect(page).toHaveURL(/\/admin\/layers\/99999999-9999-4999-8999-999999999999\/edit$/u);
+  await expect(page.getByRole("heading", { name: "Ranh giới phường, xã" })).toBeVisible();
+});
+
+test("mobile Editor cannot open layer configuration authoring", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name.includes("desktop"), "Mobile capability gate");
+  await page.goto("/admin/layers/new");
+  await expect(page.getByRole("heading", { name: "Tạo layer cần máy tính" })).toBeVisible();
+  await expect(page.getByLabel("Mã lớp")).toBeHidden();
+});
+
 test("desktop layer editor exposes authoring and recovery surfaces", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name.includes("mobile"), "Desktop editor");
   await page.goto("/admin/layers/wards/edit");

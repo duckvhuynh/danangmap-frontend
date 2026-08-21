@@ -1,12 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { IconEdit, IconEye, IconFileImport, IconPlus, IconSearch } from "@tabler/icons-react";
 import { AdminErrorNotice, useAdminSession } from "@/components/admin/admin-session";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  getDesktopAuthoringCapability,
+  getServerDesktopAuthoringCapability,
+  subscribeDesktopAuthoringCapability,
+} from "@/lib/admin/authoring-capability";
 import { listAdminLayers, type AdminLayer } from "@/lib/api/admin";
 
 const statusLabels: Record<string, string> = { draft: "Bản nháp", in_review: "Chờ duyệt", approved: "Đã duyệt", changes_requested: "Cần chỉnh sửa", publishing: "Đang công bố", published: "Đã công bố" };
@@ -18,6 +23,11 @@ function Status({ value }: { value: string }) {
 
 export default function LayersPage() {
   const { principal } = useAdminSession();
+  const canAuthor = useSyncExternalStore(
+    subscribeDesktopAuthoringCapability,
+    getDesktopAuthoringCapability,
+    getServerDesktopAuthoringCapability,
+  );
   const [layers, setLayers] = useState<AdminLayer[]>([]);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -33,7 +43,7 @@ export default function LayersPage() {
   }, []);
   const visible = useMemo(() => layers.filter((layer) => `${layer.title} ${layer.slug}`.toLocaleLowerCase("vi").includes(query.trim().toLocaleLowerCase("vi"))), [layers, query]);
 
-  return <main className="mx-auto max-w-[1440px] p-4 pb-24 sm:p-6 md:p-8"><header className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm text-muted-foreground">Dữ liệu bản đồ</p><h1 className="mt-1 text-2xl font-semibold tracking-[-0.02em]">Lớp dữ liệu</h1><p className="mt-2 text-sm text-muted-foreground">Catalog thật từ hệ thống, theo revision mới nhất của từng lớp.</p></div><div className="hidden gap-2 md:flex"><Button disabled title="Chọn một revision bản nháp ở bảng bên dưới" variant="outline"><IconFileImport stroke={1.75}/>Nhập dữ liệu</Button><Button disabled title="API tạo lớp chưa được mở trong contract hiện tại"><IconPlus stroke={1.75}/>Tạo lớp</Button></div></header>
+  return <main className="mx-auto max-w-[1440px] p-4 pb-24 sm:p-6 md:p-8"><header className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm text-muted-foreground">Dữ liệu bản đồ</p><h1 className="mt-1 text-2xl font-semibold tracking-[-0.02em]">Lớp dữ liệu</h1><p className="mt-2 text-sm text-muted-foreground">Catalog thật từ hệ thống, theo revision mới nhất của từng lớp.</p></div><div className="hidden gap-2 md:flex"><Button disabled title="Chọn một revision bản nháp ở bảng bên dưới" variant="outline"><IconFileImport data-icon="inline-start" stroke={1.75}/>Nhập dữ liệu</Button>{principal.role === "editor" && canAuthor ? <Button asChild><Link href="/admin/layers/new"><IconPlus data-icon="inline-start" stroke={1.75}/>Tạo lớp</Link></Button> : <Button disabled title={principal.role === "editor" ? "Tạo lớp cần desktop có bàn phím và con trỏ chính xác" : "Chỉ Editor có quyền tạo lớp"}><IconPlus data-icon="inline-start" stroke={1.75}/>Tạo lớp</Button>}</div></header>
   {error !== null && <div className="mt-6"><AdminErrorNotice error={error} onRetry={load}/></div>}
   <section className="mt-7 rounded-panel border bg-surface"><div className="border-b p-4"><div className="relative"><IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={19} stroke={1.75}/><Input value={query} onChange={(event) => setQuery(event.target.value)} className="pl-10" placeholder="Tìm tên hoặc mã lớp..." aria-label="Tìm lớp dữ liệu"/></div></div>
   {loading ? <p className="p-8 text-center text-sm text-muted-foreground" role="status">Đang tải catalog...</p> : !error && visible.length === 0 ? <p className="p-8 text-center text-sm text-muted-foreground">Không có lớp dữ liệu phù hợp.</p> : <><div className="hidden overflow-x-auto md:block"><table className="w-full border-collapse text-left text-sm"><thead className="bg-surface-subtle text-xs text-muted-foreground"><tr><th className="px-5 py-3 font-medium">Tên lớp</th><th className="px-5 py-3 font-medium">Geometry</th><th className="px-5 py-3 font-medium">Revision</th><th className="px-5 py-3 font-medium">Trạng thái</th><th className="px-5 py-3 font-medium">Cập nhật</th><th className="w-60 px-5 py-3"><span className="sr-only">Thao tác</span></th></tr></thead><tbody className="divide-y">{visible.map((layer) => { const editable = principal.role === "editor" && layer.status === "draft"; const href = layer.revisionId ? `/admin/layers/${layer.revisionId}/${editable ? "edit" : "review"}` : null; return <tr key={layer.id} className="hover:bg-surface-subtle"><td className="px-5 py-4"><p className="font-medium">{layer.title}</p><p className="mt-1 text-xs text-muted-foreground">danang:{layer.slug}</p></td><td className="px-5 py-4 capitalize">{layer.geometryMode}</td><td className="px-5 py-4 font-mono text-xs">{layer.revisionId ? layer.revisionId.slice(0, 8) : "—"}</td><td className="px-5 py-4"><Status value={layer.status}/></td><td className="whitespace-nowrap px-5 py-4 text-muted-foreground">{new Date(layer.updatedAt).toLocaleString("vi-VN")}</td><td className="px-5 py-4"><div className="flex justify-end gap-2">{editable && layer.revisionId && <Button asChild variant="outline" size="sm"><Link href={`/admin/layers/${layer.revisionId}/import`}><IconFileImport stroke={1.75}/>Nhập</Link></Button>}{href ? <Button asChild variant="outline" size="sm"><Link href={href}>{editable ? <IconEdit stroke={1.75}/> : <IconEye stroke={1.75}/>} {editable ? "Biên tập" : "Xem"}</Link></Button> : <span className="text-xs text-muted-foreground">Chưa có revision</span>}</div></td></tr>; })}</tbody></table></div>
