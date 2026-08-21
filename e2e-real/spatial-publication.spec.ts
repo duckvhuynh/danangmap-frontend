@@ -1,16 +1,11 @@
-import { createHmac, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { loginWithMfa, requiredEnv } from "./support/auth";
 
 test.skip(
   process.env.DANANGMAP_REAL_STACK !== "true" || process.env.DANANGMAP_GATE_B_ENABLED !== "true",
   "Set DANANGMAP_REAL_STACK=true and DANANGMAP_GATE_B_ENABLED=true to run Gate B.",
 );
-
-function requiredEnv(name: string) {
-  const value = process.env[name];
-  if (!value) throw new Error(`${name} is required for Gate B.`);
-  return value;
-}
 
 function requiredNumberEnv(name: string) {
   const value = Number(requiredEnv(name));
@@ -37,51 +32,12 @@ function numberField(value: unknown, key: string) {
   return field;
 }
 
-function decodeBase32(value: string) {
-  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-  const normalized = value.toUpperCase().replace(/=+$/u, "");
-  let bits = "";
-  for (const character of normalized) {
-    const index = alphabet.indexOf(character);
-    if (index < 0) throw new Error("The Gate B TOTP seed is not valid Base32.");
-    bits += index.toString(2).padStart(5, "0");
-  }
-  const bytes: number[] = [];
-  for (let offset = 0; offset + 8 <= bits.length; offset += 8) {
-    bytes.push(Number.parseInt(bits.slice(offset, offset + 8), 2));
-  }
-  return Buffer.from(bytes);
-}
-
-function totp(secret: string, now = Date.now()) {
-  const counter = BigInt(Math.floor(now / 30_000));
-  const counterBuffer = Buffer.alloc(8);
-  counterBuffer.writeBigUInt64BE(counter);
-  const digest = createHmac("sha1", decodeBase32(secret)).update(counterBuffer).digest();
-  const offset = digest[digest.length - 1]! & 0x0f;
-  const binary = ((digest[offset]! & 0x7f) << 24)
-    | ((digest[offset + 1]! & 0xff) << 16)
-    | ((digest[offset + 2]! & 0xff) << 8)
-    | (digest[offset + 3]! & 0xff);
-  return String(binary % 1_000_000).padStart(6, "0");
-}
-
-async function freshTotp(page: Page, secret: string) {
-  const secondsRemaining = 30 - (Math.floor(Date.now() / 1000) % 30);
-  if (secondsRemaining < 5) await page.waitForTimeout((secondsRemaining + 1) * 1_000);
-  return totp(secret);
-}
-
 async function login(page: Page, actor: "EDITOR" | "REVIEWER" | "PUBLISHER") {
-  await page.goto("/login");
-  await page.getByRole("textbox", { name: "Tên đăng nhập hoặc email" }).fill(requiredEnv(`DANANGMAP_GATE_B_${actor}_LOGIN`));
-  await page.getByLabel("Mật khẩu").fill(requiredEnv(`DANANGMAP_GATE_B_${actor}_PASSWORD`));
-  await page.getByRole("button", { name: "Đăng nhập" }).click();
-  await expect(page).toHaveURL(/\/login\/mfa$/u);
-  await page.getByLabel("Mã xác thực 6 số").fill(await freshTotp(page, requiredEnv("DANANGMAP_GATE_B_TOTP_SECRET")));
-  await page.getByRole("button", { name: "Xác nhận" }).click();
-  await expect(page).toHaveURL(/\/admin$/u);
-  await expect(page.getByRole("heading", { name: "Tổng quan hệ thống" })).toBeVisible();
+  await loginWithMfa(page, {
+    login: `DANANGMAP_GATE_B_${actor}_LOGIN`,
+    password: `DANANGMAP_GATE_B_${actor}_PASSWORD`,
+    totpSecret: "DANANGMAP_GATE_B_TOTP_SECRET",
+  });
 }
 
 interface PublicFeatureSnapshot {
