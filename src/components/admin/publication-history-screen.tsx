@@ -138,8 +138,7 @@ export function PublicationHistoryScreen({ layerId, transport = defaultTransport
     reload();
   }
 
-  function rollbackStale(staleError: unknown) {
-    setMutationError(staleError);
+  function refreshAfterStaleRollback() {
     setLoading(true);
     setReloadVersion((value) => value + 1);
   }
@@ -186,7 +185,7 @@ export function PublicationHistoryScreen({ layerId, transport = defaultTransport
               <TableCell><Badge>{historyStatusLabel(publication.status)}</Badge>{publication.rollbackOf && <p className="mt-1 text-xs text-muted-foreground">Rollback từ {compactIdentifier(publication.rollbackOf)}</p>}</TableCell>
               <TableCell>{progressText(publication)}</TableCell>
               <TableCell>{historyDate(publication.activatedAt)}</TableCell>
-              <TableCell className="text-right">{canRollback && pointer ? <RollbackDialog layerId={layerId} publication={publication} activePointerEtag={pointer} auth={{ csrfToken }} transport={{ rollback: transport.rollback }} onSuccess={rollbackSucceeded} onStale={rollbackStale}/> : <span className="text-xs text-muted-foreground">{publication.rollbackEligibility.eligible ? publisherOnMobile ? "Cần desktop" : principal.role !== "publisher" ? "Chỉ Publisher" : "Thiếu pointer ETag" : eligibilityText(publication.rollbackEligibility.reasonCode)}</span>}</TableCell>
+              <TableCell className="text-right">{canRollback && pointer ? <RollbackDialog layerId={layerId} publication={publication} activePointerEtag={pointer} auth={{ csrfToken }} transport={{ rollback: transport.rollback }} onSuccess={rollbackSucceeded} onStale={refreshAfterStaleRollback}/> : <span className="text-xs text-muted-foreground">{publication.rollbackEligibility.eligible ? publisherOnMobile ? "Cần desktop" : principal.role !== "publisher" ? "Chỉ Publisher" : "Thiếu pointer ETag" : eligibilityText(publication.rollbackEligibility.reasonCode)}</span>}</TableCell>
             </TableRow>;
           })}</TableBody>
         </Table>

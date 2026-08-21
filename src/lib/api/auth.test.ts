@@ -37,16 +37,16 @@ describe("session authentication transport", () => {
     expect(await requests[1].clone().json()).toEqual({ login: "editor@example.gov.vn", password: "very-secure-password" });
   });
 
-  it("rotates preauth CSRF before verify, enrollment start and confirmation", async () => {
+  it("reuses the stable preauth CSRF token before verify, enrollment start and confirmation", async () => {
     vi.stubEnv("NEXT_PUBLIC_DANANGMAP_DEMO_MODE", "false");
     const requests: Request[] = [];
-    let csrfIndex = 0;
+    const stablePreauthCsrf = "P".repeat(32);
     const recoveryCodes = Array.from({ length: 10 }, (_, index) => `ABCD-EF01-2345-6789-${String(index + 1).padStart(4, "0")}`);
     const fetcher: typeof fetch = async (input, init) => {
       const request = new Request(input, init);
       requests.push(request);
       const path = new URL(request.url).pathname;
-      if (path.endsWith("/auth/csrf")) return new Response(envelope({ csrfToken: `csrf-preauth-${++csrfIndex}` }), { status: 200, headers });
+      if (path.endsWith("/auth/csrf")) return new Response(envelope({ csrfToken: stablePreauthCsrf }), { status: 200, headers: { ...headers, "cache-control": "private, no-store" } });
       if (path.endsWith("/mfa/verify")) return new Response(envelope(principal), { status: 200, headers });
       if (path.endsWith("/mfa/enroll/confirm")) return new Response(envelope({ principal, recoveryCodes }), { status: 200, headers });
       return new Response(envelope({ status: "pending", enrollmentUri: "otpauth://totp/DanangMap%3Aeditor?secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP&issuer=DanangMap" }), { status: 200, headers });
@@ -59,7 +59,8 @@ describe("session authentication transport", () => {
     await confirmMfaEnrollment("654321", client);
 
     const mutations = requests.filter((request) => request.method === "POST");
-    expect(mutations.map((request) => request.headers.get("x-csrf-token"))).toEqual(["csrf-preauth-1", "csrf-preauth-2", "csrf-preauth-3", "csrf-preauth-4"]);
+    expect(mutations.map((request) => request.headers.get("x-csrf-token"))).toEqual(Array(4).fill(stablePreauthCsrf));
+    expect(requests.filter((request) => request.url.endsWith("/auth/csrf"))).toHaveLength(4);
     expect(mutations.every((request) => request.credentials === "include")).toBe(true);
     expect(await mutations[0].clone().json()).toEqual({ method: "totp", code: "123456" });
     expect(await mutations[1].clone().json()).toEqual({ method: "recovery_code", code: "ABCD-EF01-2345-6789-0001" });

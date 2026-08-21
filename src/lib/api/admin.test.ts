@@ -87,4 +87,21 @@ describe("typed admin API adapter", () => {
     const writes = fetcher.mock.calls.map(([input, init]) => requestParts(input, init)).filter((request) => ["POST", "PATCH", "DELETE"].includes(request.method) && request.url.pathname.includes("/features"));
     expect(writes.map((request) => request.headers.get("if-match"))).toEqual([`"rev-${revisionId}-v3"`, `"rev-${revisionId}-v4"`, `"rev-${revisionId}-v5"`]);
   });
+
+  it("preserves a typed CSRF_INVALID problem without retrying the token read", async () => {
+    const fetcher = vi.fn(async () => new Response(JSON.stringify({
+      type: "https://danangmap.local/problems/csrf-invalid",
+      title: "CSRF invalid",
+      status: 403,
+      code: "CSRF_INVALID",
+      message: "CSRF token không hợp lệ.",
+      details: { sessionState: "authenticated" },
+      requestId: "request-csrf-invalid",
+      timestamp: "2026-08-21T00:00:00.000Z",
+    }), { status: 403, headers: { "content-type": "application/problem+json" } }));
+
+    const error = await acquireCsrfToken(createDanangMapClient(fetcher)).catch((caught) => caught);
+    expect(error).toMatchObject({ status: 403, code: "CSRF_INVALID", requestId: "request-csrf-invalid", details: { sessionState: "authenticated" } });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
 });

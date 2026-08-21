@@ -1,6 +1,6 @@
 // This file is generated. Do not edit it by hand.
 // Source: openapi/openapi.json
-// Source SHA-256: 907d41e5995b646be2c622a5aac5f5ddc4aa316a5c006a1573d9db84208aeda8
+// Source SHA-256: 3caaa1351c54c9615ee5fedcb98b3fce2415da21f2d155e602f627db6faced14
 export interface paths {
     "/api/v1/auth/login": {
         parameters: {
@@ -105,7 +105,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["rotateCsrf"];
+        /** @description Issues or reuses a public CSRF token. Pre-authenticated and authenticated sessions receive their current session-bound token without rotation. */
+        get: operations["getCsrfToken"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1630,7 +1631,7 @@ export interface operations {
             };
         };
     };
-    rotateCsrf: {
+    getCsrfToken: {
         parameters: {
             query?: never;
             header?: never;
@@ -1641,6 +1642,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description CSRF responses are private and must never be stored. */
+                    "Cache-Control"?: "private, no-store";
                     [name: string]: unknown;
                 };
                 content: {
@@ -1651,6 +1654,29 @@ export interface operations {
                         meta: {
                             requestId: string;
                         };
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** Format: uri */
+                        type: string;
+                        title: string;
+                        /** @enum {integer} */
+                        status: 403;
+                        /** @enum {string} */
+                        code: "CSRF_INVALID";
+                        message: string;
+                        details: {
+                            [key: string]: unknown;
+                        };
+                        requestId: string;
+                        /** Format: date-time */
+                        timestamp: string;
                     };
                 };
             };

@@ -1,7 +1,7 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useAdminSession } from "@/components/admin/admin-session";
-import type { AdminPrincipal } from "@/lib/api/admin";
+import { AdminApiError, type AdminPrincipal } from "@/lib/api/admin";
 import type { AuditEvents, LayerPublicationHistory, LayerRevisionHistory } from "@/lib/api/history";
 import { PublicationHistoryScreen, type PublicationHistoryTransport } from "./publication-history-screen";
 
@@ -155,5 +155,22 @@ describe("publication history screen", () => {
     vi.mocked(api.publications).mockRejectedValue(new Error("history unavailable"));
     render(<PublicationHistoryScreen layerId={layerId} transport={api}/>);
     expect(await screen.findByText("history unavailable")).toBeInTheDocument();
+  });
+
+  it("keeps a stale rollback error in its dialog while refreshing authoritative history", async () => {
+    const api = transport();
+    vi.mocked(api.rollback).mockRejectedValue(new AdminApiError(412, "ETAG_MISMATCH", "Pointer changed.", "request-stale"));
+    render(<PublicationHistoryScreen layerId={layerId} transport={api}/>);
+
+    expect(await screen.findByText("Lịch sử Ranh giới phường xã")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Khôi phục bản này" }));
+    const dialog = screen.getByRole("dialog", { name: "Khôi phục publication generation 6" });
+    fireEvent.change(within(dialog).getByLabelText("Lý do khôi phục"), { target: { value: "Khôi phục dữ liệu đã được kiểm chứng" } });
+    fireEvent.change(within(dialog).getByLabelText("Nhập KHÔI PHỤC để xác nhận"), { target: { value: "KHÔI PHỤC" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Xác nhận khôi phục" }));
+
+    expect(await within(dialog).findByText(/Publication pointer đã thay đổi/u)).toBeInTheDocument();
+    expect(screen.getAllByText(/Publication pointer đã thay đổi/u)).toHaveLength(1);
+    await waitFor(() => expect(api.publications).toHaveBeenCalledTimes(2));
   });
 });
