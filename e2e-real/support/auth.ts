@@ -7,6 +7,8 @@ export interface RealStackLoginEnvironment {
   totpSecret: string;
 }
 
+const lastTotpCounterByLogin = new Map<string, number>();
+
 export function requiredEnv(name: string, scope = "the real-stack project") {
   const value = process.env[name];
   if (!value) throw new Error(`${name} is required for ${scope}.`);
@@ -42,9 +44,21 @@ export function totp(secret: string, now = Date.now()) {
   return String(binary % 1_000_000).padStart(6, "0");
 }
 
-export async function freshTotp(page: Page, secret: string) {
+export async function waitForNextTotpStep(page: Page) {
+  const waitMilliseconds = 30_000 - (Date.now() % 30_000) + 1_000;
+  await page.waitForTimeout(waitMilliseconds);
+}
+
+export async function freshTotp(page: Page, secret: string, loginIdentity?: string) {
+  let counter = Math.floor(Date.now() / 30_000);
+  if (loginIdentity && (lastTotpCounterByLogin.get(loginIdentity) ?? -1) >= counter) {
+    await waitForNextTotpStep(page);
+    counter = Math.floor(Date.now() / 30_000);
+  }
   const secondsRemaining = 30 - (Math.floor(Date.now() / 1_000) % 30);
   if (secondsRemaining < 5) await page.waitForTimeout((secondsRemaining + 1) * 1_000);
+  counter = Math.floor(Date.now() / 30_000);
+  if (loginIdentity) lastTotpCounterByLogin.set(loginIdentity, counter);
   return totp(secret);
 }
 
@@ -54,7 +68,7 @@ export async function loginWithMfa(page: Page, environment: RealStackLoginEnviro
   await page.getByLabel("Mật khẩu").fill(requiredEnv(environment.password));
   await page.getByRole("button", { name: "Đăng nhập" }).click();
   await expect(page).toHaveURL(/\/login\/mfa$/u);
-  await page.getByLabel("Mã xác thực 6 số").fill(await freshTotp(page, requiredEnv(environment.totpSecret)));
+  await page.getByLabel("Mã xác thực 6 số").fill(await freshTotp(page, requiredEnv(environment.totpSecret), environment.login));
   await page.getByRole("button", { name: "Xác nhận" }).click();
   await expect(page).toHaveURL(/\/admin$/u);
   await expect(page.getByRole("heading", { name: "Tổng quan hệ thống" })).toBeVisible();

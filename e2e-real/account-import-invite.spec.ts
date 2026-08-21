@@ -1,51 +1,10 @@
-import { createHmac } from "node:crypto";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { freshTotp, requiredEnv } from "./support/auth";
 
 test.skip(
   process.env.DANANGMAP_REAL_STACK !== "true",
   "Set DANANGMAP_REAL_STACK=true to run against the external Docker stack.",
 );
-
-function requiredEnv(name: string) {
-  const value = process.env[name];
-  if (!value) throw new Error(`${name} is required for the real-stack project.`);
-  return value;
-}
-
-function decodeBase32(value: string) {
-  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-  const normalized = value.toUpperCase().replace(/=+$/u, "");
-  let bits = "";
-  for (const character of normalized) {
-    const index = alphabet.indexOf(character);
-    if (index < 0) throw new Error("The TOTP seed is not valid Base32.");
-    bits += index.toString(2).padStart(5, "0");
-  }
-  const bytes: number[] = [];
-  for (let offset = 0; offset + 8 <= bits.length; offset += 8) {
-    bytes.push(Number.parseInt(bits.slice(offset, offset + 8), 2));
-  }
-  return Buffer.from(bytes);
-}
-
-function totp(secret: string, now = Date.now()) {
-  const counter = BigInt(Math.floor(now / 30_000));
-  const counterBuffer = Buffer.alloc(8);
-  counterBuffer.writeBigUInt64BE(counter);
-  const digest = createHmac("sha1", decodeBase32(secret)).update(counterBuffer).digest();
-  const offset = digest[digest.length - 1]! & 0x0f;
-  const binary = ((digest[offset]! & 0x7f) << 24)
-    | ((digest[offset + 1]! & 0xff) << 16)
-    | ((digest[offset + 2]! & 0xff) << 8)
-    | (digest[offset + 3]! & 0xff);
-  return String(binary % 1_000_000).padStart(6, "0");
-}
-
-async function freshTotp(page: Page, secret: string) {
-  const secondsRemaining = 30 - (Math.floor(Date.now() / 1000) % 30);
-  if (secondsRemaining < 5) await page.waitForTimeout((secondsRemaining + 1) * 1000);
-  return totp(secret);
-}
 
 async function browserStateContains(page: Page, sensitiveValues: string[]) {
   return page.evaluate(async (secrets) => {
@@ -112,7 +71,7 @@ async function loginWithMfa(page: Page) {
   await page.getByLabel("Mật khẩu").fill(password);
   await page.getByRole("button", { name: "Đăng nhập" }).click();
   await expect(page).toHaveURL(/\/login\/mfa$/u);
-  const code = await freshTotp(page, secret);
+  const code = await freshTotp(page, secret, "DANANGMAP_ADMIN_LOGIN");
   await page.getByLabel("Mã xác thực 6 số").fill(code);
   await page.getByRole("button", { name: "Xác nhận" }).click();
   await expect(page).toHaveURL(/\/admin$/u);
