@@ -153,10 +153,24 @@ async function readInviteToken(request: APIRequestContext, email: string) {
     return typeof result.messages_count === "number" ? result.messages_count : -1;
   }, { timeout: 60_000, intervals: [250, 500, 1_000, 2_000] }).toBe(1);
 
+  const searchResponse = await request.get(`${mailpitBaseURL}/api/v1/search?query=${encodedQuery}`);
+  expect(searchResponse.ok()).toBe(true);
+  const searchResult: unknown = await searchResponse.json();
+  const subject = typeof searchResult === "object"
+    && searchResult !== null
+    && "messages" in searchResult
+    && Array.isArray(searchResult.messages)
+    && typeof searchResult.messages[0] === "object"
+    && searchResult.messages[0] !== null
+    && "Subject" in searchResult.messages[0]
+    && typeof searchResult.messages[0].Subject === "string"
+    ? searchResult.messages[0].Subject
+    : null;
+  expect(subject?.includes("Mã mời")).toBe(true);
+
   const response = await request.get(`${mailpitBaseURL}/view/latest.txt?query=${encodedQuery}`);
   expect(response.ok()).toBe(true);
   const body = (await response.text()).replace(/\r\n/gu, "\n");
-  expect(body.includes("Mã mời")).toBe(true);
   expect(body.includes("Hãy sao chép và dán mã mời sau vào màn hình chấp nhận lời mời:")).toBe(true);
   expect(/https?:\/\//iu.test(body)).toBe(false);
   const token = body.match(/\n\n([A-Za-z0-9_-]{20,256})\n\n/u)?.[1];
