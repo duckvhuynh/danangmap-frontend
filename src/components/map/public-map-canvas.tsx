@@ -5,6 +5,7 @@ import mapboxgl, { type Map as MapboxMap } from "mapbox-gl";
 import type { PublicFeature, PublicLayer } from "@/lib/domain/map";
 import { renderableFeatureCollection, sharedGeoJsonFeatures } from "@/components/map/map-geometry";
 import { ensurePublicCustomLayers, interactivePublicLayerIds } from "@/components/map/map-style";
+import type { MapFocusTarget } from "@/lib/search/public-search-state";
 
 export type MapCommand = { id: number; type: "zoom-in" | "zoom-out" | "locate" | "reset" };
 
@@ -15,13 +16,15 @@ interface PublicMapCanvasProps {
   hiddenLayerIds: Set<string>;
   basemap: "street" | "light";
   command: MapCommand;
+  focusTarget?: MapFocusTarget | null;
   onFeatureSelect: (id: string) => void;
   onError: (message: string) => void;
 }
 
-export default function PublicMapCanvas({ features, layerColors, layers, hiddenLayerIds, basemap, command, onFeatureSelect, onError }: PublicMapCanvasProps) {
+export default function PublicMapCanvas({ features, layerColors, layers, hiddenLayerIds, basemap, command, focusTarget, onFeatureSelect, onError }: PublicMapCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapboxMap | null>(null);
+  const temporaryMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const onSelectRef = useRef(onFeatureSelect);
   const onErrorRef = useRef(onError);
   const featuresRef = useRef(features);
@@ -73,6 +76,8 @@ export default function PublicMapCanvas({ features, layerColors, layers, hiddenL
       map.off("load", ensureLatestLayers);
       map.off("mousemove", handlePointer);
       map.off("click", handleClick);
+      temporaryMarkerRef.current?.remove();
+      temporaryMarkerRef.current = null;
       map.remove();
       mapRef.current = null;
     };
@@ -106,6 +111,27 @@ export default function PublicMapCanvas({ features, layerColors, layers, hiddenL
       );
     }
   }, [command]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    temporaryMarkerRef.current?.remove();
+    temporaryMarkerRef.current = null;
+    if (!focusTarget) return;
+    if (focusTarget.temporaryMarker) {
+      temporaryMarkerRef.current = new mapboxgl.Marker({ color: "#1A73E8" })
+        .setLngLat([focusTarget.longitude, focusTarget.latitude])
+        .addTo(map);
+      temporaryMarkerRef.current.getElement().setAttribute("aria-label", "Kết quả địa điểm");
+      temporaryMarkerRef.current.getElement().setAttribute("role", "img");
+    }
+    if (focusTarget.bbox) {
+      const [west, south, east, north] = focusTarget.bbox;
+      map.fitBounds([[west, south], [east, north]], { padding: 72, maxZoom: 17 });
+    } else {
+      map.flyTo({ center: [focusTarget.longitude, focusTarget.latitude], zoom: 16 });
+    }
+  }, [focusTarget]);
 
   if (!token) {
     return (

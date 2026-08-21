@@ -1,6 +1,6 @@
 // This file is generated. Do not edit it by hand.
 // Source: openapi/openapi.json
-// Source SHA-256: fc1b70008a670aa05e5d2aa97bc02557bbc1c12f73386ed27bbf937e71304950
+// Source SHA-256: 9fd065e54a878c99e8cd2092aee1c374d7c5788663d40857f401122bad6ce505
 export interface paths {
     "/api/v1/auth/login": {
         parameters: {
@@ -2207,7 +2207,7 @@ export interface operations {
                             position: {
                                 longitude: number;
                                 latitude: number;
-                            };
+                            } | null;
                             bbox?: number[] | null;
                             layer: {
                                 [key: string]: unknown;
@@ -2265,7 +2265,7 @@ export interface operations {
                             position: {
                                 longitude: number;
                                 latitude: number;
-                            };
+                            } | null;
                             phone?: string | null;
                             website?: string | null;
                             /** @enum {string} */
