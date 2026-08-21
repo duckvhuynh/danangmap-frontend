@@ -212,7 +212,10 @@ async function assertEditorApproveDenied(page: Page, revisionId: string) {
     return { status: denied.status, body: await denied.json().catch(() => null) };
   }, { id: revisionId, operationKey: randomUUID() });
   expect(response.status).toBe(403);
-  expect(record(response.body).status).toBe(403);
+  const problem = record(response.body);
+  expect(problem.status).toBe(403);
+  expect(problem.code).toBe("ROLE_FORBIDDEN");
+  expect(typeof problem.requestId === "string" && problem.requestId.length > 0).toBe(true);
 }
 
 async function approveAsReviewer(page: Page, revisionId: string) {
