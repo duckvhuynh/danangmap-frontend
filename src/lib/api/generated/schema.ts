@@ -1,6 +1,6 @@
 // This file is generated. Do not edit it by hand.
 // Source: openapi/openapi.json
-// Source SHA-256: 87f78a43bf0bf7d328ae55e0fc273abcc1903766377148326ff94e4fa8775da0
+// Source SHA-256: cef2be58bcc26b996438862dd9de6c8454af2d5b2b8136f648d4b9af4c049d45
 export interface paths {
     "/api/v1/auth/login": {
         parameters: {
@@ -2830,7 +2830,7 @@ export interface operations {
                             position: {
                                 longitude: number;
                                 latitude: number;
-                            };
+                            } | null;
                             bbox?: number[] | null;
                             layer: {
                                 [key: string]: unknown;
@@ -2888,7 +2888,7 @@ export interface operations {
                             position: {
                                 longitude: number;
                                 latitude: number;
-                            };
+                            } | null;
                             phone?: string | null;
                             website?: string | null;
                             /** @enum {string} */
@@ -3798,7 +3798,18 @@ export interface operations {
                         status: "ok";
                         version: string;
                         checks: {
-                            [key: string]: "up" | "down" | "degraded" | "current";
+                            /** @enum {string} */
+                            postgres: "up" | "down";
+                            /** @enum {string} */
+                            redis: "up" | "down";
+                            /** @enum {string} */
+                            migrations: "current" | "down";
+                            /** @enum {string} */
+                            minio: "up" | "down";
+                            /** @enum {string} */
+                            geoService: "up" | "degraded";
+                            /** @enum {string} */
+                            mail: "up" | "degraded";
                         };
                     };
                 };
