@@ -67,6 +67,10 @@ function role(value: unknown): AdminRole {
   if (value === "editor" || value === "reviewer" || value === "publisher" || value === "system_admin") return value;
   throw new AdminApiError(502, "CONTRACT_INVALID", "Vai trò tài khoản không hợp lệ.");
 }
+function principalStatus(value: unknown): AdminPrincipal["status"] {
+  if (value === "active" || value === "inactive" || value === "disabled" || value === "invited") return value;
+  throw new AdminApiError(502, "CONTRACT_INVALID", "Trạng thái tài khoản không hợp lệ.");
+}
 function revisionGeometryMode(value: unknown): AdminRevision["geometryMode"] {
   if (value === "point" || value === "circle" || value === "polyline" || value === "polygon" || value === "mixed") return value;
   throw new AdminApiError(502, "CONTRACT_INVALID", "Geometry mode của revision không hợp lệ.");
@@ -155,7 +159,7 @@ export async function getAdminSession(client: ApiClient = apiClient): Promise<Ad
   const result = await client.GET("/api/v1/auth/me");
   const data = envelopeData(resultData(result));
   if (!isRecord(data)) throw new AdminApiError(502, "CONTRACT_INVALID", "Principal không hợp lệ.");
-  return { id: requiredString(data.id, "id"), email: requiredString(data.email, "email"), username: requiredString(data.username, "username"), displayName: requiredString(data.displayName, "displayName"), role: role(data.role), status: requiredString(data.status, "status"), mfaEnabled: data.mfaEnabled === true, mustChangePassword: data.mustChangePassword === true };
+  return { id: requiredString(data.id, "id"), email: requiredString(data.email, "email"), username: requiredString(data.username, "username"), displayName: requiredString(data.displayName, "displayName"), role: role(data.role), status: principalStatus(data.status), mfaEnabled: data.mfaEnabled === true, mustChangePassword: data.mustChangePassword === true };
 }
 
 export async function acquireCsrfToken(client: ApiClient = apiClient) {

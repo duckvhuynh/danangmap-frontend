@@ -136,7 +136,13 @@
                           ]
                         },
                         "status": {
-                          "type": "string"
+                          "type": "string",
+                          "enum": [
+                            "active",
+                            "inactive",
+                            "disabled",
+                            "invited"
+                          ]
                         },
                         "mfaEnabled": {
                           "type": "boolean"
@@ -277,7 +283,13 @@
                           ]
                         },
                         "status": {
-                          "type": "string"
+                          "type": "string",
+                          "enum": [
+                            "active",
+                            "inactive",
+                            "disabled",
+                            "invited"
+                          ]
                         },
                         "mfaEnabled": {
                           "type": "boolean"
@@ -435,7 +447,13 @@
                             ]
                           },
                           "status": {
-                            "type": "string"
+                            "type": "string",
+                            "enum": [
+                              "active",
+                              "inactive",
+                              "disabled",
+                              "invited"
+                            ]
                           },
                           "mfaEnabled": {
                             "type": "boolean"
@@ -448,7 +466,30 @@
                     },
                     "meta": {
                       "type": "object",
-                      "additionalProperties": true
+                      "additionalProperties": false,
+                      "required": [
+                        "requestId",
+                        "nextCursor",
+                        "hasMore",
+                        "limit"
+                      ],
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "nextCursor": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "hasMore": {
+                          "type": "boolean"
+                        },
+                        "limit": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 200
+                        }
+                      }
                     }
                   }
                 }
@@ -468,7 +509,25 @@
       },
       "post": {
         "operationId": "createUser",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -492,8 +551,101 @@
                   ],
                   "properties": {
                     "data": {
-                      "type": "object",
-                      "additionalProperties": true
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "id",
+                            "email",
+                            "username",
+                            "displayName",
+                            "role",
+                            "status",
+                            "mfaEnabled",
+                            "mustChangePassword"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "email": {
+                              "type": "string",
+                              "format": "email"
+                            },
+                            "username": {
+                              "type": "string"
+                            },
+                            "displayName": {
+                              "type": "string"
+                            },
+                            "role": {
+                              "type": "string",
+                              "enum": [
+                                "editor",
+                                "reviewer",
+                                "publisher",
+                                "system_admin"
+                              ]
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "active",
+                                "inactive",
+                                "disabled",
+                                "invited"
+                              ]
+                            },
+                            "mfaEnabled": {
+                              "type": "boolean"
+                            },
+                            "mustChangePassword": {
+                              "type": "boolean"
+                            }
+                          }
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "id",
+                            "email",
+                            "role",
+                            "status",
+                            "expiresAt"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "email": {
+                              "type": "string",
+                              "format": "email"
+                            },
+                            "role": {
+                              "type": "string",
+                              "enum": [
+                                "editor",
+                                "reviewer",
+                                "publisher",
+                                "system_admin"
+                              ]
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "pending"
+                              ]
+                            },
+                            "expiresAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            }
+                          }
+                        }
+                      ]
                     },
                     "meta": {
                       "type": "object",
@@ -526,7 +678,25 @@
     "/api/v1/admin/invites": {
       "post": {
         "operationId": "createInvite",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -538,7 +708,7 @@
           }
         },
         "responses": {
-          "201": {
+          "202": {
             "description": "",
             "content": {
               "application/json": {
@@ -551,7 +721,43 @@
                   "properties": {
                     "data": {
                       "type": "object",
-                      "additionalProperties": true
+                      "additionalProperties": false,
+                      "required": [
+                        "id",
+                        "email",
+                        "role",
+                        "status",
+                        "expiresAt"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "email": {
+                          "type": "string",
+                          "format": "email"
+                        },
+                        "role": {
+                          "type": "string",
+                          "enum": [
+                            "editor",
+                            "reviewer",
+                            "publisher",
+                            "system_admin"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending"
+                          ]
+                        },
+                        "expiresAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      }
                     },
                     "meta": {
                       "type": "object",
@@ -4242,6 +4448,7 @@
                         "file",
                         "progress",
                         "counts",
+                        "inspection",
                         "canApplyWithSkipInvalid"
                       ],
                       "properties": {
@@ -4254,7 +4461,18 @@
                           "format": "uuid"
                         },
                         "status": {
-                          "type": "string"
+                          "type": "string",
+                          "enum": [
+                            "uploaded",
+                            "inspecting",
+                            "mapping_required",
+                            "validating",
+                            "ready",
+                            "applying",
+                            "completed",
+                            "failed",
+                            "cancelled"
+                          ]
                         },
                         "format": {
                           "type": "string",
@@ -4322,6 +4540,63 @@
                             },
                             "skipped": {
                               "type": "integer"
+                            }
+                          }
+                        },
+                        "inspection": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "parserStatus",
+                            "sheets",
+                            "limits"
+                          ],
+                          "properties": {
+                            "parserStatus": {
+                              "type": "string",
+                              "enum": [
+                                "pending",
+                                "inspected"
+                              ]
+                            },
+                            "sheets": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "limits": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "maxRecords",
+                                "maxVerticesPerFeature",
+                                "maxVerticesPerJob",
+                                "maxExpandedBytes",
+                                "maxIssues"
+                              ],
+                              "properties": {
+                                "maxRecords": {
+                                  "type": "integer",
+                                  "nullable": true
+                                },
+                                "maxVerticesPerFeature": {
+                                  "type": "integer",
+                                  "nullable": true
+                                },
+                                "maxVerticesPerJob": {
+                                  "type": "integer",
+                                  "nullable": true
+                                },
+                                "maxExpandedBytes": {
+                                  "type": "integer",
+                                  "nullable": true
+                                },
+                                "maxIssues": {
+                                  "type": "integer",
+                                  "nullable": true
+                                }
+                              }
                             }
                           }
                         },
@@ -4406,6 +4681,7 @@
                         "file",
                         "progress",
                         "counts",
+                        "inspection",
                         "canApplyWithSkipInvalid"
                       ],
                       "properties": {
@@ -4418,7 +4694,18 @@
                           "format": "uuid"
                         },
                         "status": {
-                          "type": "string"
+                          "type": "string",
+                          "enum": [
+                            "uploaded",
+                            "inspecting",
+                            "mapping_required",
+                            "validating",
+                            "ready",
+                            "applying",
+                            "completed",
+                            "failed",
+                            "cancelled"
+                          ]
                         },
                         "format": {
                           "type": "string",
@@ -4486,6 +4773,63 @@
                             },
                             "skipped": {
                               "type": "integer"
+                            }
+                          }
+                        },
+                        "inspection": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "parserStatus",
+                            "sheets",
+                            "limits"
+                          ],
+                          "properties": {
+                            "parserStatus": {
+                              "type": "string",
+                              "enum": [
+                                "pending",
+                                "inspected"
+                              ]
+                            },
+                            "sheets": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "limits": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "maxRecords",
+                                "maxVerticesPerFeature",
+                                "maxVerticesPerJob",
+                                "maxExpandedBytes",
+                                "maxIssues"
+                              ],
+                              "properties": {
+                                "maxRecords": {
+                                  "type": "integer",
+                                  "nullable": true
+                                },
+                                "maxVerticesPerFeature": {
+                                  "type": "integer",
+                                  "nullable": true
+                                },
+                                "maxVerticesPerJob": {
+                                  "type": "integer",
+                                  "nullable": true
+                                },
+                                "maxExpandedBytes": {
+                                  "type": "integer",
+                                  "nullable": true
+                                },
+                                "maxIssues": {
+                                  "type": "integer",
+                                  "nullable": true
+                                }
+                              }
                             }
                           }
                         },
@@ -4588,6 +4932,7 @@
                         "file",
                         "progress",
                         "counts",
+                        "inspection",
                         "canApplyWithSkipInvalid"
                       ],
                       "properties": {
@@ -4600,7 +4945,18 @@
                           "format": "uuid"
                         },
                         "status": {
-                          "type": "string"
+                          "type": "string",
+                          "enum": [
+                            "uploaded",
+                            "inspecting",
+                            "mapping_required",
+                            "validating",
+                            "ready",
+                            "applying",
+                            "completed",
+                            "failed",
+                            "cancelled"
+                          ]
                         },
                         "format": {
                           "type": "string",
@@ -4668,6 +5024,63 @@
                             },
                             "skipped": {
                               "type": "integer"
+                            }
+                          }
+                        },
+                        "inspection": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "parserStatus",
+                            "sheets",
+                            "limits"
+                          ],
+                          "properties": {
+                            "parserStatus": {
+                              "type": "string",
+                              "enum": [
+                                "pending",
+                                "inspected"
+                              ]
+                            },
+                            "sheets": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "limits": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "maxRecords",
+                                "maxVerticesPerFeature",
+                                "maxVerticesPerJob",
+                                "maxExpandedBytes",
+                                "maxIssues"
+                              ],
+                              "properties": {
+                                "maxRecords": {
+                                  "type": "integer",
+                                  "nullable": true
+                                },
+                                "maxVerticesPerFeature": {
+                                  "type": "integer",
+                                  "nullable": true
+                                },
+                                "maxVerticesPerJob": {
+                                  "type": "integer",
+                                  "nullable": true
+                                },
+                                "maxExpandedBytes": {
+                                  "type": "integer",
+                                  "nullable": true
+                                },
+                                "maxIssues": {
+                                  "type": "integer",
+                                  "nullable": true
+                                }
+                              }
                             }
                           }
                         },
@@ -4760,6 +5173,7 @@
                         "file",
                         "progress",
                         "counts",
+                        "inspection",
                         "canApplyWithSkipInvalid"
                       ],
                       "properties": {
@@ -4772,7 +5186,18 @@
                           "format": "uuid"
                         },
                         "status": {
-                          "type": "string"
+                          "type": "string",
+                          "enum": [
+                            "uploaded",
+                            "inspecting",
+                            "mapping_required",
+                            "validating",
+                            "ready",
+                            "applying",
+                            "completed",
+                            "failed",
+                            "cancelled"
+                          ]
                         },
                         "format": {
                           "type": "string",
@@ -4840,6 +5265,63 @@
                             },
                             "skipped": {
                               "type": "integer"
+                            }
+                          }
+                        },
+                        "inspection": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "parserStatus",
+                            "sheets",
+                            "limits"
+                          ],
+                          "properties": {
+                            "parserStatus": {
+                              "type": "string",
+                              "enum": [
+                                "pending",
+                                "inspected"
+                              ]
+                            },
+                            "sheets": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "limits": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "maxRecords",
+                                "maxVerticesPerFeature",
+                                "maxVerticesPerJob",
+                                "maxExpandedBytes",
+                                "maxIssues"
+                              ],
+                              "properties": {
+                                "maxRecords": {
+                                  "type": "integer",
+                                  "nullable": true
+                                },
+                                "maxVerticesPerFeature": {
+                                  "type": "integer",
+                                  "nullable": true
+                                },
+                                "maxVerticesPerJob": {
+                                  "type": "integer",
+                                  "nullable": true
+                                },
+                                "maxExpandedBytes": {
+                                  "type": "integer",
+                                  "nullable": true
+                                },
+                                "maxIssues": {
+                                  "type": "integer",
+                                  "nullable": true
+                                }
+                              }
                             }
                           }
                         },
@@ -5084,6 +5566,7 @@
                         "file",
                         "progress",
                         "counts",
+                        "inspection",
                         "canApplyWithSkipInvalid"
                       ],
                       "properties": {
@@ -5096,7 +5579,18 @@
                           "format": "uuid"
                         },
                         "status": {
-                          "type": "string"
+                          "type": "string",
+                          "enum": [
+                            "uploaded",
+                            "inspecting",
+                            "mapping_required",
+                            "validating",
+                            "ready",
+                            "applying",
+                            "completed",
+                            "failed",
+                            "cancelled"
+                          ]
                         },
                         "format": {
                           "type": "string",
@@ -5164,6 +5658,63 @@
                             },
                             "skipped": {
                               "type": "integer"
+                            }
+                          }
+                        },
+                        "inspection": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "parserStatus",
+                            "sheets",
+                            "limits"
+                          ],
+                          "properties": {
+                            "parserStatus": {
+                              "type": "string",
+                              "enum": [
+                                "pending",
+                                "inspected"
+                              ]
+                            },
+                            "sheets": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "limits": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "maxRecords",
+                                "maxVerticesPerFeature",
+                                "maxVerticesPerJob",
+                                "maxExpandedBytes",
+                                "maxIssues"
+                              ],
+                              "properties": {
+                                "maxRecords": {
+                                  "type": "integer",
+                                  "nullable": true
+                                },
+                                "maxVerticesPerFeature": {
+                                  "type": "integer",
+                                  "nullable": true
+                                },
+                                "maxVerticesPerJob": {
+                                  "type": "integer",
+                                  "nullable": true
+                                },
+                                "maxExpandedBytes": {
+                                  "type": "integer",
+                                  "nullable": true
+                                },
+                                "maxIssues": {
+                                  "type": "integer",
+                                  "nullable": true
+                                }
+                              }
                             }
                           }
                         },
@@ -5859,6 +6410,7 @@
           "matchBy": {
             "type": "string",
             "enum": [
+              "feature_id",
               "external_identity"
             ]
           }
@@ -5870,6 +6422,28 @@
       "UpdateImportMappingDto": {
         "type": "object",
         "properties": {
+          "sheet": {
+            "type": "string",
+            "description": "XLSX worksheet selected for this import job."
+          },
+          "encoding": {
+            "type": "string",
+            "enum": [
+              "utf8",
+              "utf16le",
+              "windows1258",
+              "latin1"
+            ]
+          },
+          "delimiter": {
+            "type": "string",
+            "enum": [
+              "comma",
+              "semicolon",
+              "tab",
+              "pipe"
+            ]
+          },
           "sourceCrs": {
             "type": "string",
             "enum": [

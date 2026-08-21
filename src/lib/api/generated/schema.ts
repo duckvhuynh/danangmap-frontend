@@ -1,6 +1,6 @@
 // This file is generated. Do not edit it by hand.
 // Source: openapi/openapi.json
-// Source SHA-256: 0b81e0e273992df3ae7c954a9dc962f83ec59909e85afae72f308b3f6d6e6030
+// Source SHA-256: fc1b70008a670aa05e5d2aa97bc02557bbc1c12f73386ed27bbf937e71304950
 export interface paths {
     "/api/v1/auth/login": {
         parameters: {
@@ -706,9 +706,15 @@ export interface components {
         };
         ImportUpsertMappingDto: {
             /** @enum {string} */
-            matchBy: "external_identity";
+            matchBy: "feature_id" | "external_identity";
         };
         UpdateImportMappingDto: {
+            /** @description XLSX worksheet selected for this import job. */
+            sheet?: string;
+            /** @enum {string} */
+            encoding?: "utf8" | "utf16le" | "windows1258" | "latin1";
+            /** @enum {string} */
+            delimiter?: "comma" | "semicolon" | "tab" | "pipe";
             /**
              * @example EPSG:4326
              * @enum {string}
@@ -802,7 +808,8 @@ export interface operations {
                             displayName: string;
                             /** @enum {string} */
                             role: "editor" | "reviewer" | "publisher" | "system_admin";
-                            status: string;
+                            /** @enum {string} */
+                            status: "active" | "inactive" | "disabled" | "invited";
                             mfaEnabled: boolean;
                             mustChangePassword: boolean;
                         };
@@ -864,7 +871,8 @@ export interface operations {
                             displayName: string;
                             /** @enum {string} */
                             role: "editor" | "reviewer" | "publisher" | "system_admin";
-                            status: string;
+                            /** @enum {string} */
+                            status: "active" | "inactive" | "disabled" | "invited";
                             mfaEnabled: boolean;
                             mustChangePassword: boolean;
                         };
@@ -929,12 +937,16 @@ export interface operations {
                             displayName: string;
                             /** @enum {string} */
                             role: "editor" | "reviewer" | "publisher" | "system_admin";
-                            status: string;
+                            /** @enum {string} */
+                            status: "active" | "inactive" | "disabled" | "invited";
                             mfaEnabled: boolean;
                             mustChangePassword: boolean;
                         }[];
                         meta: {
-                            [key: string]: unknown;
+                            requestId: string;
+                            nextCursor: string | null;
+                            hasMore: boolean;
+                            limit: number;
                         };
                     };
                 };
@@ -944,7 +956,10 @@ export interface operations {
     createUser: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                "X-CSRF-Token": string;
+                "Idempotency-Key": string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -961,7 +976,29 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: {
-                            [key: string]: unknown;
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: email */
+                            email: string;
+                            username: string;
+                            displayName: string;
+                            /** @enum {string} */
+                            role: "editor" | "reviewer" | "publisher" | "system_admin";
+                            /** @enum {string} */
+                            status: "active" | "inactive" | "disabled" | "invited";
+                            mfaEnabled: boolean;
+                            mustChangePassword: boolean;
+                        } | {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: email */
+                            email: string;
+                            /** @enum {string} */
+                            role: "editor" | "reviewer" | "publisher" | "system_admin";
+                            /** @enum {string} */
+                            status: "pending";
+                            /** Format: date-time */
+                            expiresAt: string;
                         };
                         meta: {
                             requestId: string;
@@ -974,7 +1011,10 @@ export interface operations {
     createInvite: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                "X-CSRF-Token": string;
+                "Idempotency-Key": string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -984,14 +1024,23 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": {
                         data: {
-                            [key: string]: unknown;
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: email */
+                            email: string;
+                            /** @enum {string} */
+                            role: "editor" | "reviewer" | "publisher" | "system_admin";
+                            /** @enum {string} */
+                            status: "pending";
+                            /** Format: date-time */
+                            expiresAt: string;
                         };
                         meta: {
                             requestId: string;
@@ -2270,7 +2319,8 @@ export interface operations {
                             id: string;
                             /** Format: uuid */
                             revisionId: string;
-                            status: string;
+                            /** @enum {string} */
+                            status: "uploaded" | "inspecting" | "mapping_required" | "validating" | "ready" | "applying" | "completed" | "failed" | "cancelled";
                             /** @enum {string} */
                             format: "csv" | "xlsx" | "geojson" | "kml";
                             /** @enum {string} */
@@ -2291,6 +2341,18 @@ export interface operations {
                                 skipped?: number;
                             } & {
                                 [key: string]: number;
+                            };
+                            inspection: {
+                                /** @enum {string} */
+                                parserStatus: "pending" | "inspected";
+                                sheets: string[];
+                                limits: {
+                                    maxRecords: number | null;
+                                    maxVerticesPerFeature: number | null;
+                                    maxVerticesPerJob: number | null;
+                                    maxExpandedBytes: number | null;
+                                    maxIssues: number | null;
+                                };
                             };
                             canApplyWithSkipInvalid: boolean;
                             failureCode?: string | null;
@@ -2329,7 +2391,8 @@ export interface operations {
                             id: string;
                             /** Format: uuid */
                             revisionId: string;
-                            status: string;
+                            /** @enum {string} */
+                            status: "uploaded" | "inspecting" | "mapping_required" | "validating" | "ready" | "applying" | "completed" | "failed" | "cancelled";
                             /** @enum {string} */
                             format: "csv" | "xlsx" | "geojson" | "kml";
                             /** @enum {string} */
@@ -2350,6 +2413,18 @@ export interface operations {
                                 skipped?: number;
                             } & {
                                 [key: string]: number;
+                            };
+                            inspection: {
+                                /** @enum {string} */
+                                parserStatus: "pending" | "inspected";
+                                sheets: string[];
+                                limits: {
+                                    maxRecords: number | null;
+                                    maxVerticesPerFeature: number | null;
+                                    maxVerticesPerJob: number | null;
+                                    maxExpandedBytes: number | null;
+                                    maxIssues: number | null;
+                                };
                             };
                             canApplyWithSkipInvalid: boolean;
                             failureCode?: string | null;
@@ -2394,7 +2469,8 @@ export interface operations {
                             id: string;
                             /** Format: uuid */
                             revisionId: string;
-                            status: string;
+                            /** @enum {string} */
+                            status: "uploaded" | "inspecting" | "mapping_required" | "validating" | "ready" | "applying" | "completed" | "failed" | "cancelled";
                             /** @enum {string} */
                             format: "csv" | "xlsx" | "geojson" | "kml";
                             /** @enum {string} */
@@ -2415,6 +2491,18 @@ export interface operations {
                                 skipped?: number;
                             } & {
                                 [key: string]: number;
+                            };
+                            inspection: {
+                                /** @enum {string} */
+                                parserStatus: "pending" | "inspected";
+                                sheets: string[];
+                                limits: {
+                                    maxRecords: number | null;
+                                    maxVerticesPerFeature: number | null;
+                                    maxVerticesPerJob: number | null;
+                                    maxExpandedBytes: number | null;
+                                    maxIssues: number | null;
+                                };
                             };
                             canApplyWithSkipInvalid: boolean;
                             failureCode?: string | null;
@@ -2455,7 +2543,8 @@ export interface operations {
                             id: string;
                             /** Format: uuid */
                             revisionId: string;
-                            status: string;
+                            /** @enum {string} */
+                            status: "uploaded" | "inspecting" | "mapping_required" | "validating" | "ready" | "applying" | "completed" | "failed" | "cancelled";
                             /** @enum {string} */
                             format: "csv" | "xlsx" | "geojson" | "kml";
                             /** @enum {string} */
@@ -2476,6 +2565,18 @@ export interface operations {
                                 skipped?: number;
                             } & {
                                 [key: string]: number;
+                            };
+                            inspection: {
+                                /** @enum {string} */
+                                parserStatus: "pending" | "inspected";
+                                sheets: string[];
+                                limits: {
+                                    maxRecords: number | null;
+                                    maxVerticesPerFeature: number | null;
+                                    maxVerticesPerJob: number | null;
+                                    maxExpandedBytes: number | null;
+                                    maxIssues: number | null;
+                                };
                             };
                             canApplyWithSkipInvalid: boolean;
                             failureCode?: string | null;
@@ -2562,7 +2663,8 @@ export interface operations {
                             id: string;
                             /** Format: uuid */
                             revisionId: string;
-                            status: string;
+                            /** @enum {string} */
+                            status: "uploaded" | "inspecting" | "mapping_required" | "validating" | "ready" | "applying" | "completed" | "failed" | "cancelled";
                             /** @enum {string} */
                             format: "csv" | "xlsx" | "geojson" | "kml";
                             /** @enum {string} */
@@ -2583,6 +2685,18 @@ export interface operations {
                                 skipped?: number;
                             } & {
                                 [key: string]: number;
+                            };
+                            inspection: {
+                                /** @enum {string} */
+                                parserStatus: "pending" | "inspected";
+                                sheets: string[];
+                                limits: {
+                                    maxRecords: number | null;
+                                    maxVerticesPerFeature: number | null;
+                                    maxVerticesPerJob: number | null;
+                                    maxExpandedBytes: number | null;
+                                    maxIssues: number | null;
+                                };
                             };
                             canApplyWithSkipInvalid: boolean;
                             failureCode?: string | null;
