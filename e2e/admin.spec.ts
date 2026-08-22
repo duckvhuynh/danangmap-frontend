@@ -68,7 +68,8 @@ test("publisher action requires a desktop pointer and release note", async ({ pa
     await page.getByLabel("Ghi chú công bố").fill("Công bố dữ liệu đã duyệt");
     await expect(publish).toBeEnabled();
     await publish.click();
-    await expect(page.getByRole("status").filter({ hasText: "Đã công bố revision" })).toBeVisible();
+    await expect(page.getByRole("status").filter({ hasText: "Yêu cầu công bố đã được nhận" })).toBeVisible();
+    await expect(page.getByRole("region", { name: /Publication job/u })).toContainText("Đang chờ xử lý");
   }
 });
 

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useAdminSession } from "@/components/admin/admin-session";
 import { AdminApiError, type AdminPrincipal } from "@/lib/api/admin";
 import type { AuditEvents, LayerPublicationHistory, LayerRevisionHistory } from "@/lib/api/history";
+import type { PublicationJob } from "@/lib/api/publication-jobs";
 import { PublicationHistoryScreen, type PublicationHistoryTransport } from "./publication-history-screen";
 
 vi.mock("@/components/admin/admin-session", async (importOriginal) => ({
@@ -49,7 +50,7 @@ const publication: LayerPublicationHistory["items"][number] = {
   revisionNo: 3,
   status: "published",
   generation: 6,
-  progress: null,
+  progress: 100,
   featureCount: 1250,
   bounds: [108.1, 16, 108.3, 16.2],
   checksum: "sha256:published",
@@ -78,6 +79,22 @@ const auditEvent: AuditEvents["items"][number] = {
   occurredAt: "2026-08-21T02:20:00.000Z",
 };
 
+const publicationJob: PublicationJob = {
+  id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  layerId,
+  revisionId,
+  status: "succeeded",
+  phase: "completed",
+  progress: { completedUnits: 1250, totalUnits: 1250, unit: "features", percent: 100 },
+  attempt: 1,
+  result: { snapshotId: publication.snapshotId, generation: 6 },
+  failure: null,
+  createdAt: "2026-08-21T02:19:00.000Z",
+  startedAt: "2026-08-21T02:19:01.000Z",
+  finishedAt: "2026-08-21T02:20:00.000Z",
+  updatedAt: "2026-08-21T02:20:00.000Z",
+};
+
 function setDesktop(matches: boolean) {
   Object.defineProperty(window, "matchMedia", {
     configurable: true,
@@ -95,6 +112,12 @@ function transport(empty = false): PublicationHistoryTransport {
       historyEtag: '"history-publications-v1"',
       activePointerEtag: '"pointer-v6"',
       data: { items: empty ? [] : [publication, { ...publication, snapshotId: "88888888-8888-4888-8888-888888888888", generation: 5, status: "failed", progress: null, rollbackEligibility: { eligible: false, reasonCode: "ROLLBACK_TARGET_INVALID" } }], activePointerEtag: '"pointer-v6"', nextCursor: null, hasMore: false, limit: 25 },
+    }),
+    jobs: vi.fn().mockResolvedValue({
+      etag: '"publication-jobs-v1"',
+      retryAfterMs: 2000,
+      requestId: "request-jobs",
+      data: { items: empty ? [] : [publicationJob], nextCursor: null, hasMore: false, limit: 25 },
     }),
     audit: vi.fn().mockResolvedValue({ historyEtag: '"history-audit-v1"', data: { items: empty ? [] : [auditEvent], nextCursor: null, hasMore: false, limit: 25 } }),
     rollback: vi.fn(),
@@ -115,6 +138,7 @@ describe("publication history screen", () => {
   it("keeps history and pointer ETags distinct, renders terminal progress and preserves opaque cursors", async () => {
     const api = transport();
     vi.mocked(api.revisions).mockResolvedValueOnce({ historyEtag: '"history-revisions-v1"', data: { items: [revision], nextCursor: "opaque:revisions:2/+==", hasMore: true, limit: 25 } }).mockResolvedValueOnce({ historyEtag: '"history-revisions-v2"', data: { items: [{ ...revision, id: "99999999-9999-4999-8999-999999999999", revisionNo: 2 }], nextCursor: null, hasMore: false, limit: 25 } });
+    vi.mocked(api.jobs).mockResolvedValueOnce({ etag: '"publication-jobs-v1"', retryAfterMs: 2000, requestId: "request-jobs-1", data: { items: [publicationJob], nextCursor: "opaque:jobs:2/+==", hasMore: true, limit: 25 } }).mockResolvedValueOnce({ etag: '"publication-jobs-v2"', retryAfterMs: 2000, requestId: "request-jobs-2", data: { items: [{ ...publicationJob, id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" }], nextCursor: null, hasMore: false, limit: 25 } });
     render(<PublicationHistoryScreen layerId={layerId} transport={api}/>);
 
     expect(await screen.findByText("Lịch sử Ranh giới phường xã")).toBeInTheDocument();
@@ -123,12 +147,18 @@ describe("publication history screen", () => {
     expect(screen.getByText("100%")).toBeInTheDocument();
     expect(screen.getByText("Chưa có số đo")).toBeInTheDocument();
     expect(screen.queryByText("50%")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Publication jobs" })).toBeInTheDocument();
+    expect(screen.getByText('"publication-jobs-v1"')).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Revision #3" })).toHaveAttribute("href", `/admin/layers/${layerId}/revisions/${revisionId}/review`);
     expect(screen.getByRole("button", { name: "Khôi phục bản này" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Tải thêm revision" }));
     await waitFor(() => expect(api.revisions).toHaveBeenCalledTimes(2));
     expect(vi.mocked(api.revisions).mock.calls[1]![1]?.cursor).toBe("opaque:revisions:2/+==");
+
+    fireEvent.click(screen.getByRole("button", { name: "Tải thêm publication job" }));
+    await waitFor(() => expect(api.jobs).toHaveBeenCalledTimes(2));
+    expect(vi.mocked(api.jobs).mock.calls[1]![1]?.cursor).toBe("opaque:jobs:2/+==");
   });
 
   it("renders empty states for a new layer", async () => {
@@ -146,6 +176,7 @@ describe("publication history screen", () => {
     setDesktop(desktop);
     render(<PublicationHistoryScreen layerId={layerId} transport={transport()}/>);
     expect(await screen.findByText("Lịch sử Ranh giới phường xã")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: `Publication job ${publicationJob.id}` })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Khôi phục bản này" })).not.toBeInTheDocument();
     if (role === "publisher") expect(screen.getByText("Rollback chỉ dùng trên desktop")).toBeInTheDocument();
   });
@@ -155,6 +186,23 @@ describe("publication history screen", () => {
     vi.mocked(api.publications).mockRejectedValue(new Error("history unavailable"));
     render(<PublicationHistoryScreen layerId={layerId} transport={api}/>);
     expect(await screen.findByText("history unavailable")).toBeInTheDocument();
+  });
+
+  it("keeps core history available and offers a safe retry when the optional job list fails", async () => {
+    const api = transport();
+    vi.mocked(api.jobs).mockRejectedValue(new Error("private upstream detail"));
+    render(<PublicationHistoryScreen layerId={layerId} transport={api}/>);
+
+    expect(await screen.findByText("Lịch sử Ranh giới phường xã")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Publication snapshots" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Revision #3" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Audit theo layer" })).toBeInTheDocument();
+    const warning = screen.getByRole("status");
+    expect(warning).toHaveTextContent("Chưa thể tải publication jobs");
+    expect(warning).not.toHaveTextContent("private upstream detail");
+
+    fireEvent.click(screen.getByRole("button", { name: "Thử tải lại job" }));
+    await waitFor(() => expect(api.jobs).toHaveBeenCalledTimes(2));
   });
 
   it("keeps a stale rollback error in its dialog while refreshing authoritative history", async () => {

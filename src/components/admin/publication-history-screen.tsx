@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import { IconArrowLeft, IconClock, IconDatabase, IconHistory, IconRefresh, IconShieldLock } from "@tabler/icons-react";
+import { IconArrowLeft, IconClock, IconDatabase, IconHistory, IconRefresh, IconServer, IconShieldLock } from "@tabler/icons-react";
 import { AdminErrorNotice, useAdminSession } from "@/components/admin/admin-session";
 import { AuditEventList } from "@/components/admin/audit-event-list";
 import { compactIdentifier, historyDate, historyStatusLabel } from "@/components/admin/history-format";
+import { PublicationJobStatus } from "@/components/admin/publication-job-status";
 import { RollbackDialog } from "@/components/admin/rollback-dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -30,10 +31,15 @@ import {
   type PublicationHistoryResource,
   type RollbackResult,
 } from "@/lib/api/history";
+import {
+  listLayerPublicationJobs,
+  type PublicationJobListResource,
+} from "@/lib/api/publication-jobs";
 
 export interface PublicationHistoryTransport {
   revisions: typeof listLayerRevisionHistory;
   publications: typeof listLayerPublicationHistory;
+  jobs: typeof listLayerPublicationJobs;
   audit: typeof listLayerAuditEvents;
   rollback: typeof rollbackLayer;
 }
@@ -41,6 +47,7 @@ export interface PublicationHistoryTransport {
 const defaultTransport: PublicationHistoryTransport = {
   revisions: listLayerRevisionHistory,
   publications: listLayerPublicationHistory,
+  jobs: listLayerPublicationJobs,
   audit: listLayerAuditEvents,
   rollback: rollbackLayer,
 };
@@ -53,7 +60,6 @@ function ScreenSkeleton() {
 }
 
 function progressText(publication: LayerPublicationHistory["items"][number]) {
-  if (publication.status === "published") return `${publication.progress ?? 100}%`;
   if (publication.progress === null) return "Chưa có số đo";
   return `${publication.progress}%`;
 }
@@ -71,16 +77,19 @@ export function PublicationHistoryScreen({ layerId, transport = defaultTransport
   const desktopCapable = useSyncExternalStore(subscribeDesktopAuthoringCapability, getDesktopAuthoringCapability, getServerDesktopAuthoringCapability);
   const [revisions, setRevisions] = useState<HistoryResource<LayerRevisionHistory> | null>(null);
   const [publications, setPublications] = useState<PublicationHistoryResource | null>(null);
+  const [jobs, setJobs] = useState<PublicationJobListResource | null>(null);
   const [audit, setAudit] = useState<HistoryResource<AuditEvents> | null>(null);
   const [error, setError] = useState<unknown>(null);
+  const [jobsError, setJobsError] = useState<unknown>(null);
   const [mutationError, setMutationError] = useState<unknown>(null);
   const [success, setSuccess] = useState<RollbackResult | null>(null);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState<"revisions" | "publications" | "audit" | null>(null);
+  const [loadingMore, setLoadingMore] = useState<"revisions" | "publications" | "jobs" | "audit" | null>(null);
   const [reloadVersion, setReloadVersion] = useState(0);
 
   const reload = useCallback(() => {
     setError(null);
+    setJobsError(null);
     setMutationError(null);
     setLoading(true);
     setReloadVersion((value) => value + 1);
@@ -88,17 +97,28 @@ export function PublicationHistoryScreen({ layerId, transport = defaultTransport
 
   useEffect(() => {
     let active = true;
-    Promise.all([
-      transport.revisions(layerId, { limit: 25 }),
-      transport.publications(layerId, { limit: 25 }),
-      transport.audit(layerId, { limit: 25 }),
-    ]).then(([nextRevisions, nextPublications, nextAudit]) => {
+    Promise.allSettled([
+      Promise.all([
+        transport.revisions(layerId, { limit: 25 }),
+        transport.publications(layerId, { limit: 25 }),
+        transport.audit(layerId, { limit: 25 }),
+      ]),
+      transport.jobs(layerId, { limit: 25 }),
+    ]).then(([coreResult, jobsResult]) => {
       if (!active) return;
-      setRevisions(nextRevisions);
-      setPublications(nextPublications);
-      setAudit(nextAudit);
-    }).catch((reason: unknown) => {
-      if (active) setError(reason);
+      if (coreResult.status === "fulfilled") {
+        setRevisions(coreResult.value[0]);
+        setPublications(coreResult.value[1]);
+        setAudit(coreResult.value[2]);
+      } else {
+        setError(coreResult.reason);
+      }
+      if (jobsResult.status === "fulfilled" && jobsResult.value.data) {
+        setJobs(jobsResult.value);
+        setJobsError(null);
+      } else if (jobsResult.status === "rejected") {
+        setJobsError(jobsResult.reason);
+      }
     }).finally(() => {
       if (active) setLoading(false);
     });
@@ -120,6 +140,15 @@ export function PublicationHistoryScreen({ layerId, transport = defaultTransport
     try {
       const next = await transport.publications(layerId, { limit: publications.data.limit, cursor: publications.data.nextCursor });
       setPublications({ ...next, data: { ...next.data, items: [...publications.data.items, ...next.data.items] } });
+    } catch (reason) { setMutationError(reason); } finally { setLoadingMore(null); }
+  }
+
+  async function moreJobs() {
+    if (!jobs?.data.nextCursor || loadingMore) return;
+    setLoadingMore("jobs");
+    try {
+      const next = await transport.jobs(layerId, { limit: jobs.data.limit, cursor: jobs.data.nextCursor });
+      if (next.data) setJobs({ ...next, data: { ...next.data, items: [...jobs.data.items, ...next.data.items] } });
     } catch (reason) { setMutationError(reason); } finally { setLoadingMore(null); }
   }
 
@@ -169,9 +198,21 @@ export function PublicationHistoryScreen({ layerId, transport = defaultTransport
       {publisherOnMobile && <Alert><IconShieldLock stroke={1.75}/><AlertTitle>Rollback chỉ dùng trên desktop</AlertTitle><AlertDescription>Mobile admin vẫn có thể xem lịch sử và review. Hành động thay đổi active pointer cần viewport desktop và thiết bị trỏ chính xác.</AlertDescription></Alert>}
     </div>
 
-    <section className="mt-8" aria-labelledby="publication-history-heading">
+    <section className="mt-8" aria-labelledby="publication-job-history-heading">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div><h2 id="publication-history-heading" className="text-lg font-semibold">Publication history</h2><p className="mt-1 text-sm text-muted-foreground">Publish hiện là checkpoint đồng bộ. Chỉ publication đã commit hiển thị 100%.</p></div>
+        <div><h2 id="publication-job-history-heading" className="text-lg font-semibold">Publication jobs</h2><p className="mt-1 text-sm text-muted-foreground">Tiến độ được đo theo đối tượng. Job đang chờ không có phần trăm giả.</p></div>
+        {jobs && <p className="text-xs text-muted-foreground">Job list ETag: <code>{jobs.etag}</code></p>}
+      </div>
+      {jobsError !== null && <Alert className="mt-4" role="status"><IconRefresh stroke={1.75}/><AlertTitle>Chưa thể tải publication jobs</AlertTitle><AlertDescription><p>Lịch sử revision, snapshot và audit vẫn dùng được. Hãy thử tải lại danh sách job từ máy chủ.</p><Button type="button" variant="outline" size="sm" className="mt-3" onClick={reload}><IconRefresh data-icon="inline-start" stroke={1.75}/>Thử tải lại job</Button></AlertDescription></Alert>}
+      {jobs && (jobs.data.items.length === 0 ? <Empty className="mt-4 border"><EmptyHeader><EmptyMedia variant="icon"><IconServer stroke={1.75}/></EmptyMedia><EmptyTitle>Chưa có publication job</EmptyTitle><EmptyDescription>Job sẽ xuất hiện khi Publisher gửi một revision đã duyệt để công bố.</EmptyDescription></EmptyHeader></Empty> : <div className="mt-4 grid gap-3 md:grid-cols-2">
+        {jobs.data.items.map((job) => <PublicationJobStatus key={job.id} job={job} compact/>)}
+      </div>)}
+      {jobs?.data.hasMore && <Button type="button" variant="outline" disabled={loadingMore !== null} onClick={moreJobs} className="mt-4">{loadingMore === "jobs" ? "Đang tải thêm..." : "Tải thêm publication job"}</Button>}
+    </section>
+
+    <section className="mt-10" aria-labelledby="publication-history-heading">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div><h2 id="publication-history-heading" className="text-lg font-semibold">Publication snapshots</h2><p className="mt-1 text-sm text-muted-foreground">Chỉ snapshot đã commit xuất hiện ở đây. Tiến độ không có số đo vẫn giữ trạng thái chưa xác định.</p></div>
         <div className="text-right text-xs text-muted-foreground"><p>History ETag: <code>{publications.historyEtag}</code></p><p className="mt-1">Pointer ETag: <code>{pointer ?? "Chưa có"}</code></p></div>
       </div>
       {publications.data.items.length === 0 ? <Empty className="mt-4 border"><EmptyHeader><EmptyMedia variant="icon"><IconDatabase stroke={1.75}/></EmptyMedia><EmptyTitle>Chưa có publication</EmptyTitle><EmptyDescription>Layer sẽ có lịch sử publication sau lần công bố thành công đầu tiên.</EmptyDescription></EmptyHeader></Empty> : <div className="mt-4 rounded-panel border bg-surface">
