@@ -121,11 +121,17 @@ describe("revision diff view", () => {
       featureId: "55555555-5555-4555-8555-555555555555",
       changeType: "added" as const,
     };
-    const load = vi.fn().mockResolvedValue(diffResource({
-      entries: [first, second],
-      nextCursor: null,
-      hasMore: false,
-    }));
+    const load = vi.fn()
+      .mockResolvedValueOnce(diffResource({
+        entries: [first, second],
+        nextCursor: null,
+        hasMore: false,
+      }))
+      .mockResolvedValueOnce(diffResource({
+        entries: [first],
+        nextCursor: null,
+        hasMore: false,
+      }));
     const view = render(<RevisionDiffView revisionId={revisionId} transport={{ load } as RevisionDiffTransport}/>);
 
     expect((await screen.findAllByText("Có thay đổi đã ẩn")).length).toBeGreaterThan(0);
@@ -154,8 +160,8 @@ describe("revision diff view", () => {
     view.rerender(<RevisionDiffView revisionId="66666666-6666-4666-8666-666666666666" transport={{ load } as RevisionDiffTransport}/>);
     await waitFor(() => {
       const reloadedEntries = screen.getAllByRole("article");
+      expect(reloadedEntries).toHaveLength(1);
       expect(reloadedEntries[0]).toHaveAttribute("tabindex", "0");
-      expect(reloadedEntries[1]).toHaveAttribute("tabindex", "-1");
     });
   });
 
