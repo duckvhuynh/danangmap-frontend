@@ -7,6 +7,7 @@ import type {
   PublicationJob,
   SynchronousPublicationAcceptance,
 } from "@/lib/api/publication-jobs";
+import { wideReviewLayoutQuery } from "@/lib/admin/authoring-capability";
 import { RevisionReview, type RevisionReviewTransport } from "./revision-review";
 
 vi.mock("@/components/admin/admin-session", async (importOriginal) => ({
@@ -129,7 +130,7 @@ function setCapability(input: { mediaMatches: boolean; wideLayoutMatches?: boole
   Object.defineProperty(window, "matchMedia", {
     configurable: true,
     value: vi.fn((query: string) => ({
-      matches: query === "(min-width: 768px)" ? (input.wideLayoutMatches ?? input.mediaMatches) : input.mediaMatches,
+      matches: query === wideReviewLayoutQuery ? (input.wideLayoutMatches ?? input.mediaMatches) : input.mediaMatches,
       media: query,
       onchange: null,
       addEventListener: vi.fn(),
@@ -289,7 +290,7 @@ describe("revision review publication capability", () => {
     expect(transport.jobs).toHaveBeenCalledWith(layerId, { revisionId, limit: 25 }, { signal: expect.any(AbortSignal) });
   });
 
-  it("keeps an active job visible in the wide review layout below the authoring breakpoint", async () => {
+  it("keeps an active job visible at the Tailwind md review layout below the authoring breakpoint", async () => {
     delete process.env.NEXT_PUBLIC_DANANGMAP_DEMO_MODE;
     setCapability({
       mediaMatches: false,

@@ -1,5 +1,5 @@
 export const desktopAuthoringQuery = "(min-width: 1024px) and (hover: hover) and (pointer: fine)";
-export const wideReviewLayoutQuery = "(min-width: 768px)";
+export const wideReviewLayoutQuery = "(min-width: 48rem)";
 
 interface NavigatorCapabilitySnapshot {
   maxTouchPoints?: number;
