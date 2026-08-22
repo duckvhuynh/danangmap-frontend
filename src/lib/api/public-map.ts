@@ -48,7 +48,7 @@ function decodePositions(value: unknown): number[][] { if (!Array.isArray(value)
 function decodeLines(value: unknown): number[][][] { if (!Array.isArray(value)) throw new Error("Mảng đường GeoJSON không hợp lệ."); return value.map(decodePositions); }
 function decodePolygons(value: unknown): number[][][][] { if (!Array.isArray(value)) throw new Error("Mảng polygon GeoJSON không hợp lệ."); return value.map(decodeLines); }
 
-function decodeGeometry(value: unknown): Geometry {
+export function decodeGeometry(value: unknown): Geometry {
   if (!isRecord(value) || typeof value.type !== "string") throw new Error("Geometry GeoJSON không hợp lệ.");
   const coordinates = value.coordinates;
   if (value.type === "Point") return { type: "Point", coordinates: decodePosition(coordinates) };
@@ -59,6 +59,31 @@ function decodeGeometry(value: unknown): Geometry {
   if (value.type === "MultiPolygon") return { type: "MultiPolygon", coordinates: decodePolygons(coordinates) };
   if (value.type === "GeometryCollection" && Array.isArray(value.geometries)) return { type: "GeometryCollection", geometries: value.geometries.map(decodeGeometry) };
   throw new Error("Geometry GeoJSON không được hỗ trợ.");
+}
+
+export function decodePublicFeatureDetail(value: unknown, layer: PublicLayer): PublicFeature {
+  if (!isRecord(value) || value.type !== "Feature" || !isRecord(value.geometry)) throw new Error("Chi tiết đối tượng không phải GeoJSON Feature hợp lệ.");
+  const properties = isRecord(value.properties) ? value.properties : {};
+  const id = asString(value.id, "feature.id");
+  const title = properties[layer.popupConfig.titleField];
+  const nestedMeta = isRecord(value.meta) ? value.meta : {};
+  const geometry = decodeGeometry(value.geometry);
+  const geometryKind = typeof value.geometryKind === "string" ? value.geometryKind : typeof nestedMeta.geometryKind === "string" ? nestedMeta.geometryKind : geometry.type;
+  const rawRadius = typeof value.radiusM === "number" ? value.radiusM : nestedMeta.radiusM;
+  return {
+    type: "Feature",
+    id,
+    geometry,
+    properties: {
+      id,
+      layerId: layer.id,
+      name: typeof title === "string" || typeof title === "number" ? String(title) : "Đối tượng chưa đặt tên",
+      kind: layer.name,
+      geometryKind,
+      radiusM: typeof rawRadius === "number" && Number.isFinite(rawRadius) ? rawRadius : null,
+      metadata: Object.fromEntries(Object.entries(properties).filter((entry): entry is [string, string | number | null] => entry[1] === null || typeof entry[1] === "string" || typeof entry[1] === "number")),
+    },
+  };
 }
 
 function unwrapEnvelope(value: unknown): unknown {

@@ -1,0 +1,22 @@
+FROM mcr.microsoft.com/playwright:v1.62.1-noble
+
+WORKDIR /app
+ENV CI=1
+
+COPY package.json package-lock.json ./
+RUN npm ci \
+  && test "$(npx playwright --version)" = "Version 1.62.1"
+
+COPY openapi ./openapi
+COPY scripts ./scripts
+COPY src/lib/api/generated ./src/lib/api/generated
+RUN npm run api:check
+
+COPY playwright.real.config.ts ./
+COPY e2e-real ./e2e-real
+RUN if grep -R -E '\.route\(|route\.(fulfill|abort|fallback)\(|NEXT_PUBLIC_DANANGMAP_(DEMO_MODE|AUTH_E2E_MODE|USER_IMPORT_E2E_MODE)' playwright.real.config.ts e2e-real; then \
+      echo "Real-stack tests must not use route mocks or demo E2E modes." >&2; \
+      exit 1; \
+    fi
+
+CMD ["npx", "playwright", "test", "--config=playwright.real.config.ts", "--project=real-stack"]

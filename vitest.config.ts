@@ -3,5 +3,10 @@ import path from "node:path";
 
 export default defineConfig({
   resolve: { alias: { "@": path.resolve(__dirname, "src") } },
-  test: { environment: "jsdom", setupFiles: ["./vitest.setup.ts"], exclude: ["e2e/**", "node_modules/**"], coverage: { reporter: ["text", "html"] } },
+  test: {
+    environment: "jsdom",
+    setupFiles: ["./vitest.setup.ts"],
+    exclude: ["e2e/**", "e2e-real/**", "node_modules/**"],
+    coverage: { reporter: ["text", "html"] },
+  },
 });

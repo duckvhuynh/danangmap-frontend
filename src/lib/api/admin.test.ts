@@ -12,14 +12,14 @@ function requestParts(input: RequestInfo | URL, init?: RequestInit) {
   return { url: new URL(String(input)), method: init?.method ?? "GET", headers: new Headers(init?.headers), credentials: init?.credentials };
 }
 
-function transport() {
+function transport(workspaceBounds: unknown = [108, 15.9, 108.4, 16.2]) {
   const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const { url, method } = requestParts(input, init);
     const headers = { "content-type": "application/json", etag: `"rev-${revisionId}-v3"` };
     if (url.pathname.endsWith("/auth/me")) return new Response(envelope({ id: "user-1", email: "editor@example.gov.vn", username: "editor", displayName: "Editor", role: "editor", status: "active", mfaEnabled: true, mustChangePassword: false }), { status: 200, headers });
     if (url.pathname.endsWith("/auth/csrf")) return new Response(envelope({ csrfToken: "csrf-1" }), { status: 200, headers });
     if (url.pathname.endsWith("/admin/layers")) return new Response(envelope([{ id: layerId, slug: "offices", displayOrder: 0, revisionId, title: "Trụ sở", status: "draft", geometryMode: "point", updatedAt: "2026-08-21T00:00:00.000Z" }]), { status: 200, headers });
-    if (url.pathname.endsWith(`/revisions/${revisionId}/workspace`)) return new Response(envelope({ revisionId, layerId, status: "draft", serverCursor: "3", featureCount: 1, bounds: [108, 15.9, 108.4, 16.2], schemaVersion: 1, updatedAt: "2026-08-21T00:00:00.000Z" }), { status: 200, headers });
+    if (url.pathname.endsWith(`/revisions/${revisionId}/workspace`)) return new Response(envelope({ revisionId, layerId, status: "draft", serverCursor: "3", featureCount: 1, bounds: workspaceBounds, schemaVersion: 1, updatedAt: "2026-08-21T00:00:00.000Z" }), { status: 200, headers });
     if (url.pathname.endsWith(`/revisions/${revisionId}/features`) && method === "GET") return new Response(envelope([feature]), { status: 200, headers });
     if (url.pathname.endsWith(`/revisions/${revisionId}`)) return new Response(envelope({ revision: { id: revisionId, layerId, revisionNo: 3, status: "draft", title: "Trụ sở", description: "", geometryMode: "point", allowedGeometryKinds: ["point"], style: {}, lockVersion: 3, createdBy: "user-1", updatedAt: "2026-08-21T00:00:00.000Z" }, fields: [{ id: "field-1", revisionId, key: "name", label: "Tên", type: "text", required: true, sensitive: false, offlineCache: true }] }), { status: 200, headers });
     if (url.pathname.endsWith(`/revisions/${revisionId}/features`) && method === "POST") return new Response(envelope({ feature, serverCursor: "4" }), { status: 201, headers: { ...headers, etag: `"rev-${revisionId}-v4"` } });
@@ -54,6 +54,19 @@ describe("typed admin API adapter", () => {
     expect(creates.map((request) => request.headers.get("idempotency-key"))).toEqual(["operation-fixed", "operation-fixed"]);
     expect(creates[0].headers.get("if-match")).toBe(`"rev-${revisionId}-v3"`);
     expect(creates[0].headers.get("x-csrf-token")).toBe("csrf-1");
+  });
+
+  it.each([
+    ["single-point", [108.215, 16.072, 108.215, 16.072]],
+    ["null", null],
+    ["malformed", [108.215, "invalid", 108.3, 16.2]],
+  ])("uses the municipal bbox for %s workspace bounds", async (_label, bounds) => {
+    const { fetcher, client } = transport(bounds);
+    await loadRevisionBundle(revisionId, client);
+    const featureRequest = fetcher.mock.calls
+      .map(([input, init]) => requestParts(input, init))
+      .find((request) => request.url.pathname.endsWith("/features"));
+    expect(featureRequest?.url.searchParams.get("bbox")).toBe("107.8,15.8,108.6,16.4");
   });
 
   it("sends typed workflow headers and maps trust-boundary errors", async () => {

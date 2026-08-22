@@ -50,6 +50,7 @@ export class AdminApiError extends Error {
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
+const DANANG_ADMIN_BBOX = "107.8,15.8,108.6,16.4";
 const requiredString = (value: unknown, field: string) => {
   if (typeof value !== "string") throw new AdminApiError(502, "CONTRACT_INVALID", `Phản hồi API thiếu trường ${field}.`);
   return value;
@@ -108,6 +109,12 @@ function problem(error: unknown, response: Response) {
 
 function resultData(result: { data?: unknown; error?: unknown; response: Response }) {
   if (!result.response.ok || result.error !== undefined) throw problem(result.error, result.response);
+  return result.data;
+}
+
+export function assertAdminResult<T>(result: { data?: T; error?: unknown; response: Response }): T {
+  if (!result.response.ok || result.error !== undefined) throw problem(result.error, result.response);
+  if (result.data === undefined) throw new AdminApiError(502, "CONTRACT_INVALID", "Phản hồi API không có dữ liệu.");
   return result.data;
 }
 
@@ -172,7 +179,9 @@ export async function acquireCsrfToken(client: ApiClient = apiClient) {
 
 export async function logout(auth: MutationAuth, client: ApiClient = apiClient) {
   if (process.env.NEXT_PUBLIC_DANANGMAP_DEMO_MODE === "true") return;
-  const result = await client.POST("/api/v1/auth/logout", { headers: { "X-CSRF-Token": auth.csrfToken } });
+  const result = await client.POST("/api/v1/auth/logout", {
+    params: { header: { "X-CSRF-Token": auth.csrfToken } },
+  });
   resultData(result);
 }
 
@@ -200,7 +209,13 @@ function decodeRevision(value: unknown): { revision: AdminRevision; fields: Admi
 function decodeWorkspace(value: unknown): AdminWorkspace {
   const data = envelopeData(value);
   if (!isRecord(data)) throw new AdminApiError(502, "CONTRACT_INVALID", "Workspace response không hợp lệ.");
-  return { revisionId: requiredString(data.revisionId, "revisionId"), layerId: requiredString(data.layerId, "layerId"), status: requiredString(data.status, "status"), serverCursor: requiredString(data.serverCursor, "serverCursor"), featureCount: requiredNumber(data.featureCount, "featureCount"), bounds: Array.isArray(data.bounds) ? data.bounds.filter((number): number is number => typeof number === "number") : null, schemaVersion: requiredNumber(data.schemaVersion, "schemaVersion"), updatedAt: requiredString(data.updatedAt, "updatedAt") };
+  return { revisionId: requiredString(data.revisionId, "revisionId"), layerId: requiredString(data.layerId, "layerId"), status: requiredString(data.status, "status"), serverCursor: requiredString(data.serverCursor, "serverCursor"), featureCount: requiredNumber(data.featureCount, "featureCount"), bounds: Array.isArray(data.bounds) ? data.bounds.filter((number): number is number => typeof number === "number" && Number.isFinite(number)) : null, schemaVersion: requiredNumber(data.schemaVersion, "schemaVersion"), updatedAt: requiredString(data.updatedAt, "updatedAt") };
+}
+
+function workspaceBbox(bounds: number[] | null) {
+  if (bounds?.length !== 4 || !bounds.every(Number.isFinite)) return DANANG_ADMIN_BBOX;
+  const [west, south, east, north] = bounds;
+  return west! < east! && south! < north! ? bounds.join(",") : DANANG_ADMIN_BBOX;
 }
 
 function decodeFeature(value: unknown): AdminFeature {
@@ -219,7 +234,7 @@ export async function loadRevisionBundle(revisionId: string, client: ApiClient =
   ]);
   const revisionData = decodeRevision(resultData(revisionResult));
   const workspace = decodeWorkspace(resultData(workspaceResult));
-  const bbox = workspace.bounds?.length === 4 ? workspace.bounds.join(",") : "107.8,15.8,108.6,16.4";
+  const bbox = workspaceBbox(workspace.bounds);
   const featureResult = await client.GET("/api/v1/admin/revisions/{revisionId}/features", { params: { path: { revisionId }, query: { bbox } } });
   const featureData = envelopeData(resultData(featureResult));
   if (!Array.isArray(featureData)) throw new AdminApiError(502, "CONTRACT_INVALID", "Danh sách feature không hợp lệ.");
