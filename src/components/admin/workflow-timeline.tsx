@@ -1,3 +1,4 @@
+import { useEffect, useId, useRef } from "react";
 import { IconGitCommit, IconHistory } from "@tabler/icons-react";
 import { AdminErrorNotice } from "@/components/admin/admin-session";
 import { historyDate, historyRoleLabel, historyStatusLabel } from "@/components/admin/history-format";
@@ -22,26 +23,39 @@ export function WorkflowTimeline({
   onRetry?: () => void;
   onLoadMore?: () => void;
 }) {
-  if (loading) return <div className="flex flex-col gap-3" role="status" aria-label="Đang tải tiến trình workflow"><Skeleton className="h-16 w-full"/><Skeleton className="h-16 w-full"/></div>;
+  const listId = useId();
+  const listRef = useRef<HTMLOListElement>(null);
+  const wasLoadingMore = useRef(false);
+
+  useEffect(() => {
+    if (wasLoadingMore.current && !loadingMore) listRef.current?.focus();
+    wasLoadingMore.current = loadingMore;
+  }, [events?.items.length, loadingMore]);
+
+  if (loading) return <div className="flex flex-col gap-3" role="status" aria-live="polite" aria-label="Đang tải tiến trình workflow"><Skeleton className="h-16 w-full"/><Skeleton className="h-16 w-full"/></div>;
   if (error) return <AdminErrorNotice error={error} onRetry={onRetry}/>;
-  if (!events || events.items.length === 0) return <Empty className="border"><EmptyHeader><EmptyMedia variant="icon"><IconHistory stroke={1.75}/></EmptyMedia><EmptyTitle>Chưa có chuyển trạng thái</EmptyTitle><EmptyDescription>Workflow sẽ ghi lại người thực hiện, vai trò, lý do và thời điểm.</EmptyDescription></EmptyHeader></Empty>;
+  if (!events || events.items.length === 0) return <Empty className="border" role="status" aria-live="polite"><EmptyHeader><EmptyMedia variant="icon"><IconHistory aria-hidden="true" stroke={1.75}/></EmptyMedia><EmptyTitle>Chưa có chuyển trạng thái</EmptyTitle><EmptyDescription>Workflow sẽ ghi lại người thực hiện, vai trò, lý do và thời điểm.</EmptyDescription></EmptyHeader></Empty>;
 
   return <div className="flex flex-col gap-4">
-    <ol className="divide-y rounded-panel border bg-surface" aria-label="Tiến trình workflow">
+    <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+      Đã tải {events.items.length.toLocaleString("vi-VN")} chuyển trạng thái workflow.
+    </p>
+    <ol ref={listRef} id={listId} tabIndex={-1} className="divide-y rounded-panel border bg-surface outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="Tiến trình workflow" aria-busy={loadingMore}>
       {events.items.map((event) => <li key={event.id} className="flex gap-3 p-4">
-        <span className="grid size-9 shrink-0 place-items-center rounded-control bg-accent-subtle text-primary"><IconGitCommit size={19} stroke={1.75}/></span>
+        <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-control bg-accent-subtle text-primary"><IconGitCommit size={19} stroke={1.75}/></span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
-            <span>{historyStatusLabel(event.fromStatus)}</span>
+            <span aria-hidden="true">{historyStatusLabel(event.fromStatus)}</span>
             <span aria-hidden="true">→</span>
-            <span>{historyStatusLabel(event.toStatus)}</span>
+            <span aria-hidden="true">{historyStatusLabel(event.toStatus)}</span>
+            <span className="sr-only">Từ {historyStatusLabel(event.fromStatus)} sang {historyStatusLabel(event.toStatus)}.</span>
             <Badge>{historyRoleLabel(event.role)}</Badge>
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">{event.actorDisplayName ?? "Người dùng nội bộ"}, {historyDate(event.occurredAt)}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{event.actorDisplayName ?? "Người dùng nội bộ"}, <time dateTime={event.occurredAt}>{historyDate(event.occurredAt)}</time></p>
           {event.reason && <p className="mt-2 text-sm leading-6">{event.reason}</p>}
         </div>
       </li>)}
     </ol>
-    {events.hasMore && onLoadMore && <Button type="button" variant="outline" disabled={loadingMore} onClick={onLoadMore} className="self-start">{loadingMore ? "Đang tải thêm..." : "Tải thêm workflow"}</Button>}
+    {events.hasMore && onLoadMore && <Button type="button" variant="outline" disabled={loadingMore} aria-controls={listId} aria-busy={loadingMore} onClick={onLoadMore} className="self-start">{loadingMore ? "Đang tải thêm..." : "Tải thêm workflow"}</Button>}
   </div>;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { IconArrowLeft, IconClock, IconDatabase, IconHistory, IconRefresh, IconServer, IconShieldLock } from "@tabler/icons-react";
 import { AdminErrorNotice, useAdminSession } from "@/components/admin/admin-session";
 import { AuditEventList } from "@/components/admin/audit-event-list";
@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   getDesktopAuthoringCapability,
   getServerDesktopAuthoringCapability,
@@ -53,7 +53,8 @@ const defaultTransport: PublicationHistoryTransport = {
 };
 
 function ScreenSkeleton() {
-  return <main className="mx-auto max-w-6xl p-4 pb-24 sm:p-6 md:p-8" role="status" aria-label="Đang tải lịch sử lớp dữ liệu">
+  return <main className="mx-auto max-w-6xl p-4 pb-24 sm:p-6 md:p-8" aria-busy="true">
+    <p className="sr-only" role="status" aria-live="polite">Đang tải lịch sử lớp dữ liệu.</p>
     <div className="flex flex-col gap-3"><Skeleton className="h-9 w-72"/><Skeleton className="h-5 w-full max-w-xl"/></div>
     <div className="mt-8 flex flex-col gap-5"><Skeleton className="h-72 w-full rounded-panel"/><Skeleton className="h-64 w-full rounded-panel"/><Skeleton className="h-64 w-full rounded-panel"/></div>
   </main>;
@@ -86,11 +87,13 @@ export function PublicationHistoryScreen({ layerId, transport = defaultTransport
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState<"revisions" | "publications" | "jobs" | "audit" | null>(null);
   const [reloadVersion, setReloadVersion] = useState(0);
+  const successAlertRef = useRef<HTMLDivElement>(null);
 
-  const reload = useCallback(() => {
+  const reload = useCallback((preserveSuccess = false) => {
     setError(null);
     setJobsError(null);
     setMutationError(null);
+    if (!preserveSuccess) setSuccess(null);
     setLoading(true);
     setReloadVersion((value) => value + 1);
   }, []);
@@ -124,6 +127,10 @@ export function PublicationHistoryScreen({ layerId, transport = defaultTransport
     });
     return () => { active = false; };
   }, [layerId, reloadVersion, transport]);
+
+  useEffect(() => {
+    if (success && !loading) successAlertRef.current?.focus();
+  }, [loading, success]);
 
   async function moreRevisions() {
     if (!revisions?.data.nextCursor || loadingMore) return;
@@ -164,12 +171,11 @@ export function PublicationHistoryScreen({ layerId, transport = defaultTransport
   function rollbackSucceeded(result: RollbackResult) {
     setSuccess(result);
     setMutationError(null);
-    reload();
+    reload(true);
   }
 
   function refreshAfterStaleRollback() {
-    setLoading(true);
-    setReloadVersion((value) => value + 1);
+    reload();
   }
 
   if (loading && !revisions) return <ScreenSkeleton/>;
@@ -180,22 +186,28 @@ export function PublicationHistoryScreen({ layerId, transport = defaultTransport
   const pointer = publications.activePointerEtag;
   const publisherOnMobile = principal.role === "publisher" && !desktopCapable;
 
-  return <main className="mx-auto max-w-6xl p-4 pb-24 sm:p-6 md:p-8">
+  return <main className="mx-auto max-w-6xl p-4 pb-24 sm:p-6 md:p-8" aria-labelledby="publication-history-title" aria-busy={loading}>
     <header className="flex flex-wrap items-start justify-between gap-4">
       <div>
-        <Button asChild variant="ghost" size="sm" className="-ml-3 mb-2"><Link href={`/admin/layers/${layerId}`}><IconArrowLeft data-icon="inline-start" stroke={1.75}/>Cấu hình lớp</Link></Button>
-        <h1 className="text-2xl font-semibold tracking-[-0.02em]">Lịch sử {title}</h1>
+        <Button asChild variant="ghost" size="sm" className="-ml-3 mb-2"><Link href={`/admin/layers/${layerId}`}><IconArrowLeft aria-hidden="true" data-icon="inline-start" stroke={1.75}/>Cấu hình lớp</Link></Button>
+        <h1 id="publication-history-title" className="text-2xl font-semibold tracking-[-0.02em]">Lịch sử {title}</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">Theo dõi revision, publication, active pointer và sự kiện audit trong phạm vi vai trò hiện tại.</p>
       </div>
-      <Button type="button" variant="outline" onClick={reload}><IconRefresh data-icon="inline-start" stroke={1.75}/>Làm mới</Button>
+      <Button type="button" variant="outline" aria-controls="publication-history-content" aria-busy={loading} disabled={loading} onClick={() => reload()}><IconRefresh aria-hidden="true" data-icon="inline-start" stroke={1.75}/>{loading ? "Đang làm mới..." : "Làm mới"}</Button>
     </header>
 
+    <div id="publication-history-content">
+    <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+      {loadingMore
+        ? "Đang tải thêm dữ liệu lịch sử."
+        : `Đã tải ${publications.data.items.length.toLocaleString("vi-VN")} publication, ${revisions.data.items.length.toLocaleString("vi-VN")} revision và ${audit.data.items.length.toLocaleString("vi-VN")} sự kiện kiểm toán.`}
+    </p>
     <div className="mt-6 flex flex-col gap-4">
-      {success && <Alert><IconHistory stroke={1.75}/><AlertTitle>Khôi phục hoàn tất</AlertTitle><AlertDescription>Generation {success.generation} đã được tạo. Publication pointer và lịch sử đang được tải lại.</AlertDescription></Alert>}
+      {success && <Alert ref={successAlertRef} tabIndex={-1} role="status" aria-atomic="true" className="outline-none focus-visible:ring-2 focus-visible:ring-ring"><IconHistory aria-hidden="true" stroke={1.75}/><AlertTitle>Khôi phục hoàn tất</AlertTitle><AlertDescription>Generation {success.generation} đã được tạo. Publication pointer và lịch sử đã được tải lại.</AlertDescription></Alert>}
       {mutationError !== null && (
-        <AdminErrorNotice error={mutationError} onRetry={reload}/>
+        <AdminErrorNotice error={mutationError} onRetry={() => reload()}/>
       )}
-      {publisherOnMobile && <Alert><IconShieldLock stroke={1.75}/><AlertTitle>Rollback chỉ dùng trên desktop</AlertTitle><AlertDescription>Mobile admin vẫn có thể xem lịch sử và review. Hành động thay đổi active pointer cần viewport desktop và thiết bị trỏ chính xác.</AlertDescription></Alert>}
+      {publisherOnMobile && <Alert><IconShieldLock aria-hidden="true" stroke={1.75}/><AlertTitle>Rollback chỉ dùng trên desktop</AlertTitle><AlertDescription>Mobile admin vẫn có thể xem lịch sử và review. Hành động thay đổi active pointer cần viewport desktop và thiết bị trỏ chính xác.</AlertDescription></Alert>}
     </div>
 
     <section className="mt-8" aria-labelledby="publication-job-history-heading">
@@ -203,7 +215,7 @@ export function PublicationHistoryScreen({ layerId, transport = defaultTransport
         <div><h2 id="publication-job-history-heading" className="text-lg font-semibold">Publication jobs</h2><p className="mt-1 text-sm text-muted-foreground">Tiến độ được đo theo đối tượng. Job đang chờ không có phần trăm giả.</p></div>
         {jobs && <p className="text-xs text-muted-foreground">Job list ETag: <code>{jobs.etag}</code></p>}
       </div>
-      {jobsError !== null && <Alert className="mt-4" role="status"><IconRefresh stroke={1.75}/><AlertTitle>Chưa thể tải publication jobs</AlertTitle><AlertDescription><p>Lịch sử revision, snapshot và audit vẫn dùng được. Hãy thử tải lại danh sách job từ máy chủ.</p><Button type="button" variant="outline" size="sm" className="mt-3" onClick={reload}><IconRefresh data-icon="inline-start" stroke={1.75}/>Thử tải lại job</Button></AlertDescription></Alert>}
+      {jobsError !== null && <Alert className="mt-4" role="status"><IconRefresh aria-hidden="true" stroke={1.75}/><AlertTitle>Chưa thể tải publication jobs</AlertTitle><AlertDescription><p>Lịch sử revision, snapshot và audit vẫn dùng được. Hãy thử tải lại danh sách job từ máy chủ.</p><Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => reload()}><IconRefresh aria-hidden="true" data-icon="inline-start" stroke={1.75}/>Thử tải lại job</Button></AlertDescription></Alert>}
       {jobs && (jobs.data.items.length === 0 ? <Empty className="mt-4 border"><EmptyHeader><EmptyMedia variant="icon"><IconServer stroke={1.75}/></EmptyMedia><EmptyTitle>Chưa có publication job</EmptyTitle><EmptyDescription>Job sẽ xuất hiện khi Publisher gửi một revision đã duyệt để công bố.</EmptyDescription></EmptyHeader></Empty> : <div className="mt-4 grid gap-3 md:grid-cols-2">
         {jobs.data.items.map((job) => <PublicationJobStatus key={job.id} job={job} compact/>)}
       </div>)}
@@ -217,6 +229,7 @@ export function PublicationHistoryScreen({ layerId, transport = defaultTransport
       </div>
       {publications.data.items.length === 0 ? <Empty className="mt-4 border"><EmptyHeader><EmptyMedia variant="icon"><IconDatabase stroke={1.75}/></EmptyMedia><EmptyTitle>Chưa có publication</EmptyTitle><EmptyDescription>Layer sẽ có lịch sử publication sau lần công bố thành công đầu tiên.</EmptyDescription></EmptyHeader></Empty> : <div className="mt-4 rounded-panel border bg-surface">
         <Table>
+          <TableCaption className="sr-only">Các publication snapshot của lớp, sắp xếp từ mới nhất đến cũ nhất.</TableCaption>
           <TableHeader><TableRow><TableHead>Generation</TableHead><TableHead>Revision</TableHead><TableHead>Trạng thái</TableHead><TableHead>Tiến độ</TableHead><TableHead>Kích hoạt</TableHead><TableHead className="text-right">Hành động</TableHead></TableRow></TableHeader>
           <TableBody>{publications.data.items.map((publication) => {
             const canRollback = principal.role === "publisher" && desktopCapable && publication.rollbackEligibility.eligible && pointer !== null;
@@ -249,5 +262,6 @@ export function PublicationHistoryScreen({ layerId, transport = defaultTransport
       <div className="mb-4"><h2 id="audit-heading" className="text-lg font-semibold">Audit theo layer</h2><p className="mt-1 text-sm text-muted-foreground">Backend áp dụng action allowlist theo vai trò. Filter phía client không thể mở rộng phạm vi này.</p></div>
       <AuditEventList events={audit.data} loadingMore={loadingMore === "audit"} onLoadMore={audit.data.hasMore ? moreAudit : undefined}/>
     </section>
+    </div>
   </main>;
 }

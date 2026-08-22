@@ -231,11 +231,15 @@ describe("revision review publication capability", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Duyệt thay đổi" }));
     await waitFor(() => expect(approve).toHaveBeenCalledWith(revisionId, "", expect.any(String), { csrfToken: "csrf-fixed" }));
+    const workflowFeedback = (await screen.findByText("Đã duyệt revision.")).closest('[tabindex="-1"]');
+    expect(workflowFeedback).not.toBeNull();
+    await waitFor(() => expect(workflowFeedback).toHaveFocus());
 
     fireEvent.click(screen.getByRole("button", { name: "Xem thay đổi của 18 đối tượng" }));
     expect(changesTab).toHaveAttribute("aria-selected", "true");
     expect(mapPanel).toHaveClass("hidden");
-    expect(changesPanel).toHaveClass("contents");
+    expect(changesPanel).toHaveClass("flex", "flex-col", "gap-8");
+    await waitFor(() => expect(changesPanel).toHaveFocus());
 
     fireEvent.click(commentsTab);
     expect(commentsTab).toHaveAttribute("aria-selected", "true");
