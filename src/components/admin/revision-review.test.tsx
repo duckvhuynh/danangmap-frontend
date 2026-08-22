@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useAdminSession } from "@/components/admin/admin-session";
 import type { AdminPrincipal, RevisionBundle } from "@/lib/api/admin";
@@ -258,7 +258,23 @@ describe("revision review publication capability", () => {
     const transport = realTransport({ jobs: [active] });
     render(<RevisionReview revisionId={revisionId} layerId={layerId} transport={transport}/>);
 
-    expect(await screen.findByRole("region", { name: `Publication job ${active.id}` })).toHaveTextContent("Đang chờ xử lý");
+    const publicationRegionName = `Publication job ${active.id}`;
+    const compactStatus = await screen.findByRole("region", { name: publicationRegionName });
+    const mapTab = screen.getByRole("tab", { name: "Bản đồ" });
+    const mapPanel = screen.getByRole("tabpanel", { name: "Bản đồ" });
+    const commentsTab = screen.getByRole("tab", { name: "Nhận xét" });
+    const commentsPanel = screen.getByRole("tabpanel", { name: "Nhận xét" });
+    expect(mapTab).toHaveAttribute("aria-selected", "true");
+    expect(within(mapPanel).getByRole("region", { name: publicationRegionName })).toBe(compactStatus);
+    expect(compactStatus).toHaveTextContent("Đang chờ xử lý");
+    expect(within(compactStatus).getByText("Đang chờ xử lý", { selector: '[aria-live="polite"]' })).toBeInTheDocument();
+    expect(screen.getAllByRole("region", { name: publicationRegionName })).toHaveLength(1);
+
+    fireEvent.click(commentsTab);
+    expect(commentsTab).toHaveAttribute("aria-selected", "true");
+    expect(within(mapPanel).queryByRole("region", { name: publicationRegionName })).not.toBeInTheDocument();
+    expect(within(commentsPanel).getByRole("region", { name: publicationRegionName })).toHaveTextContent(`Job ${active.id}`);
+    expect(screen.getAllByRole("region", { name: publicationRegionName })).toHaveLength(1);
     expect(screen.queryByLabelText("Ghi chú công bố")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Công bố|Thử công bố/u })).not.toBeInTheDocument();
     expect(transport.jobs).toHaveBeenCalledWith(layerId, { revisionId, limit: 25 }, { signal: expect.any(AbortSignal) });
