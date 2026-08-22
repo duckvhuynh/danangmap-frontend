@@ -179,7 +179,12 @@ async function approveAsReviewer(page: Page, revisionId: string) {
   const header = page.locator("header");
   await expect(header.getByText("Chờ duyệt", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Công bố revision" })).not.toBeAttached();
-  await page.getByLabel("Bình luận review").fill("Gate B reviewer xác nhận dữ liệu hợp lệ.");
+  const commentsTab = page.getByRole("tab", { name: "Nhận xét" });
+  await commentsTab.click();
+  await expect(commentsTab).toHaveAttribute("aria-selected", "true");
+  const commentsPanel = page.getByRole("tabpanel", { name: "Nhận xét" });
+  await expect(commentsPanel).toBeVisible();
+  await commentsPanel.getByLabel("Bình luận review").fill("Gate B reviewer xác nhận dữ liệu hợp lệ.");
   await page.getByRole("button", { name: "Duyệt thay đổi" }).click();
   await expect(header.getByText("Đã duyệt", { exact: true })).toBeVisible();
 }
