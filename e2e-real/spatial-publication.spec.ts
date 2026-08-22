@@ -188,8 +188,29 @@ async function publishAsPublisher(page: Page, revisionId: string) {
   await expect(page.getByText("approved", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Duyệt thay đổi" })).not.toBeAttached();
   await page.getByLabel("Ghi chú công bố").fill("Gate B công bố dữ liệu đã được duyệt.");
+  const responsePromise = page.waitForResponse((response) => response.url().endsWith(`/api/v1/admin/revisions/${revisionId}:publish`) && response.request().method() === "POST");
   await page.getByRole("button", { name: "Công bố revision" }).click();
-  await expect(page.getByText("published", { exact: true })).toBeVisible();
+  const response = await responsePromise;
+  expect(response.status()).toBe(202);
+  const accepted = record(record(await response.json()).data);
+  if (accepted.status === "queued") {
+    expect(response.headers().etag).toBeTruthy();
+    expect(response.headers().location).toBeTruthy();
+    expect(response.headers()["retry-after"]).toBeTruthy();
+    const jobId = stringField(accepted, "id");
+    await expect.poll(async () => page.evaluate(async (id) => {
+      const detail = await fetch(`/api/v1/admin/publication-jobs/${encodeURIComponent(id)}`, { credentials: "include", cache: "no-store" });
+      const envelope: unknown = await detail.json();
+      if (typeof envelope !== "object" || envelope === null || !("data" in envelope) || typeof envelope.data !== "object" || envelope.data === null || !("status" in envelope.data)) return "invalid";
+      return String(envelope.data.status);
+    }, jobId), { timeout: 150_000, intervals: [500, 1_000, 2_000] }).toBe("succeeded");
+  } else {
+    expect(accepted).toMatchObject({ status: "completed", snapshotId: expect.any(String), generation: expect.any(Number) });
+    expect(response.headers().etag === undefined || /^W\//iu.test(response.headers().etag)).toBe(true);
+    expect(response.headers().location).toBeUndefined();
+    expect(response.headers()["retry-after"]).toBeUndefined();
+  }
+  await expect(page.getByText("published", { exact: true })).toBeVisible({ timeout: 150_000 });
 }
 
 async function assertPublicUi(page: Page, importedName: string, privateValue: string) {

@@ -109,20 +109,26 @@ async function publish(page: Page, revisionId: string) {
     body: { releaseNote: "Publication history acceptance", clientIntent: "desktop" },
   });
   expect(result.status).toBe(202);
-  expect(result.etag).toBeTruthy();
-  expect(result.location).toBeTruthy();
-  expect(result.retryAfter).toBeTruthy();
   const accepted = record(envelopeData(result.body));
-  expect(accepted.status).toBe("queued");
-  const jobId = String(accepted.id);
-  expect(result.location).toContain(`/api/v1/admin/publication-jobs/${jobId}`);
-  await expect.poll(async () => {
-    const detail = await browserGet(page, `/api/v1/admin/publication-jobs/${jobId}`);
-    expect(detail.status).toBe(200);
-    const job = record(envelopeData(detail.body));
-    if (job.status === "failed") throw new Error(`Publication job ${jobId} failed with code ${String(record(job.failure)?.code ?? "UNKNOWN")}.`);
-    return job.status;
-  }, { timeout: 150_000, intervals: [1_000, 2_000, 3_000] }).toBe("succeeded");
+  if (accepted.status === "queued") {
+    expect(result.etag).toBeTruthy();
+    expect(result.location).toBeTruthy();
+    expect(result.retryAfter).toBeTruthy();
+    const jobId = String(accepted.id);
+    expect(result.location).toContain(`/api/v1/admin/publication-jobs/${jobId}`);
+    await expect.poll(async () => {
+      const detail = await browserGet(page, `/api/v1/admin/publication-jobs/${jobId}`);
+      expect(detail.status).toBe(200);
+      const job = record(envelopeData(detail.body));
+      if (job.status === "failed") throw new Error(`Publication job ${jobId} failed with redacted code ${String(record(job.failure)?.code ?? "UNKNOWN")}.`);
+      return job.status;
+    }, { timeout: 150_000, intervals: [1_000, 2_000, 3_000] }).toBe("succeeded");
+  } else {
+    expect(accepted).toMatchObject({ status: "completed", snapshotId: expect.any(String), generation: expect.any(Number) });
+    expect(result.etag === null || /^W\//iu.test(result.etag)).toBe(true);
+    expect(result.location).toBeNull();
+    expect(result.retryAfter).toBeNull();
+  }
 }
 
 async function createSuccessor(page: Page, layerId: string, publishedRevisionId: string) {

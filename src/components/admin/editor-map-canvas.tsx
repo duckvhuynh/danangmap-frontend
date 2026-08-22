@@ -5,6 +5,7 @@ import mapboxgl, { type Map as MapboxMap } from "mapbox-gl";
 import { TerraDraw, TerraDrawCircleMode, TerraDrawLineStringMode, TerraDrawPointMode, TerraDrawPolygonMode, TerraDrawSelectMode } from "terra-draw";
 import { TerraDrawMapboxGLAdapter } from "terra-draw-mapbox-gl-adapter";
 import { applyPendingRestore, type RestoreRequest } from "@/lib/editor/restore-controller";
+import { resolveMapboxStyle } from "@/components/map/mapbox-config";
 
 export type DrawTool = "select" | "point" | "linestring" | "polygon" | "circle";
 
@@ -31,7 +32,7 @@ export default function EditorMapCanvas({ activeTool, restore, deleteRequest, on
   useEffect(() => {
     if (!containerRef.current || !token || mapRef.current) return;
     mapboxgl.accessToken = token;
-    const map = new mapboxgl.Map({ container: containerRef.current, style: "mapbox://styles/mapbox/light-v11", center: [108.2208, 16.0668], zoom: 13, attributionControl: true });
+    const map = new mapboxgl.Map({ container: containerRef.current, style: resolveMapboxStyle("light"), center: [108.2208, 16.0668], zoom: 13, attributionControl: true });
     mapRef.current = map;
     map.on("error", (event) => onErrorRef.current(event.error?.message ?? "Không tải được bản đồ biên tập."));
     map.on("load", () => {

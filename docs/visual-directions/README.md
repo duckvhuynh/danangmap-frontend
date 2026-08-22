@@ -9,11 +9,11 @@
 
 ## Implementation QA captures
 
-The `implementation-*.png` files were captured from the running Next.js application with the exact viewport listed in `../../design-qa.md`. They are degraded-state evidence because no restricted Mapbox public token was available. They must not be used to mark the final live-map visual gate as passed.
+The selected direction is `Direction 1 — Civic Focus (refined)`. Live Mapbox captures and same-input comparisons were recorded on 2026-08-22 at the exact CSS targets listed in `../../design-qa.md`.
 
-Status: `AWAITING_SELECTION`
+Status: `SELECTED_LIVE_QA_BLOCKED`
 
-Ba hình này được tạo ngày 2026-08-21 từ màn hình DanangMap v1 và bố cục tham khảo geojson.io. Chúng chỉ là visual target cho public desktop map; chưa phải code hoặc giao diện đã được chấp nhận.
+The live application now renders the product-owner-supplied custom Street style and the official Light style. Runtime and core interaction checks pass. Final release sign-off remains blocked because the supplied public token still accepts an unauthorized origin and the small demo fixture is not feature-for-feature identical to the approved source rasters.
 
 | Lựa chọn | Artifact | Trọng tâm |
 |---|---|---|
@@ -21,4 +21,4 @@ Ba hình này được tạo ngày 2026-08-21 từ màn hình DanangMap v1 và b
 | 2 | [`direction-2.png`](direction-2.png) | Layer Dock, navigation rail, search command panel và active-layer dock |
 | 3 | [`direction-3.png`](direction-3.png) | Civic Atlas, text-first layer catalogue và map/list switch |
 
-Sau khi chủ sản phẩm chọn một hướng, cập nhật trạng thái trong `../DESIGN.md`, dẫn xuất admin desktop và mobile review theo cùng visual system, rồi mới scaffold UI. Không tự trộn nhiều hướng nếu chưa có một vòng review mới.
+Direction 2 and Direction 3 remain historical alternatives and must not be mixed into the selected system without a new product-owner review.

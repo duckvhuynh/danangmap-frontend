@@ -36,7 +36,7 @@ export function ensurePublicCustomLayers(map: CustomLayerMap, data: FeatureColle
   else map.addSource(publicSourceId, { type: "geojson", data, generateId: true });
   const color = catalogColorExpression(colors) as string;
   const layers: MapLayer[] = [
-    { id: publicLayerIds[0], type: "fill", source: publicSourceId, filter: ["==", ["geometry-type"], "Polygon"], paint: { "fill-color": color, "fill-opacity": 0.18 } },
+    { id: publicLayerIds[0], type: "fill", source: publicSourceId, filter: ["==", ["geometry-type"], "Polygon"], paint: { "fill-color": color, "fill-opacity": 0.12 } },
     { id: publicLayerIds[1], type: "line", source: publicSourceId, filter: ["==", ["geometry-type"], "Polygon"], paint: { "line-color": color, "line-width": 2 } },
     { id: publicLayerIds[2], type: "line", source: publicSourceId, filter: ["==", ["geometry-type"], "LineString"], paint: { "line-color": color, "line-width": 3 } },
     { id: publicLayerIds[3], type: "circle", source: publicSourceId, filter: ["==", ["geometry-type"], "Point"], paint: { "circle-radius": 7, "circle-color": color, "circle-stroke-color": "#FFFFFF", "circle-stroke-width": 2 } },
@@ -49,7 +49,7 @@ export function ensurePublicCustomLayers(map: CustomLayerMap, data: FeatureColle
     const visibility = hidden.has(layer.id) ? "none" : "visible";
     const ids = vectorLayerIds(layer.id);
     const vectorLayers: MapLayer[] = [
-      { id: ids[0], type: "fill", source: sourceId, "source-layer": layer.sourceLayer, minzoom: layer.minZoom, maxzoom: layer.maxZoom, filter: ["==", ["geometry-type"], "Polygon"], paint: { "fill-color": layer.color, "fill-opacity": 0.18 }, layout: { visibility } },
+      { id: ids[0], type: "fill", source: sourceId, "source-layer": layer.sourceLayer, minzoom: layer.minZoom, maxzoom: layer.maxZoom, filter: ["==", ["geometry-type"], "Polygon"], paint: { "fill-color": layer.color, "fill-opacity": 0.12 }, layout: { visibility } },
       { id: ids[1], type: "line", source: sourceId, "source-layer": layer.sourceLayer, minzoom: layer.minZoom, maxzoom: layer.maxZoom, filter: ["in", ["geometry-type"], ["literal", ["Polygon", "LineString"]]], paint: { "line-color": layer.color, "line-width": 2 }, layout: { visibility } },
       { id: ids[2], type: "circle", source: sourceId, "source-layer": layer.sourceLayer, minzoom: layer.minZoom, maxzoom: layer.maxZoom, filter: ["==", ["geometry-type"], "Point"], paint: { "circle-radius": 7, "circle-color": layer.color, "circle-stroke-color": "#FFFFFF", "circle-stroke-width": 2 }, layout: { visibility } },
     ];

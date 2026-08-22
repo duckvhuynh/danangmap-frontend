@@ -4,11 +4,18 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import {
   IconArrowLeft,
+  IconCalendar,
   IconCheck,
+  IconChevronRight,
+  IconCircleCheck,
+  IconClock,
   IconCloudUpload,
+  IconFileDescription,
+  IconInfoCircle,
   IconMessage,
   IconPolygon,
   IconRefresh,
+  IconUser,
   IconX,
 } from "@tabler/icons-react";
 import { AdminErrorNotice, useAdminSession } from "@/components/admin/admin-session";
@@ -49,13 +56,16 @@ import {
   getPublicationJob,
   listLayerPublicationJobs,
   publishRevision,
+  type AsynchronousPublicationAcceptance,
   type PublicationJob,
   type PublicationJobResource,
+  type SynchronousPublicationResult,
 } from "@/lib/api/publication-jobs";
 import {
   isTerminalPublicationJob,
   usePublicationJobTracking,
 } from "@/lib/publications/publication-job-tracking";
+import { cn } from "@/lib/utils";
 
 export interface RevisionReviewTransport {
   bundle: typeof loadRevisionBundle;
@@ -72,6 +82,11 @@ export interface RevisionReviewTransport {
 interface RevisionPublicationSeed {
   identity: string;
   resource: PublicationJobResource;
+}
+
+interface RevisionSynchronousPublication {
+  identity: string;
+  result: SynchronousPublicationResult;
 }
 
 const defaultTransport: RevisionReviewTransport = {
@@ -102,9 +117,10 @@ function recoveredJob(items: PublicationJob[]) {
   return items.find((item) => !isTerminalPublicationJob(item)) ?? items[0] ?? null;
 }
 
-function demoAcceptedJob(revisionId: string, layerId: string): PublicationJobResource {
+function demoAcceptedJob(revisionId: string, layerId: string): AsynchronousPublicationAcceptance {
   const now = new Date().toISOString();
   return {
+    mode: "async",
     data: {
       id: "99999999-9999-4999-8999-999999999999",
       layerId,
@@ -126,15 +142,46 @@ function demoAcceptedJob(revisionId: string, layerId: string): PublicationJobRes
   };
 }
 
-export function RevisionReview({
-  revisionId,
-  layerId,
-  transport = defaultTransport,
-}: {
+type RevisionReviewProps = {
   revisionId: string;
   layerId?: string;
   transport?: RevisionReviewTransport;
-}) {
+};
+
+type MobileReviewSection = "map" | "changes" | "comments";
+
+const mobileReviewTabs: Array<{ id: MobileReviewSection; label: string }> = [
+  { id: "map", label: "Bản đồ" },
+  { id: "changes", label: "Thay đổi" },
+  { id: "comments", label: "Nhận xét" },
+];
+
+function reviewStatus(status: RevisionBundle["revision"]["status"]) {
+  if (status === "in_review") return { label: "Chờ duyệt", className: "border border-warning/40 bg-amber-50 text-warning" };
+  if (status === "approved") return { label: "Đã duyệt", className: "bg-emerald-50 text-success" };
+  if (status === "published") return { label: "Đã công bố", className: "bg-emerald-50 text-success" };
+  if (status === "changes_requested") return { label: "Cần chỉnh sửa", className: "bg-red-50 text-destructive" };
+  return { label: "Bản nháp", className: "bg-surface-subtle text-muted-foreground" };
+}
+
+function geometryModeLabel(mode: RevisionBundle["revision"]["geometryMode"]) {
+  if (mode === "point") return "Điểm";
+  if (mode === "circle") return "Vùng tròn";
+  if (mode === "polygon") return "Vùng ranh giới";
+  if (mode === "polyline") return "Đường";
+  return "Hỗn hợp";
+}
+
+export function RevisionReview(props: RevisionReviewProps) {
+  const identity = `${props.layerId ?? ""}:${props.revisionId}`;
+  return <RevisionReviewSession key={identity} {...props}/>;
+}
+
+function RevisionReviewSession({
+  revisionId,
+  layerId,
+  transport = defaultTransport,
+}: RevisionReviewProps) {
   const { principal, csrfToken } = useAdminSession();
   const canPublishHere = useSyncExternalStore(
     subscribeDesktopAuthoringCapability,
@@ -147,6 +194,7 @@ export function RevisionReview({
   const [workflow, setWorkflow] = useState<HistoryResource<WorkflowEvents> | null>(null);
   const [audit, setAudit] = useState<HistoryResource<AuditEvents> | null>(null);
   const [jobSeed, setJobSeed] = useState<RevisionPublicationSeed | null>(null);
+  const [synchronousPublication, setSynchronousPublication] = useState<RevisionSynchronousPublication | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingWorkflow, setLoadingWorkflow] = useState(false);
   const [loadingAudit, setLoadingAudit] = useState(false);
@@ -155,6 +203,8 @@ export function RevisionReview({
   const [jobRecoveryError, setJobRecoveryError] = useState<unknown>(null);
   const [comment, setComment] = useState("");
   const [releaseNote, setReleaseNote] = useState("");
+  const [mobileSection, setMobileSection] = useState<MobileReviewSection>("map");
+  const mobileTabRefs = useRef<Partial<Record<MobileReviewSection, HTMLButtonElement>>>({});
   const [busy, setBusy] = useState<"approve" | "changes" | "publish" | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [acceptedJobId, setAcceptedJobId] = useState<string | null>(null);
@@ -209,6 +259,7 @@ export function RevisionReview({
       setWorkflow(null);
       setAudit(null);
       setJobSeed(null);
+      setSynchronousPublication(null);
       setComment("");
       setReleaseNote("");
       setSuccess(null);
@@ -373,7 +424,10 @@ export function RevisionReview({
 
   async function mutate(action: "approve" | "changes" | "publish") {
     const owner = loadOwner;
-    if (!loadActiveRef.current || loadOwnerRef.current !== owner) return;
+    const ownedBundle = bundleRef.current;
+    if (!loadActiveRef.current
+      || loadOwnerRef.current !== owner
+      || !ownedBundle) return;
     const generation = ++mutationGenerationRef.current;
     const isCurrent = () => loadActiveRef.current
       && loadOwnerRef.current === owner
@@ -390,12 +444,20 @@ export function RevisionReview({
           ? demoAcceptedJob(revisionId, layerId ?? bundle!.revision.layerId)
           : await transport.publish(revisionId, releaseNote.trim(), key, { csrfToken });
         if (!isCurrent()) return;
-        observedNonterminalJobs.current.add(accepted.data.id);
+        delete operationKeys.current[action];
         setJobRecoveryError(null);
+        if (accepted.mode === "sync") {
+          setSynchronousPublication({ identity: publicationIdentity, result: accepted.data });
+          setSuccess(`Dữ liệu đã được công bố ở generation ${accepted.data.generation}. Snapshot ${accepted.data.snapshotId}.`);
+          setBusy(null);
+          if (process.env.NEXT_PUBLIC_DANANGMAP_DEMO_MODE !== "true") await load();
+          return;
+        }
+        setSynchronousPublication(null);
+        observedNonterminalJobs.current.add(accepted.data.id);
         setJobSeed({ identity: publicationIdentity, resource: accepted });
         setAcceptedJobId(accepted.data.id);
         setSuccess("Yêu cầu công bố đã được nhận. Trạng thái dưới đây lấy trực tiếp từ máy chủ.");
-        delete operationKeys.current[action];
         return;
       }
       if (!isCurrent()) return;
@@ -424,7 +486,10 @@ export function RevisionReview({
   const activeRevisionId = publicationStale && typeof error.details.activeRevisionId === "string" ? error.details.activeRevisionId : null;
   const reviewerActions = principal.role === "reviewer" && bundle.revision.status === "in_review";
   const publicationActive = publicationJob ? !isTerminalPublicationJob(publicationJob) : false;
-  const publicationSucceeded = publicationJob?.status === "succeeded";
+  const currentSynchronousPublication = synchronousPublication?.identity === publicationIdentity
+    ? synchronousPublication.result
+    : null;
+  const publicationSucceeded = publicationJob?.status === "succeeded" || currentSynchronousPublication !== null;
   const visibleSuccess = publicationJob?.status === "succeeded"
     ? "Dữ liệu đã được công bố sau khi publication job hoàn tất."
     : publicationJob?.status === "failed"
@@ -437,22 +502,76 @@ export function RevisionReview({
     && !publicationActive
     && !publicationSucceeded;
   const publishLabel = publicationJob?.status === "failed" ? "Thử công bố lại" : "Công bố revision";
+  const status = reviewStatus(bundle.revision.status);
+  const validationLabel = history?.data.validation.status === "valid"
+    ? "Đã vượt qua"
+    : history?.data.validation.status === "invalid"
+      ? "Cần kiểm tra"
+      : "Xem kết quả";
 
-  return <main className="min-h-[100dvh] bg-surface-subtle pb-40">
-    <header className="sticky top-0 z-10 flex min-h-16 items-center gap-3 border-b bg-surface px-4">
-      <Button asChild variant="ghost" size="icon-sm"><Link href={`/admin/layers/${resolvedLayerId}/history`} aria-label="Quay lại lịch sử layer"><IconArrowLeft stroke={1.75}/></Link></Button>
-      <div className="min-w-0 flex-1"><h1 className="truncate text-sm font-semibold">{bundle.revision.title}</h1><p className="text-xs text-muted-foreground">Revision #{bundle.revision.revisionNo}, {bundle.revision.id}</p></div>
-      <Badge>{bundle.revision.status}</Badge>
+  return <main className="min-h-[100dvh] bg-surface-subtle pb-32 md:pb-40">
+    <header className="sticky top-0 z-30 flex min-h-16 items-center gap-3 border-b bg-surface px-4">
+      <Button asChild variant="ghost" size="icon"><Link href={`/admin/layers/${resolvedLayerId}/history`} aria-label="Quay lại lịch sử layer"><IconArrowLeft stroke={1.75}/></Link></Button>
+      <div className="min-w-0 flex-1"><h1 className="truncate text-sm font-semibold"><span className="md:hidden">Duyệt </span>{bundle.revision.title}</h1><p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground"><IconFileDescription className="md:hidden" size={14} stroke={1.75}/><span className="md:hidden">Bản #{bundle.revision.revisionNo}</span><span className="hidden md:inline">Revision #{bundle.revision.revisionNo}, {bundle.revision.id}</span></p></div>
+      <Badge className={cn("md:hidden", status.className)}><IconClock stroke={1.75}/>{status.label}</Badge>
+      <Badge className="hidden md:inline-flex">{bundle.revision.status}</Badge>
     </header>
 
-    <div className="mx-auto grid max-w-5xl gap-4 p-4 md:grid-cols-[1.25fr_0.75fr] md:p-6">
-      <section className="overflow-hidden rounded-panel border bg-surface" aria-labelledby="review-content-title">
-        <ReviewMapPreview revision={bundle.revision} features={bundle.features}/>
-        <div className="border-t p-4"><h2 id="review-content-title" className="font-semibold">Nội dung revision</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">{bundle.revision.description || "Không có mô tả."}</p><dl className="mt-4 grid grid-cols-2 gap-2 text-center"><div className="rounded-control bg-accent-subtle p-3"><dt className="text-xs text-muted-foreground">Đối tượng</dt><dd className="mt-1 text-lg font-semibold text-primary">{bundle.workspace.featureCount}</dd></div><div className="rounded-control bg-surface-subtle p-3"><dt className="text-xs text-muted-foreground">Trường metadata</dt><dd className="mt-1 text-lg font-semibold">{bundle.fields.length}</dd></div></dl></div>
-      </section>
+    <nav className="sticky top-16 z-20 grid h-11 grid-cols-3 border-b bg-surface md:hidden" aria-label="Nội dung review" role="tablist">
+      {mobileReviewTabs.map((tab, index) => <button
+        key={tab.id}
+        ref={(element) => { mobileTabRefs.current[tab.id] = element ?? undefined; }}
+        id={`mobile-review-${tab.id}-tab`}
+        type="button"
+        role="tab"
+        tabIndex={mobileSection === tab.id ? 0 : -1}
+        aria-selected={mobileSection === tab.id}
+        aria-controls={`mobile-review-${tab.id}-panel`}
+        onClick={() => setMobileSection(tab.id)}
+        onKeyDown={(event) => {
+          let nextIndex: number | null = null;
+          if (event.key === "ArrowRight") nextIndex = (index + 1) % mobileReviewTabs.length;
+          if (event.key === "ArrowLeft") nextIndex = (index - 1 + mobileReviewTabs.length) % mobileReviewTabs.length;
+          if (event.key === "Home") nextIndex = 0;
+          if (event.key === "End") nextIndex = mobileReviewTabs.length - 1;
+          if (nextIndex === null) return;
+          event.preventDefault();
+          const nextTab = mobileReviewTabs[nextIndex];
+          setMobileSection(nextTab.id);
+          mobileTabRefs.current[nextTab.id]?.focus();
+        }}
+        className={cn("relative min-h-11 px-3 text-sm font-medium text-muted-foreground outline-none hover:bg-surface-subtle focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring", mobileSection === tab.id && "text-primary after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-primary")}
+      >{tab.label}</button>)}
+    </nav>
 
-      <aside className="flex flex-col gap-4">
-        <section className="rounded-panel border bg-surface p-4" aria-labelledby="workspace-title">
+    <div className="mx-auto grid max-w-5xl gap-4 md:grid-cols-[1.25fr_0.75fr] md:p-6">
+      <div id="mobile-review-map-panel" role="tabpanel" aria-labelledby="mobile-review-map-tab" tabIndex={mobileSection === "map" ? 0 : -1} className={cn("min-w-0 outline-none", mobileSection === "map" ? "block" : "hidden md:block")}>
+        <section className="overflow-hidden bg-surface md:rounded-panel md:border" aria-labelledby="review-content-title">
+          <ReviewMapPreview revision={bundle.revision} features={bundle.features}/>
+          <div className="hidden border-t p-4 md:block"><h2 id="review-content-title" className="font-semibold">Nội dung revision</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">{bundle.revision.description || "Không có mô tả."}</p><dl className="mt-4 grid grid-cols-2 gap-2 text-center"><div className="rounded-control bg-accent-subtle p-3"><dt className="text-xs text-muted-foreground">Đối tượng</dt><dd className="mt-1 text-lg font-semibold text-primary">{bundle.workspace.featureCount}</dd></div><div className="rounded-control bg-surface-subtle p-3"><dt className="text-xs text-muted-foreground">Trường metadata</dt><dd className="mt-1 text-lg font-semibold">{bundle.fields.length}</dd></div></dl></div>
+
+          <div className="relative z-[1] mx-3 -mt-3 rounded-panel border bg-surface p-3 map-panel-shadow md:hidden">
+            <button type="button" onClick={() => setMobileSection("changes")} className="flex min-h-11 w-full items-center gap-3 rounded-control text-left outline-none hover:bg-surface-subtle focus-visible:ring-2 focus-visible:ring-ring" aria-label={`Xem thay đổi của ${bundle.workspace.featureCount} đối tượng`}>
+              <span className="grid size-10 shrink-0 place-items-center rounded-control bg-accent-subtle text-primary"><IconPolygon size={21} stroke={1.75}/></span>
+              <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{bundle.workspace.featureCount} đối tượng thay đổi</span><span className="mt-0.5 block text-xs text-muted-foreground">{geometryModeLabel(bundle.revision.geometryMode)}</span></span>
+              <IconChevronRight className="text-muted-foreground" size={20} stroke={1.75}/>
+            </button>
+            <dl className="mt-2 grid grid-cols-2 border-y py-2 text-xs">
+              <div className="flex min-w-0 items-center gap-2 border-r pr-2"><span className="grid size-9 shrink-0 place-items-center rounded-control bg-emerald-50 text-success"><IconUser size={19} stroke={1.75}/></span><div className="min-w-0"><dt className="text-muted-foreground">Tác giả</dt><dd className="truncate font-medium">{bundle.revision.createdBy}</dd></div></div>
+              <div className="flex min-w-0 items-center gap-2 pl-2"><span className="grid size-9 shrink-0 place-items-center rounded-control bg-surface-subtle text-muted-foreground"><IconCalendar size={19} stroke={1.75}/></span><div className="min-w-0"><dt className="text-muted-foreground">Cập nhật</dt><dd className="truncate font-medium">{new Date(bundle.revision.updatedAt).toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" })}</dd></div></div>
+            </dl>
+            <button type="button" onClick={() => setMobileSection("changes")} className="mt-2 flex min-h-11 w-full items-center gap-3 rounded-control text-left outline-none hover:bg-surface-subtle focus-visible:ring-2 focus-visible:ring-ring">
+              <span className={cn("grid size-10 shrink-0 place-items-center rounded-control", history?.data.validation.status === "valid" ? "bg-emerald-50 text-success" : "bg-accent-subtle text-primary")}><IconCircleCheck size={21} stroke={1.75}/></span>
+              <span className="min-w-0 flex-1"><span className="block text-sm font-medium">Kiểm tra dữ liệu</span><span className={cn("mt-0.5 block text-xs", history?.data.validation.status === "valid" ? "text-success" : "text-muted-foreground")}>{validationLabel}</span></span>
+              <IconChevronRight className="text-muted-foreground" size={20} stroke={1.75}/>
+            </button>
+          </div>
+          <div className="mx-3 mt-3 flex items-start gap-2 rounded-control border border-primary/20 bg-accent-subtle p-3 text-xs leading-5 text-muted-foreground md:hidden"><IconInfoCircle className="mt-0.5 shrink-0 text-primary" size={18} stroke={1.75}/><p>Bản xem trên di động chỉ hỗ trợ xem và duyệt. Chỉnh sửa dữ liệu cần máy tính.</p></div>
+        </section>
+      </div>
+
+      <aside id="mobile-review-comments-panel" role="tabpanel" aria-labelledby="mobile-review-comments-tab" tabIndex={mobileSection === "comments" ? 0 : -1} className={cn("flex-col gap-4 p-4 outline-none md:flex md:p-0", mobileSection === "comments" ? "flex" : "hidden")}>
+        <section className="hidden rounded-panel border bg-surface p-4 md:block" aria-labelledby="workspace-title">
           <div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-control bg-accent-subtle text-primary"><IconPolygon stroke={1.75}/></span><div><h2 id="workspace-title" className="text-sm font-semibold">Workspace server</h2><p className="text-xs text-muted-foreground">WGS84, đơn vị bán kính mét</p></div></div>
           <dl className="mt-4 divide-y text-sm"><div className="flex justify-between py-3"><dt className="text-muted-foreground">Người tạo</dt><dd className="max-w-[12rem] truncate font-medium">{bundle.revision.createdBy}</dd></div><div className="flex justify-between py-3"><dt className="text-muted-foreground">Cập nhật</dt><dd className="font-medium">{new Date(bundle.revision.updatedAt).toLocaleString("vi-VN")}</dd></div><div className="flex justify-between py-3"><dt className="text-muted-foreground">Workspace ETag</dt><dd className="max-w-[12rem] truncate font-mono text-xs">{bundle.etag}</dd></div>{history && <div className="flex justify-between py-3"><dt className="text-muted-foreground">History ETag</dt><dd className="max-w-[12rem] truncate font-mono text-xs">{history.historyEtag}</dd></div>}</dl>
         </section>
@@ -466,16 +585,22 @@ export function RevisionReview({
       </aside>
     </div>
 
-    <div className="mx-auto flex max-w-5xl flex-col gap-8 px-4 pb-8 md:px-6">
-      {historyError !== null && <AdminErrorNotice error={historyError} onRetry={() => { void load(); }}/>}
-      {history && <section className="flex flex-col gap-3" aria-labelledby="validation-title"><h2 id="validation-title" className="text-base font-semibold">Kết quả kiểm tra</h2><ValidationReport validation={history.data.validation}/></section>}
-      <section className="flex flex-col gap-3" aria-labelledby="diff-title"><h2 id="diff-title" className="text-base font-semibold">So sánh thay đổi</h2><RevisionDiffView revisionId={revisionId}/></section>
-      <section className="flex flex-col gap-3" aria-labelledby="workflow-title"><h2 id="workflow-title" className="text-base font-semibold">Tiến trình workflow</h2><WorkflowTimeline events={workflow?.data ?? null} loading={!historyError && !workflow && process.env.NEXT_PUBLIC_DANANGMAP_DEMO_MODE !== "true"} loadingMore={loadingWorkflow} onRetry={() => { void load(); }} onLoadMore={loadMoreWorkflow}/></section>
-      <section className="flex flex-col gap-3" aria-labelledby="audit-title"><h2 id="audit-title" className="text-base font-semibold">Nhật ký revision</h2><AuditEventList events={audit?.data ?? null} loading={!historyError && !audit && process.env.NEXT_PUBLIC_DANANGMAP_DEMO_MODE !== "true"} loadingMore={loadingAudit} onRetry={() => { void load(); }} onLoadMore={loadMoreAudit}/></section>
+    <div className={cn("mx-auto max-w-5xl flex-col gap-8 px-4 pb-8 md:flex md:px-6", mobileSection === "map" ? "hidden md:flex" : "flex")}>
+      <div id="mobile-review-changes-panel" role="tabpanel" aria-labelledby="mobile-review-changes-tab" tabIndex={mobileSection === "changes" ? 0 : -1} className={cn("outline-none md:contents", mobileSection === "changes" ? "contents" : "hidden")}>
+        {historyError !== null && (
+          <AdminErrorNotice error={historyError} onRetry={() => { void load(); }}/>
+        )}
+        {history && <section className="flex flex-col gap-3" aria-labelledby="validation-title"><h2 id="validation-title" className="text-base font-semibold">Kết quả kiểm tra</h2><ValidationReport validation={history.data.validation}/></section>}
+        <section className="flex flex-col gap-3" aria-labelledby="diff-title"><h2 id="diff-title" className="text-base font-semibold">So sánh thay đổi</h2><RevisionDiffView revisionId={revisionId}/></section>
+      </div>
+      <div className={cn("md:contents", mobileSection === "comments" ? "contents" : "hidden")}>
+        <section className="flex flex-col gap-3" aria-labelledby="workflow-title"><h2 id="workflow-title" className="text-base font-semibold">Tiến trình workflow</h2><WorkflowTimeline events={workflow?.data ?? null} loading={!historyError && !workflow && process.env.NEXT_PUBLIC_DANANGMAP_DEMO_MODE !== "true"} loadingMore={loadingWorkflow} onRetry={() => { void load(); }} onLoadMore={loadMoreWorkflow}/></section>
+        <section className="flex flex-col gap-3" aria-labelledby="audit-title"><h2 id="audit-title" className="text-base font-semibold">Nhật ký revision</h2><AuditEventList events={audit?.data ?? null} loading={!historyError && !audit && process.env.NEXT_PUBLIC_DANANGMAP_DEMO_MODE !== "true"} loadingMore={loadingAudit} onRetry={() => { void load(); }} onLoadMore={loadMoreAudit}/></section>
+      </div>
     </div>
 
     {(reviewerActions || publisherAction) && <div className="fixed inset-x-0 bottom-16 z-20 border-t bg-surface p-3 md:bottom-0 md:left-60"><div className="mx-auto flex max-w-5xl gap-2">
-      {reviewerActions && <><Button disabled={!comment.trim() || busy !== null} onClick={() => { void mutate("changes"); }} variant="outline" className="flex-1 text-destructive"><IconX data-icon="inline-start" stroke={1.75}/>{busy === "changes" ? <><Spinner data-icon="inline-start"/>Đang gửi...</> : "Yêu cầu chỉnh sửa"}</Button><Button disabled={busy !== null} onClick={() => { void mutate("approve"); }} className="flex-1"><IconCheck data-icon="inline-start" stroke={1.75}/>{busy === "approve" ? <><Spinner data-icon="inline-start"/>Đang duyệt...</> : "Duyệt thay đổi"}</Button></>}
+      {reviewerActions && <><Button aria-label="Yêu cầu chỉnh sửa" disabled={!comment.trim() || busy !== null} onClick={() => { void mutate("changes"); }} variant="outline" className="h-11 min-h-11 flex-1 text-destructive md:h-10 md:min-h-10"><IconX data-icon="inline-start" stroke={1.75}/>{busy === "changes" ? <><Spinner data-icon="inline-start"/>Đang gửi...</> : <><span className="md:hidden">Yêu cầu sửa</span><span className="hidden md:inline">Yêu cầu chỉnh sửa</span></>}</Button><Button aria-label="Duyệt thay đổi" disabled={busy !== null} onClick={() => { void mutate("approve"); }} className="h-11 min-h-11 flex-1 md:h-10 md:min-h-10"><IconCheck data-icon="inline-start" stroke={1.75}/>{busy === "approve" ? <><Spinner data-icon="inline-start"/>Đang duyệt...</> : <><span className="md:hidden">Phê duyệt</span><span className="hidden md:inline">Duyệt thay đổi</span></>}</Button></>}
       {publisherAction && <Button disabled={!canPublishHere || !releaseNote.trim() || busy !== null} onClick={() => { void mutate("publish"); }} className="flex-1"><IconCloudUpload data-icon="inline-start" stroke={1.75}/>{busy === "publish" ? <><Spinner data-icon="inline-start"/>Đang gửi...</> : publishLabel}</Button>}
     </div></div>}
   </main>;

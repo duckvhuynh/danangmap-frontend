@@ -155,7 +155,8 @@ export function adminErrorMessage(error: unknown) {
 function demoRole(): AdminRole {
   if (typeof window === "undefined") return "editor";
   const value = window.sessionStorage.getItem("danangmap-demo-role");
-  return value === "reviewer" || value === "publisher" || value === "system_admin" ? value : "editor";
+  if (value === "reviewer" || value === "publisher" || value === "system_admin") return value;
+  return window.location.pathname.endsWith("/review") ? "reviewer" : "editor";
 }
 
 function demoStatus(): RevisionStatus {

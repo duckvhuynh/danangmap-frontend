@@ -2,7 +2,11 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useAdminSession } from "@/components/admin/admin-session";
 import type { AdminPrincipal, RevisionBundle } from "@/lib/api/admin";
-import type { PublicationJob, PublicationJobResource } from "@/lib/api/publication-jobs";
+import type {
+  AsynchronousPublicationAcceptance,
+  PublicationJob,
+  SynchronousPublicationAcceptance,
+} from "@/lib/api/publication-jobs";
 import { RevisionReview, type RevisionReviewTransport } from "./revision-review";
 
 vi.mock("@/components/admin/admin-session", async (importOriginal) => ({
@@ -72,8 +76,16 @@ function job(id: string, overrides: Partial<PublicationJob> = {}): PublicationJo
   };
 }
 
-function jobResource(data: PublicationJob, retryAfterMs = 1): PublicationJobResource {
-  return { data, etag: `"${data.id}-etag"`, retryAfterMs, requestId: "request-publication" };
+function jobResource(data: PublicationJob, retryAfterMs = 1): AsynchronousPublicationAcceptance {
+  return { mode: "async", data, etag: `"${data.id}-etag"`, retryAfterMs, requestId: "request-publication" };
+}
+
+function synchronousResource(generation = 8): SynchronousPublicationAcceptance {
+  return {
+    mode: "sync",
+    data: { status: "completed", snapshotId: "88888888-8888-4888-8888-888888888888", generation },
+    requestId: "request-synchronous-publication",
+  };
 }
 
 function deferred<T>() {
@@ -159,6 +171,82 @@ describe("revision review publication capability", () => {
     expect(publish).toBeEnabled();
   });
 
+  it("keeps publish unavailable to a non-publisher on desktop", async () => {
+    setCapability({ mediaMatches: true, userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", platform: "Win32", maxTouchPoints: 0 });
+    vi.mocked(useAdminSession).mockReturnValue({ principal: { ...principal, role: "reviewer" }, csrfToken: "csrf-fixed", refreshCsrf: vi.fn(), clearClientPrincipal: vi.fn() });
+    render(<RevisionReview revisionId={revisionId}/>);
+    expect(await screen.findByText(/chế độ chỉ đọc/u)).toBeInTheDocument();
+    expect(screen.queryByLabelText("Ghi chú công bố")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Công bố|Thử công bố/u })).not.toBeInTheDocument();
+  });
+
+  it("uses a compact map-first mobile review and keeps both reviewer decisions operable", async () => {
+    setCapability({ mediaMatches: false, userAgent: "Mozilla/5.0 (Linux; Android 15; Mobile)", platform: "Linux armv8l", maxTouchPoints: 5 });
+    vi.mocked(useAdminSession).mockReturnValue({ principal: { ...principal, role: "reviewer" }, csrfToken: "csrf-fixed", refreshCsrf: vi.fn(), clearClientPrincipal: vi.fn() });
+    const approve = vi.fn().mockResolvedValue(undefined);
+    const requestChanges = vi.fn().mockResolvedValue(undefined);
+    const reviewBundle: RevisionBundle = {
+      ...bundle,
+      revision: {
+        ...bundle.revision,
+        status: "in_review",
+        title: "Ranh giới phường, xã",
+        revisionNo: 12,
+        createdBy: "Nguyễn Văn An",
+      },
+      workspace: { ...bundle.workspace, status: "in_review", featureCount: 18 },
+    };
+    const transport = realTransport({ bundle: vi.fn().mockResolvedValue(reviewBundle) });
+    transport.approve = approve as RevisionReviewTransport["approve"];
+    transport.requestChanges = requestChanges as RevisionReviewTransport["requestChanges"];
+    render(<RevisionReview revisionId={revisionId} layerId={layerId} transport={transport}/>);
+
+    expect(await screen.findByRole("heading", { name: "Duyệt Ranh giới phường, xã" })).toBeInTheDocument();
+    expect(screen.getByText("Chờ duyệt")).toBeInTheDocument();
+    expect(screen.getByText("18 đối tượng thay đổi")).toBeInTheDocument();
+    const mapTab = screen.getByRole("tab", { name: "Bản đồ" });
+    const changesTab = screen.getByRole("tab", { name: "Thay đổi" });
+    const commentsTab = screen.getByRole("tab", { name: "Nhận xét" });
+    const mapPanel = screen.getByRole("tabpanel", { name: "Bản đồ" });
+    const changesPanel = screen.getByRole("tabpanel", { name: "Thay đổi" });
+    const commentsPanel = screen.getByRole("tabpanel", { name: "Nhận xét" });
+    expect(mapTab).toHaveAttribute("aria-selected", "true");
+    expect(mapTab).toHaveAttribute("tabindex", "0");
+    expect(changesTab).toHaveAttribute("tabindex", "-1");
+    expect(mapPanel).toHaveClass("block");
+    expect(changesPanel).toHaveClass("hidden");
+    expect(commentsPanel).toHaveClass("hidden");
+
+    mapTab.focus();
+    fireEvent.keyDown(mapTab, { key: "ArrowRight" });
+    expect(changesTab).toHaveFocus();
+    expect(changesTab).toHaveAttribute("aria-selected", "true");
+    expect(changesTab).toHaveAttribute("tabindex", "0");
+    fireEvent.keyDown(changesTab, { key: "End" });
+    expect(commentsTab).toHaveFocus();
+    expect(commentsTab).toHaveAttribute("aria-selected", "true");
+    fireEvent.keyDown(commentsTab, { key: "Home" });
+    expect(mapTab).toHaveFocus();
+    expect(mapTab).toHaveAttribute("aria-selected", "true");
+
+    fireEvent.click(screen.getByRole("button", { name: "Duyệt thay đổi" }));
+    await waitFor(() => expect(approve).toHaveBeenCalledWith(revisionId, "", expect.any(String), { csrfToken: "csrf-fixed" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Xem thay đổi của 18 đối tượng" }));
+    expect(changesTab).toHaveAttribute("aria-selected", "true");
+    expect(mapPanel).toHaveClass("hidden");
+    expect(changesPanel).toHaveClass("contents");
+
+    fireEvent.click(commentsTab);
+    expect(commentsTab).toHaveAttribute("aria-selected", "true");
+    expect(commentsPanel).toHaveClass("flex");
+    fireEvent.change(screen.getByLabelText("Bình luận review"), { target: { value: "Cần chỉnh lại ranh giới phía bắc" } });
+    const requestChangesButton = screen.getByRole("button", { name: "Yêu cầu chỉnh sửa" });
+    expect(requestChangesButton).toBeEnabled();
+    fireEvent.click(requestChangesButton);
+    await waitFor(() => expect(requestChanges).toHaveBeenCalledWith(revisionId, "Cần chỉnh lại ranh giới phía bắc", expect.any(String), { csrfToken: "csrf-fixed" }));
+  });
+
   it("recovers an active server job on mobile while keeping publish unavailable", async () => {
     delete process.env.NEXT_PUBLIC_DANANGMAP_DEMO_MODE;
     setCapability({ mediaMatches: false, userAgent: "Mozilla/5.0 (Linux; Android 15; Mobile)", platform: "Linux armv8l", maxTouchPoints: 5 });
@@ -209,7 +297,7 @@ describe("revision review publication capability", () => {
       createdAt: "2026-08-22T01:01:00.000Z",
       updatedAt: "2026-08-22T01:01:00.000Z",
     }), 10_000);
-    const pendingA = deferred<PublicationJobResource>();
+    const pendingA = deferred<AsynchronousPublicationAcceptance>();
     const publish = vi.fn().mockReturnValueOnce(pendingA.promise).mockResolvedValueOnce(acceptedB);
     const api = realTransport({ publish });
     api.bundle = vi.fn((requestedRevisionId: string) => Promise.resolve(bundleFor(
@@ -242,6 +330,40 @@ describe("revision review publication capability", () => {
     expect(publish.mock.calls[0]?.[0]).toBe(revisionId);
     expect(publish.mock.calls[1]?.[0]).toBe(revisionB);
     expect(publish.mock.calls[0]?.[2]).not.toBe(publish.mock.calls[1]?.[2]);
+  });
+
+  it("unmounts revision A actions synchronously when revision B takes ownership before its delayed load", async () => {
+    delete process.env.NEXT_PUBLIC_DANANGMAP_DEMO_MODE;
+    setCapability({ mediaMatches: true, userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", platform: "Win32", maxTouchPoints: 0 });
+    const revisionB = "33333333-3333-4333-8333-333333333333";
+    const pendingB = deferred<RevisionBundle>();
+    const publish = vi.fn().mockResolvedValue(jobResource(job("88888888-8888-4888-8888-888888888888")));
+    const api = realTransport({ publish });
+    api.bundle = vi.fn((requestedRevisionId: string) => requestedRevisionId === revisionId
+      ? Promise.resolve(bundleFor(revisionId, "Revision A"))
+      : pendingB.promise) as RevisionReviewTransport["bundle"];
+
+    const view = render(<RevisionReview revisionId={revisionId} layerId={layerId} transport={api}/>);
+    const noteA = await screen.findByLabelText("Ghi chú công bố");
+    fireEvent.change(noteA, { target: { value: "Ghi chú chỉ thuộc revision A" } });
+    const staleAction = screen.getByRole("button", { name: "Công bố revision" });
+
+    view.rerender(<RevisionReview revisionId={revisionB} layerId={layerId} transport={api}/>);
+    expect(screen.getByRole("status", { name: "Đang tải revision" })).toBeInTheDocument();
+    expect(screen.queryByDisplayValue("Ghi chú chỉ thuộc revision A")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Công bố revision" })).not.toBeInTheDocument();
+    fireEvent.click(staleAction);
+    await act(async () => { await Promise.resolve(); });
+    expect(publish).not.toHaveBeenCalled();
+
+    await act(async () => {
+      pendingB.resolve(bundleFor(revisionB, "Revision B"));
+      await pendingB.promise;
+    });
+    expect(await screen.findByText("Revision B")).toBeInTheDocument();
+    expect(screen.getByLabelText("Ghi chú công bố")).toHaveValue("");
+    expect(screen.getByRole("button", { name: "Công bố revision" })).toBeDisabled();
+    expect(publish).not.toHaveBeenCalled();
   });
 
   it("keeps the newest revision load when deferred requests finish out of order", async () => {
@@ -448,6 +570,75 @@ describe("revision review publication capability", () => {
     fireEvent.click(screen.getByRole("button", { name: "Công bố revision" }));
     expect(await screen.findByRole("region", { name: `Publication job ${accepted.data.id}` })).toBeInTheDocument();
     expect(screen.queryByText("Chưa thể khôi phục trạng thái công bố")).not.toBeInTheDocument();
+  });
+
+  it("shows a default-off synchronous publication as terminal and refreshes authoritative data without fake progress", async () => {
+    delete process.env.NEXT_PUBLIC_DANANGMAP_DEMO_MODE;
+    setCapability({ mediaMatches: true, userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", platform: "Win32", maxTouchPoints: 0 });
+    const publishedBundle: RevisionBundle = {
+      ...bundle,
+      revision: { ...bundle.revision, status: "published", lockVersion: 4 },
+      workspace: { ...bundle.workspace, status: "published" },
+      etag: '"revision-v4"',
+    };
+    const bundleLoader = vi.fn().mockResolvedValueOnce(bundle).mockResolvedValueOnce(publishedBundle);
+    const publish = vi.fn().mockResolvedValue(synchronousResource(8));
+    const api = realTransport({ publish, bundle: bundleLoader });
+    render(<RevisionReview revisionId={revisionId} layerId={layerId} transport={api}/>);
+
+    fireEvent.change(await screen.findByLabelText("Ghi chú công bố"), { target: { value: "Công bố bằng rollout mặc định" } });
+    fireEvent.click(screen.getByRole("button", { name: "Công bố revision" }));
+
+    expect(await screen.findByText(/đã được công bố ở generation 8/iu)).toBeInTheDocument();
+    expect(screen.getByText("published", { exact: true })).toBeInTheDocument();
+    expect(bundleLoader).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole("region", { name: /Publication job/u })).not.toBeInTheDocument();
+    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Đang chờ xử lý|Tổng số đang được đo/u)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Công bố|Thử công bố/u })).not.toBeInTheDocument();
+  });
+
+  it("preserves synchronous terminal success when its authoritative refresh fails", async () => {
+    delete process.env.NEXT_PUBLIC_DANANGMAP_DEMO_MODE;
+    setCapability({ mediaMatches: true, userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", platform: "Win32", maxTouchPoints: 0 });
+    const bundleLoader = vi.fn().mockResolvedValueOnce(bundle).mockRejectedValueOnce(new Error("sync refresh unavailable"));
+    const api = realTransport({ publish: vi.fn().mockResolvedValue(synchronousResource(11)), bundle: bundleLoader });
+    render(<RevisionReview revisionId={revisionId} layerId={layerId} transport={api}/>);
+
+    fireEvent.change(await screen.findByLabelText("Ghi chú công bố"), { target: { value: "Công bố đồng bộ và giữ kết quả" } });
+    fireEvent.click(screen.getByRole("button", { name: "Công bố revision" }));
+
+    expect(await screen.findByText("sync refresh unavailable")).toBeInTheDocument();
+    expect(screen.getByText(/đã được công bố ở generation 11/iu)).toBeInTheDocument();
+    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Công bố|Thử công bố/u })).not.toBeInTheDocument();
+  });
+
+  it("keeps the indeterminate publish spinner only for the POST, not the synchronous refresh", async () => {
+    delete process.env.NEXT_PUBLIC_DANANGMAP_DEMO_MODE;
+    setCapability({ mediaMatches: true, userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", platform: "Win32", maxTouchPoints: 0 });
+    const pendingPost = deferred<SynchronousPublicationAcceptance>();
+    const pendingRefresh = deferred<RevisionBundle>();
+    const bundleLoader = vi.fn().mockResolvedValueOnce(bundle).mockReturnValueOnce(pendingRefresh.promise);
+    const api = realTransport({ publish: vi.fn().mockReturnValue(pendingPost.promise), bundle: bundleLoader });
+    render(<RevisionReview revisionId={revisionId} layerId={layerId} transport={api}/>);
+
+    fireEvent.change(await screen.findByLabelText("Ghi chú công bố"), { target: { value: "Kiểm tra trạng thái chờ" } });
+    fireEvent.click(screen.getByRole("button", { name: "Công bố revision" }));
+    expect(await screen.findByText("Đang gửi...")).toBeInTheDocument();
+
+    await act(async () => {
+      pendingPost.resolve(synchronousResource(12));
+      await pendingPost.promise;
+    });
+    expect(await screen.findByText(/đã được công bố ở generation 12/iu)).toBeInTheDocument();
+    expect(screen.queryByText("Đang gửi...")).not.toBeInTheDocument();
+    expect(bundleLoader).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      pendingRefresh.resolve({ ...bundle, revision: { ...bundle.revision, status: "published" } });
+      await pendingRefresh.promise;
+    });
   });
 
   it("uses a fresh idempotency key when the user republishes after terminal failure", async () => {
