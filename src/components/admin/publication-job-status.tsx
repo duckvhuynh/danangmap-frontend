@@ -42,7 +42,8 @@ export const PublicationJobStatus = forwardRef<HTMLElement, {
   trackingState?: PublicationTrackingState;
   trackingIssue?: PublicationTrackingIssue | null;
   compact?: boolean;
-}>(({ job, trackingState = "connected", trackingIssue = null, compact = false }, ref) => {
+  announceChanges?: boolean;
+}>(({ job, trackingState = "connected", trackingIssue = null, compact = false, announceChanges = !compact }, ref) => {
   const percent = job.progress.percent;
   const determinate = job.status !== "queued" && job.progress.totalUnits !== null && job.progress.totalUnits > 0 && percent !== null;
   const liveText = job.status === "failed"
@@ -65,7 +66,7 @@ export const PublicationJobStatus = forwardRef<HTMLElement, {
       <p className="text-xs text-muted-foreground">Lần thử {job.attempt}</p>
     </div>
 
-    {!compact && <p className="sr-only" aria-live="polite" aria-atomic="true">{liveText}</p>}
+    {announceChanges && <p className="sr-only" aria-live="polite" aria-atomic="true">{liveText}</p>}
 
     <div className="mt-3">
       <p className="text-sm text-muted-foreground">{measuredProgress(job)}</p>

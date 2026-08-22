@@ -1,4 +1,5 @@
 export const desktopAuthoringQuery = "(min-width: 1024px) and (hover: hover) and (pointer: fine)";
+export const wideReviewLayoutQuery = "(min-width: 48rem)";
 
 interface NavigatorCapabilitySnapshot {
   maxTouchPoints?: number;
@@ -23,8 +24,22 @@ export function getServerDesktopAuthoringCapability() {
   return false;
 }
 
+export function getWideReviewLayout() {
+  return window.matchMedia(wideReviewLayoutQuery).matches;
+}
+
+export function getServerWideReviewLayout() {
+  return false;
+}
+
 export function subscribeDesktopAuthoringCapability(callback: () => void) {
   const media = window.matchMedia(desktopAuthoringQuery);
+  media.addEventListener("change", callback);
+  return () => media.removeEventListener("change", callback);
+}
+
+export function subscribeWideReviewLayout(callback: () => void) {
+  const media = window.matchMedia(wideReviewLayoutQuery);
   media.addEventListener("change", callback);
   return () => media.removeEventListener("change", callback);
 }

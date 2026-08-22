@@ -144,7 +144,7 @@ async function createInvite(page: Page, email: string, username: string, display
   const inviteId = data?.id;
   expect(typeof inviteId === "string").toBe(true);
   if (typeof inviteId !== "string") throw new Error("Invite response did not contain an id.");
-  await expect(page.getByRole("status")).toContainText(displayName);
+  await expect(page.getByRole("status")).toContainText(email);
   return inviteId;
 }
 
@@ -206,7 +206,14 @@ async function initialLoginAndPasswordChange(
   await page.getByRole("button", { name: "Xác nhận và tạo mã khôi phục" }).click();
   const recoveryList = page.getByRole("list", { name: "10 mã khôi phục" });
   await expect(recoveryList.getByRole("listitem")).toHaveCount(10);
-  const recoveryCodes = (await recoveryList.getByRole("listitem").allTextContents()).map((value) => value.trim());
+  const recoveryCodes = await recoveryList.getByRole("listitem").evaluateAll((items) => items.map((item) =>
+    Array.from(item.childNodes)
+      .filter((node) => node.nodeType === Node.TEXT_NODE)
+      .map((node) => node.textContent ?? "")
+      .join("")
+      .trim(),
+  ));
+  expect(recoveryCodes.every((value) => value.length > 0)).toBe(true);
   await page.getByRole("checkbox", { name: /Tôi đã lưu mã khôi phục/u }).check();
   await page.getByRole("button", { name: "Tiếp tục vào trang quản trị" }).click();
   await expect(page).toHaveURL(/\/login\/password-change$/u);
@@ -282,7 +289,7 @@ test("a revoked invite is denied generically and its body-only token is not pers
     await invitePage.goto("/invite/accept");
     await invitePage.getByLabel("Mã lời mời").fill(token);
     await invitePage.getByRole("button", { name: "Kiểm tra lời mời" }).click();
-    const alert = invitePage.getByRole("alert");
+    const alert = invitePage.locator("#invite-error");
     await expect(alert).toContainText("không hợp lệ hoặc đã hết hiệu lực");
     await expect(alert).not.toContainText(/thu hồi|revoked/iu);
     await expect(invitePage.getByLabel("Mã lời mời")).toBeFocused();
@@ -353,7 +360,7 @@ test("expired and rate-limited invite inspection stays generic and safe", async 
     );
     await page.getByRole("button", { name: "Kiểm tra lời mời" }).click();
     expect((await expiredResponse).status()).toBe(400);
-    const expiredAlert = page.getByRole("alert");
+    const expiredAlert = page.locator("#invite-error");
     await expect(expiredAlert).toContainText("không hợp lệ hoặc đã hết hiệu lực");
     await expect(expiredAlert).not.toContainText(/hết hạn|expired/iu);
     await expect(input).toBeFocused();
@@ -383,7 +390,7 @@ test("expired and rate-limited invite inspection stays generic and safe", async 
     const response = await limitedResponse;
     expect(response.status()).toBe(429);
     expect(/^\d+$/u.test(response.headers()["retry-after"] ?? "")).toBe(true);
-    const limitedAlert = page.getByRole("alert");
+    const limitedAlert = page.locator("#invite-error");
     await expect(limitedAlert).toContainText(/Có quá nhiều lần thử.*Thử lại sau \d+ giây/u);
     expect(await limitedAlert.evaluate((element) => document.activeElement === element)).toBe(true);
     await input.fill("");

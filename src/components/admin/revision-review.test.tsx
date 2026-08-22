@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useAdminSession } from "@/components/admin/admin-session";
 import type { AdminPrincipal, RevisionBundle } from "@/lib/api/admin";
@@ -7,6 +7,7 @@ import type {
   PublicationJob,
   SynchronousPublicationAcceptance,
 } from "@/lib/api/publication-jobs";
+import { wideReviewLayoutQuery } from "@/lib/admin/authoring-capability";
 import { RevisionReview, type RevisionReviewTransport } from "./revision-review";
 
 vi.mock("@/components/admin/admin-session", async (importOriginal) => ({
@@ -125,10 +126,19 @@ function realTransport(input: {
   };
 }
 
-function setCapability(input: { mediaMatches: boolean; userAgent: string; platform: string; maxTouchPoints: number }) {
+function setCapability(input: { mediaMatches: boolean; wideLayoutMatches?: boolean; userAgent: string; platform: string; maxTouchPoints: number }) {
   Object.defineProperty(window, "matchMedia", {
     configurable: true,
-    value: vi.fn().mockReturnValue({ matches: input.mediaMatches, media: "", onchange: null, addEventListener: vi.fn(), removeEventListener: vi.fn(), addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: vi.fn() }),
+    value: vi.fn((query: string) => ({
+      matches: query === wideReviewLayoutQuery ? (input.wideLayoutMatches ?? input.mediaMatches) : input.mediaMatches,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
   });
   Object.defineProperty(navigator, "userAgent", { configurable: true, value: input.userAgent });
   Object.defineProperty(navigator, "platform", { configurable: true, value: input.platform });
@@ -258,10 +268,50 @@ describe("revision review publication capability", () => {
     const transport = realTransport({ jobs: [active] });
     render(<RevisionReview revisionId={revisionId} layerId={layerId} transport={transport}/>);
 
-    expect(await screen.findByRole("region", { name: `Publication job ${active.id}` })).toHaveTextContent("Đang chờ xử lý");
+    const publicationRegionName = `Publication job ${active.id}`;
+    const compactStatus = await screen.findByRole("region", { name: publicationRegionName });
+    const mapTab = screen.getByRole("tab", { name: "Bản đồ" });
+    const mapPanel = screen.getByRole("tabpanel", { name: "Bản đồ" });
+    const commentsTab = screen.getByRole("tab", { name: "Nhận xét" });
+    const commentsPanel = screen.getByRole("tabpanel", { name: "Nhận xét" });
+    expect(mapTab).toHaveAttribute("aria-selected", "true");
+    expect(within(mapPanel).getByRole("region", { name: publicationRegionName })).toBe(compactStatus);
+    expect(compactStatus).toHaveTextContent("Đang chờ xử lý");
+    expect(within(compactStatus).getByText("Đang chờ xử lý", { selector: '[aria-live="polite"]' })).toBeInTheDocument();
+    expect(screen.getAllByRole("region", { name: publicationRegionName })).toHaveLength(1);
+
+    fireEvent.click(commentsTab);
+    expect(commentsTab).toHaveAttribute("aria-selected", "true");
+    expect(within(mapPanel).queryByRole("region", { name: publicationRegionName })).not.toBeInTheDocument();
+    expect(within(commentsPanel).getByRole("region", { name: publicationRegionName })).toHaveTextContent(`Job ${active.id}`);
+    expect(screen.getAllByRole("region", { name: publicationRegionName })).toHaveLength(1);
     expect(screen.queryByLabelText("Ghi chú công bố")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Công bố|Thử công bố/u })).not.toBeInTheDocument();
     expect(transport.jobs).toHaveBeenCalledWith(layerId, { revisionId, limit: 25 }, { signal: expect.any(AbortSignal) });
+  });
+
+  it("keeps an active job visible at the Tailwind md review layout below the authoring breakpoint", async () => {
+    delete process.env.NEXT_PUBLIC_DANANGMAP_DEMO_MODE;
+    setCapability({
+      mediaMatches: false,
+      wideLayoutMatches: true,
+      userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+      platform: "MacIntel",
+      maxTouchPoints: 0,
+    });
+    const active = job("abababab-abab-4bab-8bab-abababababab");
+    render(<RevisionReview revisionId={revisionId} layerId={layerId} transport={realTransport({ jobs: [active] })}/>);
+
+    const publicationRegionName = `Publication job ${active.id}`;
+    const status = await screen.findByRole("region", { name: publicationRegionName });
+    const commentsPanel = screen.getByRole("tabpanel", { name: "Nhận xét" });
+    expect(screen.getByRole("tab", { name: "Bản đồ" })).toHaveAttribute("aria-selected", "true");
+    expect(commentsPanel).toHaveClass("md:flex");
+    expect(within(commentsPanel).getByRole("region", { name: publicationRegionName })).toBe(status);
+    expect(status).toHaveTextContent(`Job ${active.id}`);
+    expect(screen.getAllByRole("region", { name: publicationRegionName })).toHaveLength(1);
+    expect(screen.queryByLabelText("Ghi chú công bố")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Công bố|Thử công bố/u })).not.toBeInTheDocument();
   });
 
   it("clears revision A tracking before revision B recovers an empty authoritative job list", async () => {
