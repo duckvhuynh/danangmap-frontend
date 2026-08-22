@@ -14,7 +14,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "test:e2e:real:history": "playwright test -c playwright.real.config.ts e2e-real/publication-history-rollback.spec.ts"
+    "test:e2e:real:history": "playwright test -c playwright.real.config.ts e2e-real/publication-history-rollback.spec.ts",
+    "test:e2e:real:publication": "playwright test -c playwright.real.config.ts e2e-real/durable-publication-progress.spec.ts"
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.3.11",

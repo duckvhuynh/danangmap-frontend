@@ -3,9 +3,13 @@ import { devices, expect, test, type Page } from "@playwright/test";
 import { loginWithMfa, requiredEnv, type RealStackLoginEnvironment } from "./support/auth";
 
 test.skip(
-  process.env.DANANGMAP_REAL_STACK !== "true" || process.env.DANANGMAP_HISTORY_ENABLED !== "true",
-  "Set DANANGMAP_REAL_STACK=true and DANANGMAP_HISTORY_ENABLED=true to run publication history acceptance.",
+  process.env.DANANGMAP_REAL_STACK !== "true"
+    || process.env.DANANGMAP_HISTORY_ENABLED !== "true"
+    || process.env.DANANGMAP_ASYNC_PUBLICATION_ENABLED !== "true",
+  "Set DANANGMAP_REAL_STACK=true, DANANGMAP_HISTORY_ENABLED=true and DANANGMAP_ASYNC_PUBLICATION_ENABLED=true to run publication history acceptance.",
 );
+
+test.setTimeout(480_000);
 
 type Actor = "EDITOR" | "REVIEWER" | "PUBLISHER" | "ROLLBACK_PUBLISHER" | "SYSTEM_ADMIN";
 
@@ -33,7 +37,13 @@ async function login(page: Page, actor: Actor) {
 async function browserGet(page: Page, path: string) {
   return page.evaluate(async (url) => {
     const response = await fetch(url, { credentials: "include" });
-    return { status: response.status, etag: response.headers.get("etag"), body: await response.json().catch(() => null) };
+    return {
+      status: response.status,
+      etag: response.headers.get("etag"),
+      location: response.headers.get("location"),
+      retryAfter: response.headers.get("retry-after"),
+      body: await response.json().catch(() => null),
+    };
   }, path);
 }
 
@@ -47,7 +57,13 @@ async function browserPost(page: Page, input: { path: string; body?: unknown; if
     if (ifMatch) headers["If-Match"] = ifMatch;
     if (operationKey) headers["Idempotency-Key"] = operationKey;
     const response = await fetch(path, { method: "POST", credentials: "include", headers, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
-    return { status: response.status, etag: response.headers.get("etag"), body: await response.json().catch(() => null) };
+    return {
+      status: response.status,
+      etag: response.headers.get("etag"),
+      location: response.headers.get("location"),
+      retryAfter: response.headers.get("retry-after"),
+      body: await response.json().catch(() => null),
+    };
   }, input);
 }
 
@@ -87,9 +103,26 @@ async function approve(page: Page, revisionId: string) {
 }
 
 async function publish(page: Page, revisionId: string) {
-  const result = await browserPost(page, { path: `/api/v1/admin/revisions/${revisionId}:publish`, operationKey: randomUUID(), body: { releaseNote: "Publication history acceptance" } });
+  const result = await browserPost(page, {
+    path: `/api/v1/admin/revisions/${revisionId}:publish`,
+    operationKey: randomUUID(),
+    body: { releaseNote: "Publication history acceptance", clientIntent: "desktop" },
+  });
   expect(result.status).toBe(202);
-  expect(record(envelopeData(result.body)).status).toBe("completed");
+  expect(result.etag).toBeTruthy();
+  expect(result.location).toBeTruthy();
+  expect(result.retryAfter).toBeTruthy();
+  const accepted = record(envelopeData(result.body));
+  expect(accepted.status).toBe("queued");
+  const jobId = String(accepted.id);
+  expect(result.location).toContain(`/api/v1/admin/publication-jobs/${jobId}`);
+  await expect.poll(async () => {
+    const detail = await browserGet(page, `/api/v1/admin/publication-jobs/${jobId}`);
+    expect(detail.status).toBe(200);
+    const job = record(envelopeData(detail.body));
+    if (job.status === "failed") throw new Error(`Publication job ${jobId} failed with code ${String(record(job.failure)?.code ?? "UNKNOWN")}.`);
+    return job.status;
+  }, { timeout: 150_000, intervals: [1_000, 2_000, 3_000] }).toBe("succeeded");
 }
 
 async function createSuccessor(page: Page, layerId: string, publishedRevisionId: string) {

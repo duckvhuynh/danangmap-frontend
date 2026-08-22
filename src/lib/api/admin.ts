@@ -306,9 +306,3 @@ export async function requestRevisionChanges(revisionId: string, comment: string
   const result = await client.POST("/api/v1/admin/revisions/{revisionId}:request-changes", { params: { path: { revisionId }, header: { "X-CSRF-Token": auth.csrfToken, "Idempotency-Key": operationKey } }, body: { comment } });
   return envelopeData(resultData(result));
 }
-
-export async function publishRevision(revisionId: string, releaseNote: string, operationKey: string, auth: MutationAuth, client: ApiClient = apiClient) {
-  if (process.env.NEXT_PUBLIC_DANANGMAP_DEMO_MODE === "true") { throwDemoMutationError(); return { status: "published" }; }
-  const result = await client.POST("/api/v1/admin/revisions/{revisionId}:publish", { params: { path: { revisionId }, header: { "X-CSRF-Token": auth.csrfToken, "Idempotency-Key": operationKey } }, body: { releaseNote } });
-  return envelopeData(resultData(result));
-}

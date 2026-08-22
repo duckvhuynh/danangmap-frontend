@@ -405,6 +405,19 @@ Terra Draw output phải đi qua canonical geometry adapter trước khi vào st
 - Publisher desktop phải thấy lý do bị chặn nếu từng tham gia revision với vai trò Editor hoặc Reviewer. Ẩn button không thay thế backend deny response.
 - Các route login, MFA, review, conflict và workflow dialog phải đạt WCAG 2.2 AA cho non-map controls và không có axe violation mức critical/serious.
 
+### 10.6 Durable publication progress
+
+Publish dùng ngôn ngữ control nổi hiện có: nền trắng, border xanh nhạt, shadow thấp, radius kiểu Google Maps web và Tabler Icons. Không thêm gradient, glass hoặc route mới. `202 Accepted` chỉ hợp lệ khi body là durable job `queued/queued`; frontend từ chối terminal/already-building body và không coi 202 là công bố thành công.
+
+- Review screen lấy lại job theo `layerId + revisionId` khi mở hoặc reload; history tách riêng danh sách job đang chạy/đã kết thúc khỏi snapshot đã commit.
+- Job `queued` luôn indeterminate. Khi `totalUnits=null`, UI chỉ báo số feature đã xử lý và không render progressbar. `0%` là giá trị hợp lệ khi tổng lớn hơn 0; empty nonterminal `totalUnits=0, percent=null` được gọi rõ là revision rỗng và không dựng progressbar hoặc 100% giả.
+- Phase `switching` giữ nguyên số đo máy chủ gần nhất và giải thích public pointer vẫn chưa đổi. Không suy diễn 99% hoặc 100% từ phase. Chỉ terminal `succeeded` của máy chủ mới hiển thị công bố thành công.
+- Polling dùng `If-None-Match`, chấp nhận `304`, tôn trọng `Retry-After` có giới hạn an toàn, backoff lỗi tạm thời và không có giới hạn số lần poll giả. Tab nền giảm tần suất; visibility, focus hoặc online sẽ resume ngay. Offline chỉ làm tracking bị gián đoạn, không biến job máy chủ thành failed.
+- ETag lock-version của job là version authority cho response `200`: representation có ETag mới vẫn được nhận khi `updatedAt` trùng millisecond, và ETag chỉ được commit sau khi body qua validation/state selection. State machine biểu diễn sampled observations: client có thể thấy `queued` đi thẳng tới `succeeded` hoặc `failed`; `building` có thể trở lại `queued/queued` khi release-for-retry hoặc phục hồi lease, miễn attempt và progress không lùi; terminal là immutable. Representation không có version mới mà cũ hơn, hoặc làm lùi attempt/progress, giữ nguyên job/ETag tốt gần nhất và đưa tracking sang trạng thái gián đoạn có mã lỗi an toàn cho đến khi nhận representation hợp lệ.
+- Retry sau POST mơ hồ giữ nguyên idempotency key; lần publish mới sau terminal failure dùng key mới.
+- Status card chỉ có `role=progressbar` khi determinate và giữ `aria-valuenow=0`. Live region polite chỉ đọc thay đổi status/phase, không đọc từng phần trăm. Failure chỉ render `userMessage`, `code`, `requestId` và `retryable`, không render raw details, stack hoặc SQL.
+- Mobile/non-Publisher tiếp tục xem và theo dõi job, nhưng publish, retry và rollback mutation không xuất hiện. Mapbox visual QA vẫn cần public token đã giới hạn theo URL; kiểm thử contract không được mô tả là visual QA bản đồ.
+
 ## 11. IndexedDB và Dexie crash-safe autosave
 
 ### 11.1 Vai trò và giới hạn
