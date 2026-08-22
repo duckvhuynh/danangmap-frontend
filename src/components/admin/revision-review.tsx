@@ -34,7 +34,10 @@ import { Spinner } from "@/components/ui/spinner";
 import {
   getDesktopAuthoringCapability,
   getServerDesktopAuthoringCapability,
+  getServerWideReviewLayout,
+  getWideReviewLayout,
   subscribeDesktopAuthoringCapability,
+  subscribeWideReviewLayout,
 } from "@/lib/admin/authoring-capability";
 import {
   AdminApiError,
@@ -187,6 +190,11 @@ function RevisionReviewSession({
     subscribeDesktopAuthoringCapability,
     getDesktopAuthoringCapability,
     getServerDesktopAuthoringCapability,
+  );
+  const wideReviewLayout = useSyncExternalStore(
+    subscribeWideReviewLayout,
+    getWideReviewLayout,
+    getServerWideReviewLayout,
   );
   const [bundle, setBundle] = useState<RevisionBundle | null>(null);
   const bundleRef = useRef<RevisionBundle | null>(null);
@@ -583,7 +591,7 @@ function RevisionReviewSession({
               <IconChevronRight className="text-muted-foreground" size={20} stroke={1.75}/>
             </button>
           </div>
-          {publicationJob && !canPublishHere && mobileSection === "map" && <div className="mx-3 mt-3 md:hidden">
+          {publicationJob && !wideReviewLayout && mobileSection === "map" && <div className="mx-3 mt-3 md:hidden">
             <PublicationJobStatus
               job={publicationJob}
               trackingState={trackingState}
@@ -606,7 +614,7 @@ function RevisionReviewSession({
           {visibleSuccess && <Alert role="status" aria-atomic="true"><IconCheck aria-hidden="true" stroke={1.75}/><AlertTitle>Trạng thái công việc</AlertTitle><AlertDescription>{visibleSuccess}</AlertDescription></Alert>}
         </div>}
         {jobRecoveryError !== null && <Alert><IconRefresh stroke={1.75}/><AlertTitle>Chưa thể khôi phục trạng thái công bố</AlertTitle><AlertDescription><p>Không thể đọc publication job hiện hành. Dữ liệu trên máy chủ không bị đánh dấu thất bại.</p><Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => { void load(); }}><IconRefresh data-icon="inline-start" stroke={1.75}/>Thử kết nối lại</Button></AlertDescription></Alert>}
-        {publicationJob && (canPublishHere || mobileSection === "comments") && <PublicationJobStatus ref={canPublishHere ? publicationStatusRef : undefined} job={publicationJob} trackingState={trackingState} trackingIssue={trackingIssue}/>}
+        {publicationJob && (wideReviewLayout || mobileSection === "comments") && <PublicationJobStatus ref={canPublishHere ? publicationStatusRef : undefined} job={publicationJob} trackingState={trackingState} trackingIssue={trackingIssue}/>}
         {reviewerActions && <section className="rounded-panel border bg-surface p-4"><Field><FieldLabel htmlFor="review-comment">Bình luận review</FieldLabel><textarea id="review-comment" className="min-h-24 w-full scroll-mb-28 resize-y rounded-control border bg-surface p-3 text-sm" value={comment} aria-describedby="review-comment-description" onChange={(event) => { setComment(event.target.value); delete operationKeys.current.approve; delete operationKeys.current.changes; }} placeholder="Bắt buộc khi yêu cầu chỉnh sửa"/><FieldDescription id="review-comment-description"><IconMessage aria-hidden="true" className="inline" size={16}/> Có thể để trống khi phê duyệt; bắt buộc khi yêu cầu chỉnh sửa.</FieldDescription></Field></section>}
         {publisherAction && <section className="rounded-panel border bg-surface p-4"><Field><FieldLabel htmlFor="release-note">Ghi chú công bố</FieldLabel><textarea id="release-note" className="min-h-24 w-full scroll-mb-28 resize-y rounded-control border bg-surface p-3 text-sm" value={releaseNote} aria-describedby="release-note-description" onChange={(event) => { setReleaseNote(event.target.value); delete operationKeys.current.publish; }} placeholder="Mô tả dữ liệu được công bố"/><FieldDescription id="release-note-description">Một yêu cầu mới sau khi job thất bại luôn dùng idempotency key mới.</FieldDescription></Field></section>}
         {!reviewerActions && !publisherAction && !publicationJob && <section className="rounded-panel border bg-surface p-4 text-sm text-muted-foreground">Revision đang ở chế độ chỉ đọc đối với vai trò {principal.role.replace("_", " ")}.</section>}

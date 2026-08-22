@@ -125,10 +125,19 @@ function realTransport(input: {
   };
 }
 
-function setCapability(input: { mediaMatches: boolean; userAgent: string; platform: string; maxTouchPoints: number }) {
+function setCapability(input: { mediaMatches: boolean; wideLayoutMatches?: boolean; userAgent: string; platform: string; maxTouchPoints: number }) {
   Object.defineProperty(window, "matchMedia", {
     configurable: true,
-    value: vi.fn().mockReturnValue({ matches: input.mediaMatches, media: "", onchange: null, addEventListener: vi.fn(), removeEventListener: vi.fn(), addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: vi.fn() }),
+    value: vi.fn((query: string) => ({
+      matches: query === "(min-width: 768px)" ? (input.wideLayoutMatches ?? input.mediaMatches) : input.mediaMatches,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
   });
   Object.defineProperty(navigator, "userAgent", { configurable: true, value: input.userAgent });
   Object.defineProperty(navigator, "platform", { configurable: true, value: input.platform });
@@ -278,6 +287,30 @@ describe("revision review publication capability", () => {
     expect(screen.queryByLabelText("Ghi chú công bố")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Công bố|Thử công bố/u })).not.toBeInTheDocument();
     expect(transport.jobs).toHaveBeenCalledWith(layerId, { revisionId, limit: 25 }, { signal: expect.any(AbortSignal) });
+  });
+
+  it("keeps an active job visible in the wide review layout below the authoring breakpoint", async () => {
+    delete process.env.NEXT_PUBLIC_DANANGMAP_DEMO_MODE;
+    setCapability({
+      mediaMatches: false,
+      wideLayoutMatches: true,
+      userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+      platform: "MacIntel",
+      maxTouchPoints: 0,
+    });
+    const active = job("abababab-abab-4bab-8bab-abababababab");
+    render(<RevisionReview revisionId={revisionId} layerId={layerId} transport={realTransport({ jobs: [active] })}/>);
+
+    const publicationRegionName = `Publication job ${active.id}`;
+    const status = await screen.findByRole("region", { name: publicationRegionName });
+    const commentsPanel = screen.getByRole("tabpanel", { name: "Nhận xét" });
+    expect(screen.getByRole("tab", { name: "Bản đồ" })).toHaveAttribute("aria-selected", "true");
+    expect(commentsPanel).toHaveClass("md:flex");
+    expect(within(commentsPanel).getByRole("region", { name: publicationRegionName })).toBe(status);
+    expect(status).toHaveTextContent(`Job ${active.id}`);
+    expect(screen.getAllByRole("region", { name: publicationRegionName })).toHaveLength(1);
+    expect(screen.queryByLabelText("Ghi chú công bố")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Công bố|Thử công bố/u })).not.toBeInTheDocument();
   });
 
   it("clears revision A tracking before revision B recovers an empty authoritative job list", async () => {
