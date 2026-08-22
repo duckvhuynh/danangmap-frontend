@@ -487,6 +487,7 @@ IndexedDB cùng origin có thể bị đọc bởi JavaScript chạy trong origi
 - Key cục bộ chỉ giảm rủi ro đọc trực tiếp file profile; nó không chống được XSS đang chạy cùng origin. Giới hạn này phải được ghi trong threat model.
 - Logout chủ động hoặc xóa user phải xóa toàn bộ Dexie records và device key của principal đó. Session expiry chỉ khóa recovery cho tới khi cùng principal re-auth thành công; đổi user không bao giờ cho principal mới đọc recovery cũ.
 - Không lưu session token, MFA secret hoặc enrollment URI, recovery code, invite token, CSRF token hay MinIO presigned URL trong Dexie.
+- `GET /api/v1/auth/csrf` là credentialed read không mutation: token ổn định trong cùng public, pre-auth hoặc authenticated state và chỉ đổi tại trust/session boundary. Frontend chỉ giữ token trong provider memory, cập nhật nguyên tử sau boundary; không tự retry mutation, không phát token qua BroadcastChannel và không lưu token vào localStorage.
 - Không ghi property values, geometry, tên file hoặc attachment metadata nhạy cảm vào console, analytics, error reporting hay `recoveryEvents`.
 - CSP nghiêm, không dùng script inline tùy ý và không render HTML từ metadata động.
 

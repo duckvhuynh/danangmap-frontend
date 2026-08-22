@@ -32,7 +32,11 @@ export function AdminSessionProvider({ children }: { children: React.ReactNode }
 
   const value = useMemo<AdminSessionValue | null>(() => state && "principal" in state ? {
     ...state,
-    async refreshCsrf() { return acquireCsrfToken(); },
+    async refreshCsrf() {
+      const csrfToken = await acquireCsrfToken();
+      setState((current) => current && "principal" in current ? { ...current, csrfToken } : current);
+      return csrfToken;
+    },
     clearClientPrincipal() { setState({ ended: true }); },
   } : null, [state]);
 

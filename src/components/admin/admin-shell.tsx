@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
-import { IconChartBar, IconDatabase, IconLogout, IconSettings, IconUsers } from "@tabler/icons-react";
+import { IconChartBar, IconDatabase, IconLogout, IconSettings, IconShieldCheck, IconUsers } from "@tabler/icons-react";
 import { BrandMark } from "@/components/brand-mark";
 import { AdminSessionProvider, useAdminSession } from "@/components/admin/admin-session";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ const items = [
   { href: "/admin", label: "Tổng quan", icon: IconChartBar },
   { href: "/admin/layers", label: "Lớp dữ liệu", icon: IconDatabase },
   { href: "/admin/users", label: "Người dùng", icon: IconUsers, systemAdminOnly: true },
+  { href: "/admin/audit", label: "Audit", icon: IconShieldCheck, systemAdminOnly: true },
   { href: "/admin/settings", label: "Cài đặt", icon: IconSettings },
 ];
 

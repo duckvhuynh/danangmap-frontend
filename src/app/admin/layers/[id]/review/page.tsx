@@ -1,6 +1,6 @@
-import { RevisionReview } from "@/components/admin/revision-review";
+import { LegacyReviewRedirect } from "@/components/admin/legacy-review-redirect";
 
 export default async function ReviewLayerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  return <RevisionReview revisionId={id}/>;
+  return <LegacyReviewRedirect revisionId={id}/>;
 }
