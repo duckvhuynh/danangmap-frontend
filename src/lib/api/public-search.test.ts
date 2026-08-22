@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createDanangMapClient } from "./generated/client";
-import { createPublicSearchApi } from "./public-search";
+import { sampleMapData } from "@/lib/data/sample-map";
+import { createDemoPublicSearch, createPublicSearchApi, searchPublicMapData } from "./public-search";
 
 const searchItem = {
   id: "feature:11111111-1111-4111-8111-111111111111",
@@ -47,5 +48,44 @@ describe("typed public search API", () => {
     expect(new URL(requests[0].url).pathname).toBe("/api/v1/public/places/geo%3Adragon");
     expect(new URL(requests[0].url).searchParams.get("fields")).toBe("name,address,position,phone,website");
     expect(new URL(requests[1].url).pathname).toBe("/api/v1/public/layers/tru-so/features/11111111-1111-4111-8111-111111111111");
+  });
+});
+
+describe("demo public search", () => {
+  it("matches sample features without Vietnamese diacritics and returns the internal contract shape", async () => {
+    const response = await createDemoPublicSearch(sampleMapData)("cong an");
+
+    expect(response.results).toEqual([
+      expect.objectContaining({
+        source: "internal",
+        kind: "feature",
+        title: "Công an phường Hải Châu",
+        featureId: "police-one",
+        position: { longitude: 108.2181, latitude: 16.0598 },
+        layer: expect.objectContaining({ slug: "tru-so-cong-an" }),
+      }),
+    ]);
+    expect(response.meta).toMatchObject({
+      partial: false,
+      sources: { internal: { status: "ok", count: 1 }, place: { status: "skipped", count: 0 } },
+    });
+  });
+
+  it("searches layer and metadata values, and supplies a focusable polygon bbox", () => {
+    const polygonResponse = searchPublicMapData("phuong hai chau", sampleMapData);
+    const polygon = polygonResponse.results.find((result) => result.featureId === "ward-hai-chau");
+    expect(polygon).toMatchObject({ title: "Phường Hải Châu", bbox: [108.205, 16.046, 108.231, 16.074] });
+    expect(polygon?.position?.longitude).toBeCloseTo(108.218);
+    expect(polygon?.position?.latitude).toBeCloseTo(16.06);
+
+    expect(searchPublicMapData("3822 344", sampleMapData).results[0]).toMatchObject({ featureId: "police-one" });
+    expect(searchPublicMapData("tru so cong an", sampleMapData).results[0]).toMatchObject({ featureId: "police-one" });
+  });
+
+  it("honors an already-aborted combobox request", () => {
+    const controller = new AbortController();
+    controller.abort();
+    expect(() => searchPublicMapData("cong an", sampleMapData, controller.signal)).toThrow(expect.objectContaining({ name: "AbortError" }));
+    return expect(createDemoPublicSearch(sampleMapData)("cong an", controller.signal)).rejects.toMatchObject({ name: "AbortError" });
   });
 });

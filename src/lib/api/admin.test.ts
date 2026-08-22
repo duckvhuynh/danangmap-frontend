@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { acquireCsrfToken, AdminApiError, adminErrorMessage, approveRevision, createAdminFeature, deleteAdminFeature, getAdminSession, listAdminLayers, loadRevisionBundle, updateAdminFeature } from "./admin";
 import { createDanangMapClient } from "./generated/client";
 
@@ -6,6 +6,12 @@ const revisionId = "11111111-1111-4111-8111-111111111111";
 const layerId = "22222222-2222-4222-8222-222222222222";
 const feature = { type: "Feature", id: "33333333-3333-4333-8333-333333333333", geometry: { type: "Point", coordinates: [108.22, 16.06] }, properties: { name: "Trụ sở" }, attachments: [], meta: { geometryKind: "point", radiusM: null, externalSource: null, externalId: null, versionId: "44444444-4444-4444-8444-444444444444", updatedAt: "2026-08-21T00:00:00.000Z" } };
 const envelope = (data: unknown) => JSON.stringify({ data, meta: { requestId: "test-request" } });
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+  window.sessionStorage.clear();
+  window.history.replaceState({}, "", "/");
+});
 
 function requestParts(input: RequestInfo | URL, init?: RequestInit) {
   if (input instanceof Request) return { url: new URL(input.url), method: input.method, headers: input.headers, credentials: input.credentials };
@@ -32,6 +38,15 @@ function transport(workspaceBounds: unknown = [108, 15.9, 108.4, 16.2]) {
 }
 
 describe("typed admin API adapter", () => {
+  it("defaults a demo review route to Reviewer while preserving an explicit demo role", async () => {
+    vi.stubEnv("NEXT_PUBLIC_DANANGMAP_DEMO_MODE", "true");
+    window.history.replaceState({}, "", "/admin/layers/wards/review");
+    await expect(getAdminSession()).resolves.toMatchObject({ role: "reviewer" });
+
+    window.sessionStorage.setItem("danangmap-demo-role", "publisher");
+    await expect(getAdminSession()).resolves.toMatchObject({ role: "publisher" });
+  });
+
   it("loads the principal, CSRF token, catalog and spatially bounded workspace with cookies", async () => {
     const { fetcher, client } = transport();
     await expect(getAdminSession(client)).resolves.toMatchObject({ id: "user-1", role: "editor" });

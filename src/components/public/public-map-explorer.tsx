@@ -21,7 +21,7 @@ import { BrandMark } from "@/components/brand-mark";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { decodePublicFeatureDetail, getPublicMapData } from "@/lib/api/public-map";
-import { getExternalPlace, getPublicFeature, type ExternalPlace, type PublicSearchResult } from "@/lib/api/public-search";
+import { createDemoPublicSearch, getExternalPlace, getPublicFeature, searchPublicMap, type ExternalPlace, type PublicSearchResult } from "@/lib/api/public-search";
 import { sampleMapData } from "@/lib/data/sample-map";
 import type { PublicFeature, PublicLayer, PublicMapData } from "@/lib/domain/map";
 import type { MapCommand } from "@/components/map/public-map-canvas";
@@ -141,6 +141,7 @@ export function PublicMapExplorer() {
     const geoJsonLayerIds = new Set(data.layers.filter((layer) => layer.sourceKind === "geojson").map((layer) => layer.id));
     return visibleFeatures.filter((feature) => geoJsonLayerIds.has(feature.properties.layerId));
   }, [data.layers, visibleFeatures]);
+  const publicSearch = useMemo(() => demoMode ? createDemoPublicSearch(data) : searchPublicMap, [data, demoMode]);
 
   function toggleLayer(id: string) {
     setHiddenLayers((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next; });
@@ -234,7 +235,7 @@ export function PublicMapExplorer() {
       <header className="pointer-events-none absolute inset-x-0 top-0 z-20 flex flex-col items-start gap-3 border-b bg-surface p-3 md:flex-row md:border-0 md:bg-transparent md:p-4">
         <Link href="/" className="pointer-events-auto md:hidden"><BrandMark /></Link>
         <Link href="/" className="pointer-events-auto hidden rounded-panel bg-surface px-3 py-2 map-control-shadow md:block"><BrandMark /></Link>
-        <div className="pointer-events-auto mx-auto w-full max-w-[620px] md:mx-0"><PublicSearchCombobox onSelect={selectSearchResult} /></div>
+        <div className="pointer-events-auto mx-auto w-full max-w-[620px] md:mx-0"><PublicSearchCombobox onSelect={selectSearchResult} search={publicSearch} /></div>
         <Link href="/login" className="pointer-events-auto hidden min-h-12 items-center rounded-panel bg-surface px-4 text-sm font-medium map-control-shadow hover:bg-surface-subtle lg:flex">Đăng nhập quản trị</Link>
       </header>
 

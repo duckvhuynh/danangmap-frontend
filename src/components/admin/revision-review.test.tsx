@@ -180,6 +180,73 @@ describe("revision review publication capability", () => {
     expect(screen.queryByRole("button", { name: /Công bố|Thử công bố/u })).not.toBeInTheDocument();
   });
 
+  it("uses a compact map-first mobile review and keeps both reviewer decisions operable", async () => {
+    setCapability({ mediaMatches: false, userAgent: "Mozilla/5.0 (Linux; Android 15; Mobile)", platform: "Linux armv8l", maxTouchPoints: 5 });
+    vi.mocked(useAdminSession).mockReturnValue({ principal: { ...principal, role: "reviewer" }, csrfToken: "csrf-fixed", refreshCsrf: vi.fn(), clearClientPrincipal: vi.fn() });
+    const approve = vi.fn().mockResolvedValue(undefined);
+    const requestChanges = vi.fn().mockResolvedValue(undefined);
+    const reviewBundle: RevisionBundle = {
+      ...bundle,
+      revision: {
+        ...bundle.revision,
+        status: "in_review",
+        title: "Ranh giới phường, xã",
+        revisionNo: 12,
+        createdBy: "Nguyễn Văn An",
+      },
+      workspace: { ...bundle.workspace, status: "in_review", featureCount: 18 },
+    };
+    const transport = realTransport({ bundle: vi.fn().mockResolvedValue(reviewBundle) });
+    transport.approve = approve as RevisionReviewTransport["approve"];
+    transport.requestChanges = requestChanges as RevisionReviewTransport["requestChanges"];
+    render(<RevisionReview revisionId={revisionId} layerId={layerId} transport={transport}/>);
+
+    expect(await screen.findByRole("heading", { name: "Duyệt Ranh giới phường, xã" })).toBeInTheDocument();
+    expect(screen.getByText("Chờ duyệt")).toBeInTheDocument();
+    expect(screen.getByText("18 đối tượng thay đổi")).toBeInTheDocument();
+    const mapTab = screen.getByRole("tab", { name: "Bản đồ" });
+    const changesTab = screen.getByRole("tab", { name: "Thay đổi" });
+    const commentsTab = screen.getByRole("tab", { name: "Nhận xét" });
+    const mapPanel = screen.getByRole("tabpanel", { name: "Bản đồ" });
+    const changesPanel = screen.getByRole("tabpanel", { name: "Thay đổi" });
+    const commentsPanel = screen.getByRole("tabpanel", { name: "Nhận xét" });
+    expect(mapTab).toHaveAttribute("aria-selected", "true");
+    expect(mapTab).toHaveAttribute("tabindex", "0");
+    expect(changesTab).toHaveAttribute("tabindex", "-1");
+    expect(mapPanel).toHaveClass("block");
+    expect(changesPanel).toHaveClass("hidden");
+    expect(commentsPanel).toHaveClass("hidden");
+
+    mapTab.focus();
+    fireEvent.keyDown(mapTab, { key: "ArrowRight" });
+    expect(changesTab).toHaveFocus();
+    expect(changesTab).toHaveAttribute("aria-selected", "true");
+    expect(changesTab).toHaveAttribute("tabindex", "0");
+    fireEvent.keyDown(changesTab, { key: "End" });
+    expect(commentsTab).toHaveFocus();
+    expect(commentsTab).toHaveAttribute("aria-selected", "true");
+    fireEvent.keyDown(commentsTab, { key: "Home" });
+    expect(mapTab).toHaveFocus();
+    expect(mapTab).toHaveAttribute("aria-selected", "true");
+
+    fireEvent.click(screen.getByRole("button", { name: "Duyệt thay đổi" }));
+    await waitFor(() => expect(approve).toHaveBeenCalledWith(revisionId, "", expect.any(String), { csrfToken: "csrf-fixed" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Xem thay đổi của 18 đối tượng" }));
+    expect(changesTab).toHaveAttribute("aria-selected", "true");
+    expect(mapPanel).toHaveClass("hidden");
+    expect(changesPanel).toHaveClass("contents");
+
+    fireEvent.click(commentsTab);
+    expect(commentsTab).toHaveAttribute("aria-selected", "true");
+    expect(commentsPanel).toHaveClass("flex");
+    fireEvent.change(screen.getByLabelText("Bình luận review"), { target: { value: "Cần chỉnh lại ranh giới phía bắc" } });
+    const requestChangesButton = screen.getByRole("button", { name: "Yêu cầu chỉnh sửa" });
+    expect(requestChangesButton).toBeEnabled();
+    fireEvent.click(requestChangesButton);
+    await waitFor(() => expect(requestChanges).toHaveBeenCalledWith(revisionId, "Cần chỉnh lại ranh giới phía bắc", expect.any(String), { csrfToken: "csrf-fixed" }));
+  });
+
   it("recovers an active server job on mobile while keeping publish unavailable", async () => {
     delete process.env.NEXT_PUBLIC_DANANGMAP_DEMO_MODE;
     setCapability({ mediaMatches: false, userAgent: "Mozilla/5.0 (Linux; Android 15; Mobile)", platform: "Linux armv8l", maxTouchPoints: 5 });
