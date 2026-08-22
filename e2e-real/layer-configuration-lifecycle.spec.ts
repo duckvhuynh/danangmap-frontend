@@ -91,8 +91,27 @@ async function approve(page: Page, revisionId: string) {
 async function publish(page: Page, revisionId: string) {
   await page.goto(`/admin/layers/${revisionId}/review`);
   await page.getByLabel("Ghi chú công bố").fill("Công bố cho successor lifecycle acceptance.");
+  const responsePromise = page.waitForResponse((response) => response.url().endsWith(`/api/v1/admin/revisions/${revisionId}:publish`) && response.request().method() === "POST");
   await page.getByRole("button", { name: "Công bố revision" }).click();
-  await expect(page.getByText("published", { exact: true })).toBeVisible();
+  const response = await responsePromise;
+  expect(response.status()).toBe(202);
+  const accepted = record(data(await response.json()));
+  if (accepted.status === "queued") {
+    expect(response.headers().etag).toBeTruthy();
+    expect(response.headers().location).toBeTruthy();
+    expect(response.headers()["retry-after"]).toBeTruthy();
+    const jobId = String(accepted.id);
+    await expect.poll(async () => {
+      const detail = await browserGet(page, `/api/v1/admin/publication-jobs/${encodeURIComponent(jobId)}`);
+      return String(record(data(detail.body)).status);
+    }, { timeout: 150_000, intervals: [500, 1_000, 2_000] }).toBe("succeeded");
+  } else {
+    expect(accepted).toMatchObject({ status: "completed", snapshotId: expect.any(String), generation: expect.any(Number) });
+    expect(response.headers().etag === undefined || /^W\//iu.test(response.headers().etag)).toBe(true);
+    expect(response.headers().location).toBeUndefined();
+    expect(response.headers()["retry-after"]).toBeUndefined();
+  }
+  await expect(page.getByText("published", { exact: true })).toBeVisible({ timeout: 150_000 });
 }
 
 test("layer configuration lifecycle keeps version domains isolated and recovers conflicts by refetch", async ({ browser }) => {

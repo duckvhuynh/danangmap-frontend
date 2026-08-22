@@ -59,7 +59,9 @@ describe("durable publication API adapter", () => {
     const first = await publishRevision(revisionId, "Công bố dữ liệu đã duyệt", operationKey, { csrfToken: "csrf-fixed" }, client);
     const second = await publishRevision(revisionId, "Công bố dữ liệu đã duyệt", operationKey, { csrfToken: "csrf-fixed" }, client);
 
-    expect(first).toMatchObject({ data: { id: jobId, status: "queued" }, etag: '"publication-job-v1"', retryAfterMs: 3000 });
+    expect(first).toMatchObject({ mode: "async", data: { id: jobId, status: "queued" }, etag: '"publication-job-v1"', retryAfterMs: 3000 });
+    expect(second.mode).toBe("async");
+    if (second.mode !== "async") throw new Error("Expected async publication acceptance.");
     expect(second.data.id).toBe(jobId);
     const requests = await Promise.all(fetcher.mock.calls.map(([input, init]) => requestParts(input, init)));
     expect(requests.map(({ request }) => request.headers.get("idempotency-key"))).toEqual([operationKey, operationKey]);
@@ -79,10 +81,86 @@ describe("durable publication API adapter", () => {
     });
   });
 
-  it("never treats the legacy synchronous 202 shape as terminal frontend success", async () => {
+  it.each(['W/"publication-job-v1"', "publication-job-v1", '"publication-job-v1'])("rejects malformed or non-strong durable async ETag %s", async (etag) => {
+    const fetcher = vi.fn<Fetcher>(async () => new Response(envelope(job()), {
+      status: 202,
+      headers: {
+        "content-type": "application/json",
+        etag,
+        location: `/api/v1/admin/publication-jobs/${jobId}`,
+        "retry-after": "2",
+      },
+    }));
+    await expect(publishRevision(revisionId, "Release", operationKey, { csrfToken: "csrf" }, createDanangMapClient(fetcher))).rejects.toMatchObject({
+      code: "PUBLICATION_JOB_CONTRACT_INVALID",
+      message: "Publication job phải trả strong ETag hợp lệ.",
+    });
+  });
+
+  it.each(["banana", "2.5", "-1", "999999999999999999999999999999999999999999"])("rejects malformed durable async Retry-After %s", async (retryAfter) => {
+    const fetcher = vi.fn<Fetcher>(async () => new Response(envelope(job()), {
+      status: 202,
+      headers: {
+        "content-type": "application/json",
+        etag: '"publication-job-v1"',
+        location: `/api/v1/admin/publication-jobs/${jobId}`,
+        "retry-after": retryAfter,
+      },
+    }));
+    await expect(publishRevision(revisionId, "Release", operationKey, { csrfToken: "csrf" }, createDanangMapClient(fetcher))).rejects.toMatchObject({
+      code: "PUBLICATION_JOB_CONTRACT_INVALID",
+      message: "Publication job trả Retry-After không hợp lệ.",
+    });
+  });
+
+  it("accepts the exact default-off synchronous terminal shape without inventing a job", async () => {
     const fetcher = vi.fn<Fetcher>(async () => new Response(envelope({ snapshotId: jobId, generation: 8, status: "completed" }), {
       status: 202,
       headers: { "content-type": "application/json" },
+    }));
+    await expect(publishRevision(revisionId, "Release", operationKey, { csrfToken: "csrf" }, createDanangMapClient(fetcher))).resolves.toEqual({
+      mode: "sync",
+      data: { snapshotId: jobId, generation: 8, status: "completed" },
+      requestId: "request-publication",
+    });
+  });
+
+  it("accepts the backend default-off terminal with a matching legacy publicationId", async () => {
+    const fetcher = vi.fn<Fetcher>(async () => new Response(envelope({ publicationId: jobId, snapshotId: jobId, generation: 8, status: "completed" }), {
+      status: 202,
+      headers: { "content-type": "application/json" },
+    }));
+    await expect(publishRevision(revisionId, "Release", operationKey, { csrfToken: "csrf" }, createDanangMapClient(fetcher))).resolves.toEqual({
+      mode: "sync",
+      data: { publicationId: jobId, snapshotId: jobId, generation: 8, status: "completed" },
+      requestId: "request-publication",
+    });
+  });
+
+  it("accepts a generic weak Express ETag on the default-off terminal", async () => {
+    const fetcher = vi.fn<Fetcher>(async () => new Response(envelope({ publicationId: jobId, snapshotId: jobId, generation: 8, status: "completed" }), {
+      status: 202,
+      headers: { "content-type": "application/json", etag: 'W/"7e-default-off"' },
+    }));
+    await expect(publishRevision(revisionId, "Release", operationKey, { csrfToken: "csrf" }, createDanangMapClient(fetcher))).resolves.toMatchObject({
+      mode: "sync",
+      data: { snapshotId: jobId, generation: 8, status: "completed" },
+    });
+  });
+
+  it.each([
+    ["strong publication-job ETag", { snapshotId: jobId, generation: 8, status: "completed" }, { etag: '"publication-v8"' }],
+    ["Location", { snapshotId: jobId, generation: 8, status: "completed" }, { location: `/api/v1/admin/publication-jobs/${jobId}` }],
+    ["Retry-After", { snapshotId: jobId, generation: 8, status: "completed" }, { "retry-after": "2" }],
+    ["zero generation", { snapshotId: jobId, generation: 0, status: "completed" }, {}],
+    ["non-uuid snapshot", { snapshotId: "snapshot-8", generation: 8, status: "completed" }, {}],
+    ["mismatched publicationId", { publicationId: operationKey, snapshotId: jobId, generation: 8, status: "completed" }, {}],
+    ["invalid publicationId", { publicationId: "publication-8", snapshotId: jobId, generation: 8, status: "completed" }, {}],
+    ["extra field", { snapshotId: jobId, generation: 8, status: "completed", internalState: "committed" }, {}],
+  ])("rejects an invalid synchronous terminal with %s", async (_name, data, headers) => {
+    const fetcher = vi.fn<Fetcher>(async () => new Response(envelope(data), {
+      status: 202,
+      headers: { "content-type": "application/json", ...headers },
     }));
     await expect(publishRevision(revisionId, "Release", operationKey, { csrfToken: "csrf" }, createDanangMapClient(fetcher))).rejects.toEqual(expect.objectContaining<Partial<AdminApiError>>({
       code: "PUBLICATION_JOB_CONTRACT_INVALID",

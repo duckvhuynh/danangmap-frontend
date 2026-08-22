@@ -49,8 +49,10 @@ import {
   getPublicationJob,
   listLayerPublicationJobs,
   publishRevision,
+  type AsynchronousPublicationAcceptance,
   type PublicationJob,
   type PublicationJobResource,
+  type SynchronousPublicationResult,
 } from "@/lib/api/publication-jobs";
 import {
   isTerminalPublicationJob,
@@ -72,6 +74,11 @@ export interface RevisionReviewTransport {
 interface RevisionPublicationSeed {
   identity: string;
   resource: PublicationJobResource;
+}
+
+interface RevisionSynchronousPublication {
+  identity: string;
+  result: SynchronousPublicationResult;
 }
 
 const defaultTransport: RevisionReviewTransport = {
@@ -102,9 +109,10 @@ function recoveredJob(items: PublicationJob[]) {
   return items.find((item) => !isTerminalPublicationJob(item)) ?? items[0] ?? null;
 }
 
-function demoAcceptedJob(revisionId: string, layerId: string): PublicationJobResource {
+function demoAcceptedJob(revisionId: string, layerId: string): AsynchronousPublicationAcceptance {
   const now = new Date().toISOString();
   return {
+    mode: "async",
     data: {
       id: "99999999-9999-4999-8999-999999999999",
       layerId,
@@ -126,15 +134,22 @@ function demoAcceptedJob(revisionId: string, layerId: string): PublicationJobRes
   };
 }
 
-export function RevisionReview({
-  revisionId,
-  layerId,
-  transport = defaultTransport,
-}: {
+type RevisionReviewProps = {
   revisionId: string;
   layerId?: string;
   transport?: RevisionReviewTransport;
-}) {
+};
+
+export function RevisionReview(props: RevisionReviewProps) {
+  const identity = `${props.layerId ?? ""}:${props.revisionId}`;
+  return <RevisionReviewSession key={identity} {...props}/>;
+}
+
+function RevisionReviewSession({
+  revisionId,
+  layerId,
+  transport = defaultTransport,
+}: RevisionReviewProps) {
   const { principal, csrfToken } = useAdminSession();
   const canPublishHere = useSyncExternalStore(
     subscribeDesktopAuthoringCapability,
@@ -147,6 +162,7 @@ export function RevisionReview({
   const [workflow, setWorkflow] = useState<HistoryResource<WorkflowEvents> | null>(null);
   const [audit, setAudit] = useState<HistoryResource<AuditEvents> | null>(null);
   const [jobSeed, setJobSeed] = useState<RevisionPublicationSeed | null>(null);
+  const [synchronousPublication, setSynchronousPublication] = useState<RevisionSynchronousPublication | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingWorkflow, setLoadingWorkflow] = useState(false);
   const [loadingAudit, setLoadingAudit] = useState(false);
@@ -209,6 +225,7 @@ export function RevisionReview({
       setWorkflow(null);
       setAudit(null);
       setJobSeed(null);
+      setSynchronousPublication(null);
       setComment("");
       setReleaseNote("");
       setSuccess(null);
@@ -373,7 +390,10 @@ export function RevisionReview({
 
   async function mutate(action: "approve" | "changes" | "publish") {
     const owner = loadOwner;
-    if (!loadActiveRef.current || loadOwnerRef.current !== owner) return;
+    const ownedBundle = bundleRef.current;
+    if (!loadActiveRef.current
+      || loadOwnerRef.current !== owner
+      || !ownedBundle) return;
     const generation = ++mutationGenerationRef.current;
     const isCurrent = () => loadActiveRef.current
       && loadOwnerRef.current === owner
@@ -390,12 +410,20 @@ export function RevisionReview({
           ? demoAcceptedJob(revisionId, layerId ?? bundle!.revision.layerId)
           : await transport.publish(revisionId, releaseNote.trim(), key, { csrfToken });
         if (!isCurrent()) return;
-        observedNonterminalJobs.current.add(accepted.data.id);
+        delete operationKeys.current[action];
         setJobRecoveryError(null);
+        if (accepted.mode === "sync") {
+          setSynchronousPublication({ identity: publicationIdentity, result: accepted.data });
+          setSuccess(`Dữ liệu đã được công bố ở generation ${accepted.data.generation}. Snapshot ${accepted.data.snapshotId}.`);
+          setBusy(null);
+          if (process.env.NEXT_PUBLIC_DANANGMAP_DEMO_MODE !== "true") await load();
+          return;
+        }
+        setSynchronousPublication(null);
+        observedNonterminalJobs.current.add(accepted.data.id);
         setJobSeed({ identity: publicationIdentity, resource: accepted });
         setAcceptedJobId(accepted.data.id);
         setSuccess("Yêu cầu công bố đã được nhận. Trạng thái dưới đây lấy trực tiếp từ máy chủ.");
-        delete operationKeys.current[action];
         return;
       }
       if (!isCurrent()) return;
@@ -424,7 +452,10 @@ export function RevisionReview({
   const activeRevisionId = publicationStale && typeof error.details.activeRevisionId === "string" ? error.details.activeRevisionId : null;
   const reviewerActions = principal.role === "reviewer" && bundle.revision.status === "in_review";
   const publicationActive = publicationJob ? !isTerminalPublicationJob(publicationJob) : false;
-  const publicationSucceeded = publicationJob?.status === "succeeded";
+  const currentSynchronousPublication = synchronousPublication?.identity === publicationIdentity
+    ? synchronousPublication.result
+    : null;
+  const publicationSucceeded = publicationJob?.status === "succeeded" || currentSynchronousPublication !== null;
   const visibleSuccess = publicationJob?.status === "succeeded"
     ? "Dữ liệu đã được công bố sau khi publication job hoàn tất."
     : publicationJob?.status === "failed"
