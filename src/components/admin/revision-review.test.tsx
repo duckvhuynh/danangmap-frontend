@@ -238,7 +238,7 @@ describe("revision review publication capability", () => {
     fireEvent.click(screen.getByRole("button", { name: "Xem thay đổi của 18 đối tượng" }));
     expect(changesTab).toHaveAttribute("aria-selected", "true");
     expect(mapPanel).toHaveClass("hidden");
-    expect(changesPanel).toHaveClass("block");
+    expect(changesPanel).toHaveClass("flex", "flex-col", "gap-8");
     await waitFor(() => expect(changesPanel).toHaveFocus());
 
     fireEvent.click(commentsTab);
