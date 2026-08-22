@@ -145,12 +145,55 @@ describe("mandatory password change", () => {
     fireEvent.click(screen.getByRole("button", { name: "Đổi mật khẩu và tiếp tục" }));
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Mật khẩu hiện tại không đúng");
-    expect(alert).toHaveFocus();
+    expect(screen.getByLabelText("Mật khẩu hiện tại")).toHaveFocus();
+    expect(screen.getByLabelText("Mật khẩu hiện tại")).toHaveAttribute("aria-describedby", "password-change-error");
     expect(screen.getByRole("button", { name: "Đổi mật khẩu và tiếp tục" })).toBeEnabled();
+  });
+
+  it("reuses one idempotency key for the same explicit retry and rotates it after editing", async () => {
+    const secondKey = "22222222-2222-4222-8222-222222222222";
+    vi.spyOn(crypto, "randomUUID")
+      .mockReturnValueOnce(operationKey)
+      .mockReturnValueOnce(secondKey);
+    const changePassword = vi
+      .fn<AccountSecurityActions["changePassword"]>()
+      .mockRejectedValueOnce(new AccountSecurityError(409, "COMMAND_IN_PROGRESS", "processing"))
+      .mockRejectedValueOnce(new AccountSecurityError(503, "SERVICE_UNAVAILABLE", "down"))
+      .mockRejectedValueOnce(new AccountSecurityError(503, "SERVICE_UNAVAILABLE", "down"));
+    render(<PasswordChangeForm changePassword={changePassword} />);
+    passwordChangeFields();
+    const submit = screen.getByRole("button", { name: "Đổi mật khẩu và tiếp tục" });
+    fireEvent.click(submit);
+    await screen.findByRole("alert");
+    fireEvent.click(submit);
+    await waitFor(() => expect(changePassword).toHaveBeenCalledTimes(2));
+    expect(changePassword.mock.calls[0]![1]).toBe(operationKey);
+    expect(changePassword.mock.calls[1]![1]).toBe(operationKey);
+
+    fireEvent.change(screen.getByLabelText("Mật khẩu mới"), { target: { value: "Another-password-2026!" } });
+    fireEvent.change(screen.getByLabelText("Nhập lại mật khẩu mới"), { target: { value: "Another-password-2026!" } });
+    fireEvent.click(submit);
+    await waitFor(() => expect(changePassword).toHaveBeenCalledTimes(3));
+    expect(changePassword.mock.calls[2]![1]).toBe(secondKey);
   });
 });
 
 describe("generic password reset request", () => {
+  it("clears a stale validation error as soon as the email is edited", async () => {
+    const requestPasswordReset = vi.fn<AccountSecurityActions["requestPasswordReset"]>();
+    render(<ForgotPasswordForm requestPasswordReset={requestPasswordReset} />);
+    const email = screen.getByLabelText("Email tài khoản nội bộ");
+    fireEvent.change(email, { target: { value: "not-an-email" } });
+    fireEvent.submit(email.closest("form")!);
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(email).toHaveAttribute("aria-invalid", "true");
+
+    fireEvent.change(email, { target: { value: "editor@danang.gov.vn" } });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(email).toHaveAttribute("aria-invalid", "false");
+    expect(email).toHaveAttribute("aria-describedby", "reset-email-help");
+  });
+
   it.each(["known@danang.gov.vn", "unknown@danang.gov.vn"])(
     "renders the same public success for %s",
     async (email) => {

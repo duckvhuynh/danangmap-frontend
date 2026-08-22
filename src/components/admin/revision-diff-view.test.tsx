@@ -114,6 +114,57 @@ describe("revision diff view", () => {
     expect(screen.queryByText("Có thay đổi đã ẩn")).not.toBeInTheDocument();
   });
 
+  it("announces loaded diff results and supports roving keyboard navigation between entries", async () => {
+    const first = diffResource().data.entries[0]!;
+    const second = {
+      ...first,
+      featureId: "55555555-5555-4555-8555-555555555555",
+      changeType: "added" as const,
+    };
+    const load = vi.fn()
+      .mockResolvedValueOnce(diffResource({
+        entries: [first, second],
+        nextCursor: null,
+        hasMore: false,
+      }))
+      .mockResolvedValueOnce(diffResource({
+        entries: [first],
+        nextCursor: null,
+        hasMore: false,
+      }));
+    const view = render(<RevisionDiffView revisionId={revisionId} transport={{ load } as RevisionDiffTransport}/>);
+
+    expect((await screen.findAllByText("Có thay đổi đã ẩn")).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Dùng phím mũi tên lên và xuống/u)).toBeInTheDocument();
+    expect(screen.getByText("Đã tải 2 feature thay đổi so với revision trước.")).toHaveAttribute("aria-live", "polite");
+
+    const entries = screen.getAllByRole("article");
+    expect(entries[0]).toHaveAccessibleName(/mục 1 trên 2/u);
+    expect(entries[1]).toHaveAccessibleName(/mục 2 trên 2/u);
+    expect(entries[0]).toHaveAttribute("tabindex", "0");
+    expect(entries[1]).toHaveAttribute("tabindex", "-1");
+    entries[0]!.focus();
+    fireEvent.keyDown(entries[0]!, { key: "ArrowDown" });
+    expect(entries[1]).toHaveFocus();
+    expect(entries[0]).toHaveAttribute("tabindex", "-1");
+    expect(entries[1]).toHaveAttribute("tabindex", "0");
+    fireEvent.keyDown(entries[1]!, { key: "Home" });
+    expect(entries[0]).toHaveFocus();
+    fireEvent.keyDown(entries[0]!, { key: "End" });
+    expect(entries[1]).toHaveFocus();
+    fireEvent.keyDown(entries[1]!, { key: "ArrowUp" });
+    expect(entries[0]).toHaveFocus();
+    fireEvent.keyDown(entries[0]!, { key: "ArrowDown" });
+    expect(entries[1]).toHaveAttribute("tabindex", "0");
+
+    view.rerender(<RevisionDiffView revisionId="66666666-6666-4666-8666-666666666666" transport={{ load } as RevisionDiffTransport}/>);
+    await waitFor(() => {
+      const reloadedEntries = screen.getAllByRole("article");
+      expect(reloadedEntries).toHaveLength(1);
+      expect(reloadedEntries[0]).toHaveAttribute("tabindex", "0");
+    });
+  });
+
   it("preserves bounded DIFF_TOO_LARGE details in the typed error state", async () => {
     const load = vi.fn().mockRejectedValue(new AdminApiError(422, "DIFF_TOO_LARGE", "Diff too large.", "request-diff", { maxFeatures: 5000, currentFeatures: 6200 }));
     render(<RevisionDiffView revisionId={revisionId} transport={{ load } as RevisionDiffTransport}/>);

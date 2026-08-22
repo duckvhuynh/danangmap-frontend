@@ -1,6 +1,6 @@
 # Real-stack acceptance
 
-The publication suites run only against the external Docker stack. They never intercept or mock an API route. During the backward-compatible rollout the frontend accepts both valid `202` modes: the documented default-off legacy terminal (`status=completed`, snapshot, generation and optional matching `publicationId`, without durable `Location`/`Retry-After` or a strong job ETag; a generic weak Express ETag is allowed) and explicit durable acceptance (`queued/queued`, with `Location`, strong `ETag` and `Retry-After`). The exact local production activation pair backend `2d4675ec2385abf55fa23ad26914e037456f14cd` and frontend `6e6fe83f7dbf6d5a01c710bb35e670e08b63e1b8` completed two fresh-volume 18/18 runs and received independent GO. The backend default remains `false`, so durable async publication requires explicit opt-in. Remote GitHub cross-stack activation remains fail-closed pending `CROSS_REPO_READ_TOKEN`; the local result is not a remote-gate or Mapbox visual-QA claim.
+The publication suites run only against the external Docker stack. They never intercept or mock an API route. During the backward-compatible rollout the frontend accepts both valid `202` modes: the documented default-off legacy terminal (`status=completed`, snapshot, generation and optional matching `publicationId`, without durable `Location`/`Retry-After` or a strong job ETag; a generic weak Express ETag is allowed) and explicit durable acceptance (`queued/queued`, with `Location`, strong `ETag` and `Retry-After`). The exact local production activation pair backend `2d4675ec2385abf55fa23ad26914e037456f14cd` and frontend `6e6fe83f7dbf6d5a01c710bb35e670e08b63e1b8` completed two fresh-volume 18/18 runs and received independent GO. The backend default remains `false`, so durable async publication requires explicit opt-in. Remote cross-repository activation is now green: backend cross-stack run `32561792134`, frontend main run `32560236288` and backend main run `32562513173` passed after the repository-scoped read token was configured. No token value is stored in this repository or its test artifacts.
 
 Run it with:
 
@@ -11,6 +11,18 @@ $env:DANANGMAP_ASYNC_PUBLICATION_ENABLED = "true"
 $env:PLAYWRIGHT_BASE_URL = "https://gateway"
 npm run test:e2e:real:history
 ```
+
+The identity browser gate is `identity-recovery.spec.ts`. It uses only the real gateway, Mailpit, PostgreSQL-backed identity state and Redis rate limits; it never intercepts a request. It covers revoked and expired invite denial, the real invite-inspect rate limit, manual Editor creation, MFA enrollment, forced password change, body-only reset mail, old-session denial and revoke-all across two fresh sessions. Trace, screenshot and video capture are disabled for this suite so one-time credentials cannot enter Playwright artifacts. The full-stack harness provides:
+
+- `DANANGMAP_ADMIN_LOGIN`
+- `DANANGMAP_ADMIN_PASSWORD`
+- `DANANGMAP_ADMIN_TOTP_SECRET`
+- `DANANGMAP_EXPIRED_INVITE_TOKEN` from a test-only startup fixture, never a production endpoint
+- `DANANGMAP_INVITE_RATE_LIMIT_TOKEN` for a fresh Redis subject bucket
+- `MAILPIT_BASE_URL`
+- `PLAYWRIGHT_BASE_URL`
+
+Raw fixture tokens, password reset codes, MFA enrollment secrets and recovery codes stay in process memory only and must not be echoed by the harness.
 
 The focused durable-publication gate is host-orchestrated. The browser suite never starts, stops or sends signals to the backend. The host prepares an approved three-feature revision, removes or starts the worker for the requested phase, then invokes the same spec four times:
 

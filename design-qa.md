@@ -4,7 +4,7 @@
 >
 > Selected direction: Direction 1 — Civic Focus (refined)
 >
-> Final result: **blocked for release sign-off; live Mapbox runtime and core interaction pass**
+> Final result: **accepted for frontend issue #4; URL restriction is an owner-approved deferred operations task**
 
 ## 1. Source and live implementation matrix
 
@@ -45,21 +45,23 @@ The product owner supplied a new custom Street style after the source rasters we
 
 ## 4. Automated and container gates
 
+- Fresh live Mapbox browser gate: 1/1 pass in 14.8 s against the explicitly configured app. It exercised Street → Light → Street, public desktop 1484×1060, public mobile 390×844, admin editor 1487×1058 and admin review mobile 390×844. Both style categories returned successful responses and no style-response failure was observed.
 - Focused regression: 39/39 tests pass across Mapbox style, admin API/demo role, public search, combobox and revision review.
-- Full Vitest: 343/343 pass.
+- Focused identity/accessibility regression: 44/44 pass.
+- Full Vitest: 346/346 pass.
 - ESLint: pass with zero warnings.
 - TypeScript: pass.
 - Next.js production build: pass, 17 static/dynamic route entries generated.
 - Docker production image: pass.
 - Container smoke: `/api/health` 200, `/` 200, brand present, runtime UID 1001 (non-root).
 
-## 5. Remaining release blockers
+## 5. Deferred operations and non-blocking visual follow-ups
 
-### P1 — supplied public token is not URL-restricted
+### Deferred operations — restrict the public token by allowed URL
 
-The same style descriptor returned HTTP 200 for both the allowed local origin and a deliberately unauthorized origin. The public token is client-safe by prefix, but it is not yet origin-restricted. Restrict it in the Mapbox dashboard to the production/staging domains and intentional localhost entries, then repeat the origin probe. The credential itself is ignored locally and is not present in tracked source, screenshots or this report.
+The same style descriptor returned HTTP 200 for both the allowed local origin and a deliberately unauthorized origin. The public token is client-safe by prefix, but it is not yet origin-restricted. The product owner explicitly accepted frontend issue #4 with this restriction deferred to deployment operations. Before production exposure, restrict it in the Mapbox dashboard to production/staging domains and intentional localhost entries, then repeat the origin probe. The credential remains outside tracked source, screenshots, traces and this report.
 
-### P1 — exact source-fixture fidelity is incomplete
+### Non-blocking follow-up — exact source-fixture fidelity
 
 The approved source rasters contain a richer legacy/demo dataset than the current five-feature sample. Public viewport and interaction state are aligned, but camera framing, marker count, layer catalog density and feature copy are not pixel-equivalent. Admin editor similarly has a valid Terra Draw workspace with two demo objects rather than the dense selected-vertex/table fixture in the source. Admin review uses the requested 390×844 viewport and working review state, but its revision number, feature count, author, camera framing and bottom navigation differ from the source. These differences must remain visible in the comparison evidence; they are not claimed as a pixel-match pass.
 
@@ -71,4 +73,4 @@ The approved source rasters contain a richer legacy/demo dataset than the curren
 
 ## 6. Gate decision
 
-Mapbox activation, custom style rendering, Light fallback, overlay lifecycle, public search and mobile review are accepted for continued development. Final visual/security sign-off stays **blocked** until the token is URL-restricted and an exact reference-state comparison passes, or the product owner explicitly accepts every documented visual and demo-data variance.
+Frontend issue #4 is accepted: custom Street rendering, Light round-trip, overlay lifecycle, public desktop/mobile, admin editor desktop and admin review mobile all passed the live gate. URL restriction is explicitly deferred to deployment operations by the product owner and is not represented as complete. The documented demo-fixture variance remains visible as a later visual-fidelity follow-up rather than a false pixel-match claim.
