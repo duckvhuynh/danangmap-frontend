@@ -319,6 +319,8 @@ function RevisionReviewSession({
               requestId: jobsResult.value.requestId,
             },
           });
+        } else {
+          setJobSeed(null);
         }
       } else if (jobsResult.status === "rejected") {
         setJobRecoveryError(jobsResult.reason);
@@ -448,6 +450,7 @@ function RevisionReviewSession({
         setJobRecoveryError(null);
         if (accepted.mode === "sync") {
           setSynchronousPublication({ identity: publicationIdentity, result: accepted.data });
+          setJobSeed(null);
           setSuccess(`Dữ liệu đã được công bố ở generation ${accepted.data.generation}. Snapshot ${accepted.data.snapshotId}.`);
           setBusy(null);
           if (process.env.NEXT_PUBLIC_DANANGMAP_DEMO_MODE !== "true") await load();
@@ -490,11 +493,13 @@ function RevisionReviewSession({
     ? synchronousPublication.result
     : null;
   const publicationSucceeded = publicationJob?.status === "succeeded" || currentSynchronousPublication !== null;
-  const visibleSuccess = publicationJob?.status === "succeeded"
-    ? "Dữ liệu đã được công bố sau khi publication job hoàn tất."
-    : publicationJob?.status === "failed"
-      ? null
-      : success;
+  const visibleSuccess = currentSynchronousPublication !== null
+    ? success
+    : publicationJob?.status === "succeeded"
+      ? "Dữ liệu đã được công bố sau khi publication job hoàn tất."
+      : publicationJob?.status === "failed"
+        ? null
+        : success;
   const publisherAction = principal.role === "publisher"
     && bundle.revision.status === "approved"
     && !publicationStale
@@ -570,15 +575,24 @@ function RevisionReviewSession({
         </section>
       </div>
 
+      {!canPublishHere && <aside className="flex flex-col gap-4 p-4 outline-none md:hidden">
+        {error !== null && <div className="flex flex-col gap-2"><AdminErrorNotice error={error} onRetry={() => { void load(); }}/>{activeRevisionId && <Button asChild variant="outline" className="w-full"><Link href={`/admin/layers/${resolvedLayerId}/revisions/${activeRevisionId}/review`}>Mở revision đang công bố</Link></Button>}</div>}
+        {visibleSuccess && <Alert role="status"><IconCheck stroke={1.75}/><AlertTitle>Trạng thái công việc</AlertTitle><AlertDescription>{visibleSuccess}</AlertDescription></Alert>}
+        {jobRecoveryError !== null && <Alert><IconRefresh stroke={1.75}/><AlertTitle>Chưa thể khôi phục trạng thái công bố</AlertTitle><AlertDescription><p>Không thể đọc publication job hiện hành. Dữ liệu trên máy chủ không bị đánh dấu thất bại.</p><Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => { void load(); }}><IconRefresh data-icon="inline-start" stroke={1.75}/>Thử kết nối lại</Button></AlertDescription></Alert>}
+        {publicationJob && <PublicationJobStatus job={publicationJob} trackingState={trackingState} trackingIssue={trackingIssue}/>}
+      </aside>}
+
       <aside id="mobile-review-comments-panel" role="tabpanel" aria-labelledby="mobile-review-comments-tab" tabIndex={mobileSection === "comments" ? 0 : -1} className={cn("flex-col gap-4 p-4 outline-none md:flex md:p-0", mobileSection === "comments" ? "flex" : "hidden")}>
         <section className="hidden rounded-panel border bg-surface p-4 md:block" aria-labelledby="workspace-title">
           <div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-control bg-accent-subtle text-primary"><IconPolygon stroke={1.75}/></span><div><h2 id="workspace-title" className="text-sm font-semibold">Workspace server</h2><p className="text-xs text-muted-foreground">WGS84, đơn vị bán kính mét</p></div></div>
           <dl className="mt-4 divide-y text-sm"><div className="flex justify-between py-3"><dt className="text-muted-foreground">Người tạo</dt><dd className="max-w-[12rem] truncate font-medium">{bundle.revision.createdBy}</dd></div><div className="flex justify-between py-3"><dt className="text-muted-foreground">Cập nhật</dt><dd className="font-medium">{new Date(bundle.revision.updatedAt).toLocaleString("vi-VN")}</dd></div><div className="flex justify-between py-3"><dt className="text-muted-foreground">Workspace ETag</dt><dd className="max-w-[12rem] truncate font-mono text-xs">{bundle.etag}</dd></div>{history && <div className="flex justify-between py-3"><dt className="text-muted-foreground">History ETag</dt><dd className="max-w-[12rem] truncate font-mono text-xs">{history.historyEtag}</dd></div>}</dl>
         </section>
-        {error !== null && <div className="flex flex-col gap-2"><AdminErrorNotice error={error} onRetry={() => { void load(); }}/>{activeRevisionId && <Button asChild variant="outline" className="w-full"><Link href={`/admin/layers/${resolvedLayerId}/revisions/${activeRevisionId}/review`}>Mở revision đang công bố</Link></Button>}</div>}
-        {visibleSuccess && <Alert role="status"><IconCheck stroke={1.75}/><AlertTitle>Trạng thái công việc</AlertTitle><AlertDescription>{visibleSuccess}</AlertDescription></Alert>}
-        {jobRecoveryError !== null && <Alert><IconRefresh stroke={1.75}/><AlertTitle>Chưa thể khôi phục trạng thái công bố</AlertTitle><AlertDescription><p>Không thể đọc publication job hiện hành. Dữ liệu trên máy chủ không bị đánh dấu thất bại.</p><Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => { void load(); }}><IconRefresh data-icon="inline-start" stroke={1.75}/>Thử kết nối lại</Button></AlertDescription></Alert>}
-        {publicationJob && <PublicationJobStatus ref={publicationStatusRef} job={publicationJob} trackingState={trackingState} trackingIssue={trackingIssue}/>}
+        {canPublishHere && <div className="hidden flex-col gap-4 md:flex">
+          {error !== null && <div className="flex flex-col gap-2"><AdminErrorNotice error={error} onRetry={() => { void load(); }}/>{activeRevisionId && <Button asChild variant="outline" className="w-full"><Link href={`/admin/layers/${resolvedLayerId}/revisions/${activeRevisionId}/review`}>Mở revision đang công bố</Link></Button>}</div>}
+          {visibleSuccess && <Alert role="status"><IconCheck stroke={1.75}/><AlertTitle>Trạng thái công việc</AlertTitle><AlertDescription>{visibleSuccess}</AlertDescription></Alert>}
+          {jobRecoveryError !== null && <Alert><IconRefresh stroke={1.75}/><AlertTitle>Chưa thể khôi phục trạng thái công bố</AlertTitle><AlertDescription><p>Không thể đọc publication job hiện hành. Dữ liệu trên máy chủ không bị đánh dấu thất bại.</p><Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => { void load(); }}><IconRefresh data-icon="inline-start" stroke={1.75}/>Thử kết nối lại</Button></AlertDescription></Alert>}
+          {publicationJob && <PublicationJobStatus ref={publicationStatusRef} job={publicationJob} trackingState={trackingState} trackingIssue={trackingIssue}/>}
+        </div>}
         {reviewerActions && <section className="rounded-panel border bg-surface p-4"><Field><FieldLabel htmlFor="review-comment">Bình luận review</FieldLabel><textarea id="review-comment" className="min-h-24 w-full resize-y rounded-control border bg-surface p-3 text-sm" value={comment} onChange={(event) => { setComment(event.target.value); delete operationKeys.current.approve; delete operationKeys.current.changes; }} placeholder="Bắt buộc khi yêu cầu chỉnh sửa"/><FieldDescription><IconMessage className="inline" size={16}/> Bình luận duyệt có thể để trống.</FieldDescription></Field></section>}
         {publisherAction && <section className="rounded-panel border bg-surface p-4"><Field><FieldLabel htmlFor="release-note">Ghi chú công bố</FieldLabel><textarea id="release-note" className="min-h-24 w-full resize-y rounded-control border bg-surface p-3 text-sm" value={releaseNote} onChange={(event) => { setReleaseNote(event.target.value); delete operationKeys.current.publish; }} placeholder="Mô tả dữ liệu được công bố"/><FieldDescription>Một yêu cầu mới sau khi job thất bại luôn dùng idempotency key mới.</FieldDescription></Field></section>}
         {!reviewerActions && !publisherAction && !publicationJob && <section className="rounded-panel border bg-surface p-4 text-sm text-muted-foreground">Revision đang ở chế độ chỉ đọc đối với vai trò {principal.role.replace("_", " ")}.</section>}
