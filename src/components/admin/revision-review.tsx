@@ -99,7 +99,9 @@ function ReviewSkeleton() {
 }
 
 function recoveredJob(items: PublicationJob[]) {
-  return items.find((item) => !isTerminalPublicationJob(item)) ?? items[0] ?? null;
+  if (items.length === 0) return null;
+  const sorted = [...items].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+  return sorted.find((item) => !isTerminalPublicationJob(item)) ?? sorted[0];
 }
 
 function demoAcceptedJob(revisionId: string, layerId: string): PublicationJobResource {
@@ -406,9 +408,12 @@ export function RevisionReview({
       if (!isCurrent()) return;
       const retryable = !(reason instanceof AdminApiError)
         || reason.status >= 500
-        || reason.code === "IDEMPOTENCY_IN_PROGRESS"
-        || reason.code === "PUBLICATION_JOB_ACTIVE";
+        || reason.code === "IDEMPOTENCY_IN_PROGRESS";
       if (!retryable) delete operationKeys.current[action];
+      if (reason instanceof AdminApiError && reason.code === "PUBLICATION_JOB_ACTIVE") {
+        delete operationKeys.current[action];
+        void load();
+      }
       setError(reason);
     } finally {
       if (!isCurrent()) return;
@@ -430,12 +435,14 @@ export function RevisionReview({
     : publicationJob?.status === "failed"
       ? null
       : success;
+  const publicationPending = publicationSeed && publicationJob?.id !== publicationSeed.data.id;
   const publisherAction = principal.role === "publisher"
     && bundle.revision.status === "approved"
     && !publicationStale
     && canPublishHere
     && !publicationActive
-    && !publicationSucceeded;
+    && !publicationSucceeded
+    && !publicationPending;
   const publishLabel = publicationJob?.status === "failed" ? "Thử công bố lại" : "Công bố revision";
 
   return <main className="min-h-[100dvh] bg-surface-subtle pb-40">
