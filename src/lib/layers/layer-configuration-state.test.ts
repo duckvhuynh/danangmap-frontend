@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   changeGeometryMode,
+  changeAllowedGeometryKinds,
   changeSchemaField,
   createEmptyLayerConfiguration,
   createEmptySchemaField,
@@ -16,6 +17,17 @@ describe("dynamic layer configuration state", () => {
     const mixed = changeGeometryMode(createEmptyLayerConfiguration(), "mixed");
     expect(mixed.allowedGeometryKinds).toEqual(["point", "line", "polygon"]);
     expect(changeGeometryMode(mixed, "circle").allowedGeometryKinds).toEqual(["circle"]);
+  });
+
+  it("clears both cluster flags when clusterable point kinds are removed", () => {
+    const draft = createEmptyLayerConfiguration();
+    draft.renderConfig.cluster = true;
+    draft.style.pointCluster = true;
+    expect(changeAllowedGeometryKinds(draft, ["polygon"])).toMatchObject({
+      allowedGeometryKinds: ["polygon"],
+      renderConfig: { cluster: false },
+      style: { pointCluster: false },
+    });
   });
 
   it("forces sensitive fields private and out of offline recovery", () => {

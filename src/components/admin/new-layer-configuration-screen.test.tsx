@@ -72,23 +72,25 @@ describe("new layer configuration screen", () => {
     expect(api.listGroups).toHaveBeenCalledTimes(1);
   });
 
-  it("navigates to the GET-backed revision editor after create", async () => {
+  it("navigates to the GET-backed layer configuration after create", async () => {
     const api = transport();
     vi.mocked(api.create).mockImplementation(async (configuration) => ({
       configuration: {
         ...configuration,
         layerId: "22222222-2222-4222-8222-222222222222",
         revisionId: "33333333-3333-4333-8333-333333333333",
-        etag: '"layer-v1"',
+        revisionEtag: '"revision-v1"',
+        layerEtag: null,
       },
-      etag: '"layer-v1"',
+      revisionEtag: '"revision-v1"',
+      layerEtag: null,
     }));
     render(<NewLayerConfigurationScreen transport={api}/>);
     expect(await screen.findByRole("heading", { name: "Tạo lớp dữ liệu" })).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Mã lớp"), { target: { value: "tru-so-hanh-chinh" } });
     fireEvent.change(screen.getByLabelText("Tên lớp"), { target: { value: "Trụ sở hành chính" } });
     fireEvent.click(screen.getByRole("button", { name: "Tạo layer" }));
-    await waitFor(() => expect(replace).toHaveBeenCalledWith("/admin/layers/33333333-3333-4333-8333-333333333333/edit"));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/admin/layers/22222222-2222-4222-8222-222222222222"));
   });
 
   it("blocks authoring on a touch-first viewport without loading catalog mutations", () => {

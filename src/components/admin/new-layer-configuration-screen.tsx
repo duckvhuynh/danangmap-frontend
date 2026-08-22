@@ -11,13 +11,13 @@ import {
   subscribeDesktopAuthoringCapability,
 } from "@/lib/admin/authoring-capability";
 import { layerConfigurationCreateTransport } from "@/lib/api/layer-configuration";
-import { createEmptyLayerConfiguration, type LayerConfigurationDraft, type LayerConfigurationSaveContext, type LayerConfigurationSaveResult, type LayerGroupOption } from "@/lib/layers/layer-configuration-state";
+import { createEmptyLayerConfiguration, type LayerConfigurationCreateContext, type LayerConfigurationDraft, type LayerConfigurationSaveResult, type LayerGroupOption } from "@/lib/layers/layer-configuration-state";
 
 export interface LayerConfigurationCreateTransport {
   listGroups(signal?: AbortSignal): Promise<LayerGroupOption[]>;
   create(
     configuration: LayerConfigurationDraft,
-    context: LayerConfigurationSaveContext,
+    context: LayerConfigurationCreateContext,
     auth: { csrfToken: string },
   ): Promise<LayerConfigurationSaveResult>;
 }
@@ -39,14 +39,17 @@ export function NewLayerConfigurationScreen({ transport = layerConfigurationCrea
   useEffect(() => {
     if (!shouldLoad) return;
     const controller = new AbortController();
-    transport.listGroups(controller.signal).then(setGroups).catch((reason: unknown) => {
-      if (!controller.signal.aborted) setError(reason);
+    let active = true;
+    transport.listGroups(controller.signal).then((next) => {
+      if (active) setGroups(next);
+    }).catch((reason: unknown) => {
+      if (active) setError(reason);
     });
-    return () => controller.abort();
+    return () => { active = false; controller.abort(); };
   }, [reload, shouldLoad, transport]);
 
   if (!shouldLoad) {
-    return <LayerConfigurationEditor initial={initial} groups={[]} principalRole={principal.role} canAuthor={canAuthor} actions={{ save: (configuration, context) => transport.create(configuration, context, { csrfToken }) }} mode="create"/>;
+    return <LayerConfigurationEditor initial={initial} groups={[]} principalRole={principal.role} canAuthor={canAuthor} actions={{ create: (configuration, context) => transport.create(configuration, context, { csrfToken }) }} mode="create"/>;
   }
 
   if (error) {
@@ -61,7 +64,7 @@ export function NewLayerConfigurationScreen({ transport = layerConfigurationCrea
     return <main className="mx-auto max-w-[1440px] p-4 sm:p-6 md:p-8" role="status" aria-label="Đang tải cấu hình layer"><div className="flex flex-col gap-3"><Skeleton className="h-8 w-56"/><Skeleton className="h-4 w-full max-w-xl"/></div><div className="mt-8 grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]"><Skeleton className="h-52 rounded-panel"/><Skeleton className="h-[520px] rounded-panel"/></div></main>;
   }
 
-  return <LayerConfigurationEditor initial={initial} groups={groups} principalRole={principal.role} canAuthor={canAuthor} actions={{ save: (configuration, context) => transport.create(configuration, context, { csrfToken }) }} onSaved={(result) => {
-    if (result.configuration.revisionId) router.replace(`/admin/layers/${result.configuration.revisionId}/edit`);
+  return <LayerConfigurationEditor initial={initial} groups={groups} principalRole={principal.role} canAuthor={canAuthor} actions={{ create: (configuration, context) => transport.create(configuration, context, { csrfToken }) }} onSaved={(result) => {
+    if (result.configuration.layerId) router.replace(`/admin/layers/${result.configuration.layerId}`);
   }} mode="create"/>;
 }

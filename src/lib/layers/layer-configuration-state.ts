@@ -37,6 +37,7 @@ export interface LayerGroupOption {
   description: string;
   displayOrder: number;
   defaultVisible: boolean;
+  lockVersion: number;
   archivedAt: string | null;
 }
 
@@ -70,7 +71,8 @@ export interface LayerConfigurationDraft {
   layerId: string | null;
   revisionId: string | null;
   revisionStatus: string;
-  etag: string | null;
+  revisionEtag: string | null;
+  layerEtag: string | null;
   archivedAt: string | null;
   slug: string;
   groupId: string;
@@ -84,8 +86,12 @@ export interface LayerConfigurationDraft {
   style: {
     pointColor: string;
     pointRadius: number;
+    pointStrokeColor: string;
+    pointStrokeWidth: number;
+    pointCluster: boolean;
     lineColor: string;
     lineWidth: number;
+    lineOpacity: number;
     polygonFillColor: string;
     polygonFillOpacity: number;
     polygonStrokeColor: string;
@@ -95,6 +101,7 @@ export interface LayerConfigurationDraft {
     minZoom: number;
     maxZoom: number;
     cluster: boolean;
+    sourcePolicy: "auto" | "geojson" | "mvt" | "hybrid";
   };
   popupConfig: {
     titleField: string;
@@ -106,20 +113,48 @@ export interface LayerConfigurationDraft {
 
 export type LayerConfigurationErrors = Record<string, string>;
 
-export interface LayerConfigurationSaveContext {
-  etag: string | null;
+export interface LayerConfigurationCreateContext {
   operationKey: string;
+}
+
+export interface LayerConfigurationVersionedContext {
+  etag: string;
+  operationKey: string;
+}
+
+export interface LayerConfigurationImpactContext {
+  etag: string;
+}
+
+export interface LayerConfigurationImpactReason {
+  code: "GEOMETRY_KIND_IN_USE" | "FIELD_REMOVAL_WITH_DATA" | "FIELD_CONSTRAINT_CHANGE_WITH_DATA" | "REQUIRED_FIELD_MISSING";
+  fieldKey: string | null;
+  geometryKind: string | null;
+  affectedFeatures: number;
+}
+
+export interface LayerConfigurationImpact {
+  featureCount: number;
+  blocking: boolean;
+  schemaVersionWillIncrement: boolean;
+  reasons: LayerConfigurationImpactReason[];
 }
 
 export interface LayerConfigurationSaveResult {
   configuration: LayerConfigurationDraft;
-  etag: string;
+  revisionEtag: string | null;
+  layerEtag: string | null;
+  impact?: LayerConfigurationImpact;
 }
 
 export interface LayerConfigurationActions {
-  save(configuration: LayerConfigurationDraft, context: LayerConfigurationSaveContext): Promise<LayerConfigurationSaveResult>;
-  archive?(layerId: string, context: LayerConfigurationSaveContext): Promise<LayerConfigurationSaveResult>;
-  unarchive?(layerId: string, context: LayerConfigurationSaveContext): Promise<LayerConfigurationSaveResult>;
+  create?(configuration: LayerConfigurationDraft, context: LayerConfigurationCreateContext): Promise<LayerConfigurationSaveResult>;
+  previewImpact?(configuration: LayerConfigurationDraft, context: LayerConfigurationImpactContext): Promise<LayerConfigurationImpact>;
+  replaceRevision?(configuration: LayerConfigurationDraft, context: LayerConfigurationVersionedContext): Promise<LayerConfigurationSaveResult>;
+  updateCatalog?(configuration: LayerConfigurationDraft, context: LayerConfigurationVersionedContext): Promise<LayerConfigurationSaveResult>;
+  archive?(configuration: LayerConfigurationDraft, context: LayerConfigurationVersionedContext): Promise<LayerConfigurationSaveResult>;
+  unarchive?(configuration: LayerConfigurationDraft, context: LayerConfigurationVersionedContext): Promise<LayerConfigurationSaveResult>;
+  createSuccessor?(configuration: LayerConfigurationDraft, context: LayerConfigurationVersionedContext): Promise<LayerConfigurationSaveResult>;
 }
 
 const geometryKindsByMode: Record<Exclude<LayerGeometryMode, "mixed">, LayerGeometryKind[]> = {
@@ -166,7 +201,8 @@ export function createEmptyLayerConfiguration(): LayerConfigurationDraft {
     layerId: null,
     revisionId: null,
     revisionStatus: "draft",
-    etag: null,
+    revisionEtag: null,
+    layerEtag: null,
     archivedAt: null,
     slug: "",
     groupId: "",
@@ -180,20 +216,34 @@ export function createEmptyLayerConfiguration(): LayerConfigurationDraft {
     style: {
       pointColor: "#1A73E8",
       pointRadius: 7,
+      pointStrokeColor: "#FFFFFF",
+      pointStrokeWidth: 1,
+      pointCluster: false,
       lineColor: "#1A73E8",
       lineWidth: 3,
+      lineOpacity: 1,
       polygonFillColor: "#EAF3FF",
       polygonFillOpacity: 0.35,
       polygonStrokeColor: "#1A73E8",
       polygonStrokeWidth: 2,
     },
-    renderConfig: { minZoom: 8, maxZoom: 18, cluster: false },
+    renderConfig: { minZoom: 8, maxZoom: 18, cluster: false, sourcePolicy: "auto" },
     popupConfig: { titleField: "name", subtitleField: "", fieldKeys: ["name"], showCoordinates: false },
   };
 }
 
 export function changeGeometryMode(draft: LayerConfigurationDraft, mode: LayerGeometryMode): LayerConfigurationDraft {
-  return { ...draft, geometryMode: mode, allowedGeometryKinds: defaultAllowedGeometryKinds(mode) };
+  return changeAllowedGeometryKinds({ ...draft, geometryMode: mode }, defaultAllowedGeometryKinds(mode));
+}
+
+export function changeAllowedGeometryKinds(draft: LayerConfigurationDraft, allowedGeometryKinds: LayerGeometryKind[]): LayerConfigurationDraft {
+  const hasClusterablePoints = allowedGeometryKinds.some((kind) => kind === "point" || kind === "multipoint" || kind === "circle");
+  return {
+    ...draft,
+    allowedGeometryKinds,
+    style: hasClusterablePoints ? draft.style : { ...draft.style, pointCluster: false },
+    renderConfig: hasClusterablePoints ? draft.renderConfig : { ...draft.renderConfig, cluster: false },
+  };
 }
 
 export function changeSchemaField<K extends keyof LayerSchemaFieldDraft>(
@@ -299,7 +349,7 @@ export function validateLayerConfiguration(draft: LayerConfigurationDraft): Laye
   if (draft.renderConfig.minZoom < 0 || draft.renderConfig.maxZoom > 24 || draft.renderConfig.minZoom >= draft.renderConfig.maxZoom) {
     errors.renderZoom = "Zoom tối thiểu phải nhỏ hơn zoom tối đa trong khoảng 0-24.";
   }
-  const colors = [draft.style.pointColor, draft.style.lineColor, draft.style.polygonFillColor, draft.style.polygonStrokeColor];
+  const colors = [draft.style.pointColor, draft.style.pointStrokeColor, draft.style.lineColor, draft.style.polygonFillColor, draft.style.polygonStrokeColor];
   if (colors.some((color) => !/^#[0-9A-F]{6}$/iu.test(color))) errors.styleColor = "Màu style phải dùng mã hex 6 ký tự.";
   return errors;
 }
@@ -313,4 +363,24 @@ export function hasConfigurationImpact(original: LayerConfigurationDraft, next: 
       const before = originalFields.get(field.serverId ?? field.clientId);
       return before ? before.type !== field.type || before.public !== field.public || before.key !== field.key : false;
     });
+}
+
+export function hasCatalogConfigurationChanges(original: LayerConfigurationDraft, next: LayerConfigurationDraft) {
+  return original.groupId !== next.groupId
+    || original.displayOrder !== next.displayOrder
+    || original.defaultVisible !== next.defaultVisible;
+}
+
+export function hasRevisionConfigurationChanges(original: LayerConfigurationDraft, next: LayerConfigurationDraft) {
+  const revisionShape = (value: LayerConfigurationDraft) => ({
+    title: value.title,
+    description: value.description,
+    geometryMode: value.geometryMode,
+    allowedGeometryKinds: value.allowedGeometryKinds,
+    fields: value.fields,
+    style: value.style,
+    renderConfig: value.renderConfig,
+    popupConfig: value.popupConfig,
+  });
+  return JSON.stringify(revisionShape(original)) !== JSON.stringify(revisionShape(next));
 }

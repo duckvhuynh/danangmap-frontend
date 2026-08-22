@@ -1,5 +1,5 @@
 import { createHmac } from "node:crypto";
-import { expect, type Page } from "@playwright/test";
+import { expect, type Page, type Response } from "@playwright/test";
 
 export interface RealStackLoginEnvironment {
   login: string;
@@ -62,14 +62,33 @@ export async function freshTotp(page: Page, secret: string, loginIdentity?: stri
   return totp(secret);
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
+
+async function isRejectedGeneratedTotp(response: Response) {
+  if (response.status() !== 401) return false;
+  const body: unknown = await response.json().catch(() => undefined);
+  return isRecord(body) && body.code === "AUTH_MFA_INVALID";
+}
+
+async function submitGeneratedTotp(page: Page, secret: string, loginIdentity: string) {
+  await page.getByLabel("Mã xác thực 6 số").fill(await freshTotp(page, secret, loginIdentity));
+  const verification = page.waitForResponse((response) => response.url().endsWith("/api/v1/auth/mfa/verify") && response.request().method() === "POST");
+  await page.getByRole("button", { name: "Xác nhận" }).click();
+  return verification;
+}
+
 export async function loginWithMfa(page: Page, environment: RealStackLoginEnvironment) {
+  const secret = requiredEnv(environment.totpSecret);
   await page.goto("/login");
   await page.getByRole("textbox", { name: "Tên đăng nhập hoặc email" }).fill(requiredEnv(environment.login));
   await page.getByLabel("Mật khẩu").fill(requiredEnv(environment.password));
   await page.getByRole("button", { name: "Đăng nhập" }).click();
   await expect(page).toHaveURL(/\/login\/mfa$/u);
-  await page.getByLabel("Mã xác thực 6 số").fill(await freshTotp(page, requiredEnv(environment.totpSecret), environment.login));
-  await page.getByRole("button", { name: "Xác nhận" }).click();
+  const firstVerification = await submitGeneratedTotp(page, secret, environment.login);
+  if (await isRejectedGeneratedTotp(firstVerification) && new URL(page.url()).pathname === "/login/mfa") {
+    await waitForNextTotpStep(page);
+    await submitGeneratedTotp(page, secret, environment.login);
+  }
   await expect(page).toHaveURL(/\/admin$/u);
   await expect(page.getByRole("heading", { name: "Tổng quan hệ thống" })).toBeVisible();
 }
