@@ -84,6 +84,7 @@ export function RevisionReview({ revisionId, layerId }: { revisionId: string; la
     setLoading(true);
     setError(null);
     setHistoryError(null);
+    let bundleLoaded = false;
     try {
       const nextBundle = await loadRevisionBundle(revisionId);
       const resolvedLayerId = layerId ?? nextBundle.revision.layerId;
@@ -93,6 +94,7 @@ export function RevisionReview({ revisionId, layerId }: { revisionId: string; la
           actualLayerId: nextBundle.revision.layerId,
         });
       }
+      bundleLoaded = true;
       setBundle(nextBundle);
       if (process.env.NEXT_PUBLIC_DANANGMAP_DEMO_MODE !== "true") {
         const [nextHistory, nextWorkflow, nextAudit] = await Promise.all([
@@ -105,12 +107,12 @@ export function RevisionReview({ revisionId, layerId }: { revisionId: string; la
         setAudit(nextAudit);
       }
     } catch (reason) {
-      if (bundle) setHistoryError(reason);
+      if (bundleLoaded) setHistoryError(reason);
       else setError(reason);
     } finally {
       setLoading(false);
     }
-  }, [bundle, layerId, revisionId]);
+  }, [layerId, revisionId]);
 
   useEffect(() => {
     let active = true;
