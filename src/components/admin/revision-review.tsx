@@ -205,14 +205,17 @@ function RevisionReviewSession({
   const [releaseNote, setReleaseNote] = useState("");
   const [mobileSection, setMobileSection] = useState<MobileReviewSection>("map");
   const mobileTabRefs = useRef<Partial<Record<MobileReviewSection, HTMLButtonElement>>>({});
+  const mobilePanelRefs = useRef<Partial<Record<MobileReviewSection, HTMLElement>>>({});
   const [busy, setBusy] = useState<"approve" | "changes" | "publish" | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [feedbackFocusRequest, setFeedbackFocusRequest] = useState(0);
   const [acceptedJobId, setAcceptedJobId] = useState<string | null>(null);
   const operationKeys = useRef<Record<string, string>>({});
   const observedNonterminalJobs = useRef(new Set<string>());
   const handledTerminalJobs = useRef(new Set<string>());
   const focusedAcceptedJobs = useRef(new Set<string>());
   const publicationStatusRef = useRef<HTMLElement>(null);
+  const workflowFeedbackRef = useRef<HTMLDivElement>(null);
   const loadGenerationRef = useRef(0);
   const loadOwnerRef = useRef<object | null>(null);
   const loadActiveRef = useRef(false);
@@ -234,6 +237,12 @@ function RevisionReviewSession({
   });
 
   const operationKey = (action: string) => operationKeys.current[action] ??= crypto.randomUUID();
+
+  const activateMobileSection = useCallback((section: MobileReviewSection, focusPanel = false) => {
+    setMobileSection(section);
+    if (!focusPanel) return;
+    window.requestAnimationFrame(() => mobilePanelRefs.current[section]?.focus());
+  }, []);
 
   const load = useCallback(async () => {
     if (!loadActiveRef.current || loadOwnerRef.current !== loadOwner) return;
@@ -373,6 +382,10 @@ function RevisionReviewSession({
     setAcceptedJobId(null);
   }, [acceptedJobId, publicationJob?.id]);
 
+  useEffect(() => {
+    if (feedbackFocusRequest > 0) workflowFeedbackRef.current?.focus();
+  }, [feedbackFocusRequest]);
+
   async function loadMoreWorkflow() {
     const owner = loadOwner;
     if (!loadActiveRef.current || loadOwnerRef.current !== owner || !workflow?.data.nextCursor || loadingWorkflow) return;
@@ -433,6 +446,7 @@ function RevisionReviewSession({
       && loadOwnerRef.current === owner
       && mutationGenerationRef.current === generation;
     const key = operationKey(action);
+    setMobileSection("comments");
     setBusy(action);
     setError(null);
     if (action !== "publish") setSuccess(null);
@@ -449,6 +463,7 @@ function RevisionReviewSession({
         if (accepted.mode === "sync") {
           setSynchronousPublication({ identity: publicationIdentity, result: accepted.data });
           setSuccess(`Dữ liệu đã được công bố ở generation ${accepted.data.generation}. Snapshot ${accepted.data.snapshotId}.`);
+          setFeedbackFocusRequest((value) => value + 1);
           setBusy(null);
           if (process.env.NEXT_PUBLIC_DANANGMAP_DEMO_MODE !== "true") await load();
           return;
@@ -462,6 +477,7 @@ function RevisionReviewSession({
       }
       if (!isCurrent()) return;
       setSuccess(action === "approve" ? "Đã duyệt revision." : "Đã trả revision cho Editor.");
+      setFeedbackFocusRequest((value) => value + 1);
       delete operationKeys.current[action];
       if (process.env.NEXT_PUBLIC_DANANGMAP_DEMO_MODE !== "true") await load();
     } catch (reason) {
@@ -472,6 +488,7 @@ function RevisionReviewSession({
         || reason.code === "PUBLICATION_JOB_ACTIVE";
       if (!retryable) delete operationKeys.current[action];
       setError(reason);
+      setFeedbackFocusRequest((value) => value + 1);
     } finally {
       if (!isCurrent()) return;
       setBusy(null);
@@ -527,7 +544,7 @@ function RevisionReviewSession({
         tabIndex={mobileSection === tab.id ? 0 : -1}
         aria-selected={mobileSection === tab.id}
         aria-controls={`mobile-review-${tab.id}-panel`}
-        onClick={() => setMobileSection(tab.id)}
+        onClick={() => activateMobileSection(tab.id)}
         onKeyDown={(event) => {
           let nextIndex: number | null = null;
           if (event.key === "ArrowRight") nextIndex = (index + 1) % mobileReviewTabs.length;
@@ -545,13 +562,13 @@ function RevisionReviewSession({
     </nav>
 
     <div className="mx-auto grid max-w-5xl gap-4 md:grid-cols-[1.25fr_0.75fr] md:p-6">
-      <div id="mobile-review-map-panel" role="tabpanel" aria-labelledby="mobile-review-map-tab" tabIndex={mobileSection === "map" ? 0 : -1} className={cn("min-w-0 outline-none", mobileSection === "map" ? "block" : "hidden md:block")}>
+      <div ref={(element) => { mobilePanelRefs.current.map = element ?? undefined; }} id="mobile-review-map-panel" role="tabpanel" aria-labelledby="mobile-review-map-tab" tabIndex={mobileSection === "map" ? 0 : -1} className={cn("min-w-0 scroll-mt-28 outline-none focus-visible:ring-2 focus-visible:ring-ring", mobileSection === "map" ? "block" : "hidden md:block")}>
         <section className="overflow-hidden bg-surface md:rounded-panel md:border" aria-labelledby="review-content-title">
           <ReviewMapPreview revision={bundle.revision} features={bundle.features}/>
           <div className="hidden border-t p-4 md:block"><h2 id="review-content-title" className="font-semibold">Nội dung revision</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">{bundle.revision.description || "Không có mô tả."}</p><dl className="mt-4 grid grid-cols-2 gap-2 text-center"><div className="rounded-control bg-accent-subtle p-3"><dt className="text-xs text-muted-foreground">Đối tượng</dt><dd className="mt-1 text-lg font-semibold text-primary">{bundle.workspace.featureCount}</dd></div><div className="rounded-control bg-surface-subtle p-3"><dt className="text-xs text-muted-foreground">Trường metadata</dt><dd className="mt-1 text-lg font-semibold">{bundle.fields.length}</dd></div></dl></div>
 
           <div className="relative z-[1] mx-3 -mt-3 rounded-panel border bg-surface p-3 map-panel-shadow md:hidden">
-            <button type="button" onClick={() => setMobileSection("changes")} className="flex min-h-11 w-full items-center gap-3 rounded-control text-left outline-none hover:bg-surface-subtle focus-visible:ring-2 focus-visible:ring-ring" aria-label={`Xem thay đổi của ${bundle.workspace.featureCount} đối tượng`}>
+            <button type="button" onClick={() => activateMobileSection("changes", true)} className="flex min-h-11 w-full items-center gap-3 rounded-control text-left outline-none hover:bg-surface-subtle focus-visible:ring-2 focus-visible:ring-ring" aria-label={`Xem thay đổi của ${bundle.workspace.featureCount} đối tượng`}>
               <span className="grid size-10 shrink-0 place-items-center rounded-control bg-accent-subtle text-primary"><IconPolygon size={21} stroke={1.75}/></span>
               <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{bundle.workspace.featureCount} đối tượng thay đổi</span><span className="mt-0.5 block text-xs text-muted-foreground">{geometryModeLabel(bundle.revision.geometryMode)}</span></span>
               <IconChevronRight className="text-muted-foreground" size={20} stroke={1.75}/>
@@ -560,7 +577,7 @@ function RevisionReviewSession({
               <div className="flex min-w-0 items-center gap-2 border-r pr-2"><span className="grid size-9 shrink-0 place-items-center rounded-control bg-emerald-50 text-success"><IconUser size={19} stroke={1.75}/></span><div className="min-w-0"><dt className="text-muted-foreground">Tác giả</dt><dd className="truncate font-medium">{bundle.revision.createdBy}</dd></div></div>
               <div className="flex min-w-0 items-center gap-2 pl-2"><span className="grid size-9 shrink-0 place-items-center rounded-control bg-surface-subtle text-muted-foreground"><IconCalendar size={19} stroke={1.75}/></span><div className="min-w-0"><dt className="text-muted-foreground">Cập nhật</dt><dd className="truncate font-medium">{new Date(bundle.revision.updatedAt).toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" })}</dd></div></div>
             </dl>
-            <button type="button" onClick={() => setMobileSection("changes")} className="mt-2 flex min-h-11 w-full items-center gap-3 rounded-control text-left outline-none hover:bg-surface-subtle focus-visible:ring-2 focus-visible:ring-ring">
+            <button type="button" onClick={() => activateMobileSection("changes", true)} className="mt-2 flex min-h-11 w-full items-center gap-3 rounded-control text-left outline-none hover:bg-surface-subtle focus-visible:ring-2 focus-visible:ring-ring" aria-label={`Mở kết quả kiểm tra dữ liệu, ${validationLabel}`}>
               <span className={cn("grid size-10 shrink-0 place-items-center rounded-control", history?.data.validation.status === "valid" ? "bg-emerald-50 text-success" : "bg-accent-subtle text-primary")}><IconCircleCheck size={21} stroke={1.75}/></span>
               <span className="min-w-0 flex-1"><span className="block text-sm font-medium">Kiểm tra dữ liệu</span><span className={cn("mt-0.5 block text-xs", history?.data.validation.status === "valid" ? "text-success" : "text-muted-foreground")}>{validationLabel}</span></span>
               <IconChevronRight className="text-muted-foreground" size={20} stroke={1.75}/>
@@ -570,23 +587,25 @@ function RevisionReviewSession({
         </section>
       </div>
 
-      <aside id="mobile-review-comments-panel" role="tabpanel" aria-labelledby="mobile-review-comments-tab" tabIndex={mobileSection === "comments" ? 0 : -1} className={cn("flex-col gap-4 p-4 outline-none md:flex md:p-0", mobileSection === "comments" ? "flex" : "hidden")}>
+      <aside ref={(element) => { mobilePanelRefs.current.comments = element ?? undefined; }} id="mobile-review-comments-panel" role="tabpanel" aria-labelledby="mobile-review-comments-tab" tabIndex={mobileSection === "comments" ? 0 : -1} className={cn("scroll-mt-28 flex-col gap-4 p-4 outline-none focus-visible:ring-2 focus-visible:ring-ring md:flex md:p-0", mobileSection === "comments" ? "flex" : "hidden")}>
         <section className="hidden rounded-panel border bg-surface p-4 md:block" aria-labelledby="workspace-title">
           <div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-control bg-accent-subtle text-primary"><IconPolygon stroke={1.75}/></span><div><h2 id="workspace-title" className="text-sm font-semibold">Workspace server</h2><p className="text-xs text-muted-foreground">WGS84, đơn vị bán kính mét</p></div></div>
           <dl className="mt-4 divide-y text-sm"><div className="flex justify-between py-3"><dt className="text-muted-foreground">Người tạo</dt><dd className="max-w-[12rem] truncate font-medium">{bundle.revision.createdBy}</dd></div><div className="flex justify-between py-3"><dt className="text-muted-foreground">Cập nhật</dt><dd className="font-medium">{new Date(bundle.revision.updatedAt).toLocaleString("vi-VN")}</dd></div><div className="flex justify-between py-3"><dt className="text-muted-foreground">Workspace ETag</dt><dd className="max-w-[12rem] truncate font-mono text-xs">{bundle.etag}</dd></div>{history && <div className="flex justify-between py-3"><dt className="text-muted-foreground">History ETag</dt><dd className="max-w-[12rem] truncate font-mono text-xs">{history.historyEtag}</dd></div>}</dl>
         </section>
-        {error !== null && <div className="flex flex-col gap-2"><AdminErrorNotice error={error} onRetry={() => { void load(); }}/>{activeRevisionId && <Button asChild variant="outline" className="w-full"><Link href={`/admin/layers/${resolvedLayerId}/revisions/${activeRevisionId}/review`}>Mở revision đang công bố</Link></Button>}</div>}
-        {visibleSuccess && <Alert role="status"><IconCheck stroke={1.75}/><AlertTitle>Trạng thái công việc</AlertTitle><AlertDescription>{visibleSuccess}</AlertDescription></Alert>}
+        {(error !== null || visibleSuccess) && <div ref={workflowFeedbackRef} tabIndex={-1} className="flex scroll-mt-28 flex-col gap-2 rounded-control outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          {error !== null && <div className="flex flex-col gap-2"><AdminErrorNotice error={error} onRetry={() => { void load(); }}/>{activeRevisionId && <Button asChild variant="outline" className="w-full"><Link href={`/admin/layers/${resolvedLayerId}/revisions/${activeRevisionId}/review`}>Mở revision đang công bố</Link></Button>}</div>}
+          {visibleSuccess && <Alert role="status" aria-atomic="true"><IconCheck aria-hidden="true" stroke={1.75}/><AlertTitle>Trạng thái công việc</AlertTitle><AlertDescription>{visibleSuccess}</AlertDescription></Alert>}
+        </div>}
         {jobRecoveryError !== null && <Alert><IconRefresh stroke={1.75}/><AlertTitle>Chưa thể khôi phục trạng thái công bố</AlertTitle><AlertDescription><p>Không thể đọc publication job hiện hành. Dữ liệu trên máy chủ không bị đánh dấu thất bại.</p><Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => { void load(); }}><IconRefresh data-icon="inline-start" stroke={1.75}/>Thử kết nối lại</Button></AlertDescription></Alert>}
         {publicationJob && <PublicationJobStatus ref={publicationStatusRef} job={publicationJob} trackingState={trackingState} trackingIssue={trackingIssue}/>}
-        {reviewerActions && <section className="rounded-panel border bg-surface p-4"><Field><FieldLabel htmlFor="review-comment">Bình luận review</FieldLabel><textarea id="review-comment" className="min-h-24 w-full resize-y rounded-control border bg-surface p-3 text-sm" value={comment} onChange={(event) => { setComment(event.target.value); delete operationKeys.current.approve; delete operationKeys.current.changes; }} placeholder="Bắt buộc khi yêu cầu chỉnh sửa"/><FieldDescription><IconMessage className="inline" size={16}/> Bình luận duyệt có thể để trống.</FieldDescription></Field></section>}
-        {publisherAction && <section className="rounded-panel border bg-surface p-4"><Field><FieldLabel htmlFor="release-note">Ghi chú công bố</FieldLabel><textarea id="release-note" className="min-h-24 w-full resize-y rounded-control border bg-surface p-3 text-sm" value={releaseNote} onChange={(event) => { setReleaseNote(event.target.value); delete operationKeys.current.publish; }} placeholder="Mô tả dữ liệu được công bố"/><FieldDescription>Một yêu cầu mới sau khi job thất bại luôn dùng idempotency key mới.</FieldDescription></Field></section>}
+        {reviewerActions && <section className="rounded-panel border bg-surface p-4"><Field><FieldLabel htmlFor="review-comment">Bình luận review</FieldLabel><textarea id="review-comment" className="min-h-24 w-full scroll-mb-28 resize-y rounded-control border bg-surface p-3 text-sm" value={comment} aria-describedby="review-comment-description" onChange={(event) => { setComment(event.target.value); delete operationKeys.current.approve; delete operationKeys.current.changes; }} placeholder="Bắt buộc khi yêu cầu chỉnh sửa"/><FieldDescription id="review-comment-description"><IconMessage aria-hidden="true" className="inline" size={16}/> Có thể để trống khi phê duyệt; bắt buộc khi yêu cầu chỉnh sửa.</FieldDescription></Field></section>}
+        {publisherAction && <section className="rounded-panel border bg-surface p-4"><Field><FieldLabel htmlFor="release-note">Ghi chú công bố</FieldLabel><textarea id="release-note" className="min-h-24 w-full scroll-mb-28 resize-y rounded-control border bg-surface p-3 text-sm" value={releaseNote} aria-describedby="release-note-description" onChange={(event) => { setReleaseNote(event.target.value); delete operationKeys.current.publish; }} placeholder="Mô tả dữ liệu được công bố"/><FieldDescription id="release-note-description">Một yêu cầu mới sau khi job thất bại luôn dùng idempotency key mới.</FieldDescription></Field></section>}
         {!reviewerActions && !publisherAction && !publicationJob && <section className="rounded-panel border bg-surface p-4 text-sm text-muted-foreground">Revision đang ở chế độ chỉ đọc đối với vai trò {principal.role.replace("_", " ")}.</section>}
       </aside>
     </div>
 
     <div className={cn("mx-auto max-w-5xl flex-col gap-8 px-4 pb-8 md:flex md:px-6", mobileSection === "map" ? "hidden md:flex" : "flex")}>
-      <div id="mobile-review-changes-panel" role="tabpanel" aria-labelledby="mobile-review-changes-tab" tabIndex={mobileSection === "changes" ? 0 : -1} className={cn("outline-none md:contents", mobileSection === "changes" ? "contents" : "hidden")}>
+      <div ref={(element) => { mobilePanelRefs.current.changes = element ?? undefined; }} id="mobile-review-changes-panel" role="tabpanel" aria-labelledby="mobile-review-changes-tab" tabIndex={mobileSection === "changes" ? 0 : -1} className={cn("scroll-mt-28 outline-none focus-visible:ring-2 focus-visible:ring-ring md:contents", mobileSection === "changes" ? "block" : "hidden")}>
         {historyError !== null && (
           <AdminErrorNotice error={historyError} onRetry={() => { void load(); }}/>
         )}
@@ -599,7 +618,7 @@ function RevisionReviewSession({
       </div>
     </div>
 
-    {(reviewerActions || publisherAction) && <div className="fixed inset-x-0 bottom-16 z-20 border-t bg-surface p-3 md:bottom-0 md:left-60"><div className="mx-auto flex max-w-5xl gap-2">
+    {(reviewerActions || publisherAction) && <div className="fixed inset-x-0 bottom-16 z-20 border-t bg-surface p-3 md:bottom-0 md:left-60" role="region" aria-label="Hành động workflow" aria-busy={busy !== null}><div className="mx-auto flex max-w-5xl gap-2">
       {reviewerActions && <><Button aria-label="Yêu cầu chỉnh sửa" disabled={!comment.trim() || busy !== null} onClick={() => { void mutate("changes"); }} variant="outline" className="h-11 min-h-11 flex-1 text-destructive md:h-10 md:min-h-10"><IconX data-icon="inline-start" stroke={1.75}/>{busy === "changes" ? <><Spinner data-icon="inline-start"/>Đang gửi...</> : <><span className="md:hidden">Yêu cầu sửa</span><span className="hidden md:inline">Yêu cầu chỉnh sửa</span></>}</Button><Button aria-label="Duyệt thay đổi" disabled={busy !== null} onClick={() => { void mutate("approve"); }} className="h-11 min-h-11 flex-1 md:h-10 md:min-h-10"><IconCheck data-icon="inline-start" stroke={1.75}/>{busy === "approve" ? <><Spinner data-icon="inline-start"/>Đang duyệt...</> : <><span className="md:hidden">Phê duyệt</span><span className="hidden md:inline">Duyệt thay đổi</span></>}</Button></>}
       {publisherAction && <Button disabled={!canPublishHere || !releaseNote.trim() || busy !== null} onClick={() => { void mutate("publish"); }} className="flex-1"><IconCloudUpload data-icon="inline-start" stroke={1.75}/>{busy === "publish" ? <><Spinner data-icon="inline-start"/>Đang gửi...</> : publishLabel}</Button>}
     </div></div>}

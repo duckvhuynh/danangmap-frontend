@@ -150,7 +150,9 @@ describe("publication history screen", () => {
     expect(screen.getByRole("heading", { name: "Publication jobs" })).toBeInTheDocument();
     expect(screen.getByText('"publication-jobs-v1"')).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Revision #3" })).toHaveAttribute("href", `/admin/layers/${layerId}/revisions/${revisionId}/review`);
-    expect(screen.getByRole("button", { name: "Khôi phục bản này" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Khôi phục bản này, generation 6" })).toBeInTheDocument();
+    expect(screen.getByRole("table", { name: "Các publication snapshot của lớp, sắp xếp từ mới nhất đến cũ nhất." })).toBeInTheDocument();
+    expect(screen.getByText("Đã tải 2 publication, 1 revision và 1 sự kiện kiểm toán.")).toHaveAttribute("role", "status");
 
     fireEvent.click(screen.getByRole("button", { name: "Tải thêm revision" }));
     await waitFor(() => expect(api.revisions).toHaveBeenCalledTimes(2));
@@ -197,7 +199,8 @@ describe("publication history screen", () => {
     expect(screen.getByRole("heading", { name: "Publication snapshots" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Revision #3" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Audit theo layer" })).toBeInTheDocument();
-    const warning = screen.getByRole("status");
+    const warning = screen.getByText("Chưa thể tải publication jobs").closest('[role="status"]');
+    expect(warning).not.toBeNull();
     expect(warning).toHaveTextContent("Chưa thể tải publication jobs");
     expect(warning).not.toHaveTextContent("private upstream detail");
 
@@ -211,7 +214,7 @@ describe("publication history screen", () => {
     render(<PublicationHistoryScreen layerId={layerId} transport={api}/>);
 
     expect(await screen.findByText("Lịch sử Ranh giới phường xã")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Khôi phục bản này" }));
+    fireEvent.click(screen.getByRole("button", { name: "Khôi phục bản này, generation 6" }));
     const dialog = screen.getByRole("dialog", { name: "Khôi phục publication generation 6" });
     fireEvent.change(within(dialog).getByLabelText("Lý do khôi phục"), { target: { value: "Khôi phục dữ liệu đã được kiểm chứng" } });
     fireEvent.change(within(dialog).getByLabelText("Nhập KHÔI PHỤC để xác nhận"), { target: { value: "KHÔI PHỤC" } });
@@ -220,5 +223,33 @@ describe("publication history screen", () => {
     expect(await within(dialog).findByText(/Publication pointer đã thay đổi/u)).toBeInTheDocument();
     expect(screen.getAllByText(/Publication pointer đã thay đổi/u)).toHaveLength(1);
     await waitFor(() => expect(api.publications).toHaveBeenCalledTimes(2));
+  });
+
+  it("announces rollback completion and moves focus to the authoritative result", async () => {
+    const api = transport();
+    vi.mocked(api.rollback).mockResolvedValue({
+      data: {
+        status: "completed",
+        publicationId: "99999999-9999-4999-8999-999999999999",
+        snapshotId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        targetSnapshotId: publication.snapshotId,
+        activeRevisionId: revisionId,
+        generation: 7,
+      },
+      activePointerEtag: '"pointer-v7"',
+    });
+    render(<PublicationHistoryScreen layerId={layerId} transport={api}/>);
+
+    const trigger = await screen.findByRole("button", { name: "Khôi phục bản này, generation 6" });
+    fireEvent.click(trigger);
+    fireEvent.change(screen.getByLabelText("Lý do khôi phục"), { target: { value: "Khôi phục snapshot đã được đối chiếu" } });
+    fireEvent.change(screen.getByLabelText("Nhập KHÔI PHỤC để xác nhận"), { target: { value: "KHÔI PHỤC" } });
+    fireEvent.click(screen.getByRole("button", { name: "Xác nhận khôi phục" }));
+
+    const title = await screen.findByText("Khôi phục hoàn tất");
+    const result = title.closest('[role="status"]');
+    expect(result).not.toBeNull();
+    await waitFor(() => expect(result).toHaveFocus());
+    expect(result).toHaveTextContent("Generation 7 đã được tạo");
   });
 });

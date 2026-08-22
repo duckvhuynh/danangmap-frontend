@@ -46,7 +46,15 @@ export function RollbackDialog({
   const [error, setError] = useState<unknown>(null);
   const [pending, setPending] = useState(false);
   const operationKey = useRef<string | null>(null);
+  const reasonInputRef = useRef<HTMLInputElement>(null);
+  const restoreTriggerFocusRef = useRef(true);
   const valid = reason.trim().length >= 10 && confirmation === "KHÔI PHỤC";
+  const reasonInvalid = reason.length > 0 && reason.trim().length < 10;
+  const confirmationInvalid = confirmation.length > 0 && confirmation !== "KHÔI PHỤC";
+  const reasonDescriptionId = `rollback-reason-description-${publication.snapshotId}`;
+  const reasonErrorId = `rollback-reason-error-${publication.snapshotId}`;
+  const confirmationDescriptionId = `rollback-confirm-description-${publication.snapshotId}`;
+  const confirmationErrorId = `rollback-confirm-error-${publication.snapshotId}`;
 
   function resetOperation() {
     operationKey.current = null;
@@ -55,6 +63,7 @@ export function RollbackDialog({
 
   function close(nextOpen: boolean) {
     if (pending) return;
+    if (nextOpen) restoreTriggerFocusRef.current = true;
     setOpen(nextOpen);
     if (!nextOpen) {
       setReason("");
@@ -76,6 +85,7 @@ export function RollbackDialog({
         operationKey.current,
         auth,
       );
+      restoreTriggerFocusRef.current = false;
       onSuccess(result.data);
       operationKey.current = null;
       setOpen(false);
@@ -98,67 +108,82 @@ export function RollbackDialog({
 
   return <Dialog open={open} onOpenChange={close}>
     <DialogTrigger asChild>
-      <Button type="button" variant="outline" size="sm" disabled={disabled}>
-        <IconRotateClockwise data-icon="inline-start" stroke={1.75}/>
+      <Button type="button" variant="outline" size="sm" disabled={disabled} aria-label={`Khôi phục bản này, generation ${publication.generation}`}>
+        <IconRotateClockwise aria-hidden="true" data-icon="inline-start" stroke={1.75}/>
         Khôi phục bản này
       </Button>
     </DialogTrigger>
-    <DialogContent>
+    <DialogContent onOpenAutoFocus={(event) => {
+      event.preventDefault();
+      reasonInputRef.current?.focus();
+    }} onCloseAutoFocus={(event) => {
+      if (!restoreTriggerFocusRef.current) event.preventDefault();
+      restoreTriggerFocusRef.current = true;
+    }}>
       <DialogHeader>
         <DialogTitle>Khôi phục publication generation {publication.generation}</DialogTitle>
         <DialogDescription>Thao tác tạo một publication mới và chuyển active pointer sau khi transaction hoàn tất. Snapshot cũ không bị xóa.</DialogDescription>
       </DialogHeader>
 
-      <Alert>
-        <IconHistory stroke={1.75}/>
+      <Alert role="note">
+        <IconHistory aria-hidden="true" stroke={1.75}/>
         <AlertTitle>Snapshot được chọn</AlertTitle>
         <AlertDescription>
           Revision {publication.revisionNo}, {publication.featureCount.toLocaleString("vi-VN")} đối tượng, kích hoạt lúc {historyDate(publication.activatedAt)}.
         </AlertDescription>
       </Alert>
 
-      {error !== null && (
-        <AdminErrorNotice error={error}/>
-      )}
+      <form aria-busy={pending} onSubmit={(event) => {
+        event.preventDefault();
+        void submit();
+      }}>
+        {error !== null && (
+          <AdminErrorNotice error={error}/>
+        )}
 
-      <FieldGroup>
-        <Field data-invalid={reason.length > 0 && reason.trim().length < 10 || undefined}>
+        <FieldGroup className={error !== null ? "mt-5" : undefined}>
+        <Field data-invalid={reasonInvalid || undefined}>
           <FieldLabel htmlFor={`rollback-reason-${publication.snapshotId}`}>Lý do khôi phục</FieldLabel>
           <Input
+            ref={reasonInputRef}
             id={`rollback-reason-${publication.snapshotId}`}
             value={reason}
             onChange={(event) => { setReason(event.target.value); resetOperation(); }}
-            aria-invalid={reason.length > 0 && reason.trim().length < 10 || undefined}
+            aria-invalid={reasonInvalid || undefined}
+            aria-describedby={`${reasonDescriptionId}${reasonInvalid ? ` ${reasonErrorId}` : ""}`}
             placeholder="Ít nhất 10 ký tự"
             autoComplete="off"
           />
-          <FieldDescription>Lý do được ghi vào workflow và audit, không dùng để lưu dữ liệu riêng tư.</FieldDescription>
-          {reason.length > 0 && reason.trim().length < 10 && <FieldError>Lý do cần ít nhất 10 ký tự.</FieldError>}
+          <FieldDescription id={reasonDescriptionId}>Lý do được ghi vào workflow và audit, không dùng để lưu dữ liệu riêng tư.</FieldDescription>
+          {reasonInvalid && <FieldError id={reasonErrorId}>Lý do cần ít nhất 10 ký tự.</FieldError>}
         </Field>
-        <Field data-invalid={confirmation.length > 0 && confirmation !== "KHÔI PHỤC" || undefined}>
+        <Field data-invalid={confirmationInvalid || undefined}>
           <FieldLabel htmlFor={`rollback-confirm-${publication.snapshotId}`}>Nhập KHÔI PHỤC để xác nhận</FieldLabel>
           <Input
             id={`rollback-confirm-${publication.snapshotId}`}
             value={confirmation}
             onChange={(event) => { setConfirmation(event.target.value); resetOperation(); }}
-            aria-invalid={confirmation.length > 0 && confirmation !== "KHÔI PHỤC" || undefined}
+            aria-invalid={confirmationInvalid || undefined}
+            aria-describedby={`${confirmationDescriptionId}${confirmationInvalid ? ` ${confirmationErrorId}` : ""}`}
             autoComplete="off"
           />
-          {confirmation.length > 0 && confirmation !== "KHÔI PHỤC" && <FieldError>Cụm từ xác nhận chưa chính xác.</FieldError>}
+          <FieldDescription id={confirmationDescriptionId}>Cụm từ xác nhận phải khớp chính xác để tránh rollback ngoài ý muốn.</FieldDescription>
+          {confirmationInvalid && <FieldError id={confirmationErrorId}>Cụm từ xác nhận chưa chính xác.</FieldError>}
         </Field>
-      </FieldGroup>
+        </FieldGroup>
 
-      <DialogFooter>
+        <DialogFooter className="mt-5">
         <Button type="button" variant="outline" disabled={pending} onClick={() => close(false)}>Hủy</Button>
-        <Button type="button" variant="destructive" disabled={!valid || pending} onClick={submit}>
+        <Button type="submit" variant="destructive" disabled={!valid || pending}>
           {pending ? (
             <Spinner data-icon="inline-start"/>
           ) : (
-            <IconRotateClockwise data-icon="inline-start" stroke={1.75}/>
+            <IconRotateClockwise aria-hidden="true" data-icon="inline-start" stroke={1.75}/>
           )}
           {pending ? "Đang khôi phục..." : "Xác nhận khôi phục"}
         </Button>
-      </DialogFooter>
+        </DialogFooter>
+      </form>
     </DialogContent>
   </Dialog>;
 }

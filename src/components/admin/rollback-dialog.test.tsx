@@ -28,7 +28,7 @@ const publication: LayerPublicationHistory["items"][number] = {
 };
 
 function openAndCompleteForm() {
-  fireEvent.click(screen.getByRole("button", { name: "Khôi phục bản này" }));
+  fireEvent.click(screen.getByRole("button", { name: /Khôi phục bản này, generation 8/u }));
   fireEvent.change(screen.getByLabelText("Lý do khôi phục"), { target: { value: "Khôi phục dữ liệu đã được kiểm chứng" } });
   fireEvent.change(screen.getByLabelText("Nhập KHÔI PHỤC để xác nhận"), { target: { value: "KHÔI PHỤC" } });
 }
@@ -36,6 +36,30 @@ function openAndCompleteForm() {
 afterEach(cleanup);
 
 describe("rollback dialog", () => {
+  it("focuses the first field, associates validation help and restores the trigger after Escape", async () => {
+    render(<RollbackDialog layerId={layerId} publication={publication} activePointerEtag={'"pointer-v8"'} auth={{ csrfToken: "csrf-fixed" }} transport={{ rollback: vi.fn() } as RollbackDialogTransport} onSuccess={vi.fn()}/>);
+    const trigger = screen.getByRole("button", { name: /Khôi phục bản này, generation 8/u });
+    trigger.focus();
+    fireEvent.click(trigger);
+
+    const reason = screen.getByLabelText("Lý do khôi phục");
+    await waitFor(() => expect(reason).toHaveFocus());
+    fireEvent.change(reason, { target: { value: "ngắn" } });
+    const reasonError = screen.getByText("Lý do cần ít nhất 10 ký tự.");
+    expect(reason).toHaveAttribute("aria-invalid", "true");
+    expect(reason.getAttribute("aria-describedby")?.split(" ")).toContain(reasonError.id);
+
+    const confirmation = screen.getByLabelText("Nhập KHÔI PHỤC để xác nhận");
+    fireEvent.change(confirmation, { target: { value: "SAI" } });
+    const confirmationError = screen.getByText("Cụm từ xác nhận chưa chính xác.");
+    expect(confirmation.getAttribute("aria-describedby")?.split(" ")).toContain(confirmationError.id);
+    expect(screen.getByRole("button", { name: "Xác nhận khôi phục" })).toHaveAttribute("type", "submit");
+
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(trigger).toHaveFocus();
+  });
+
   it("reuses exact pointer ETag, body and idempotency key after an ambiguous retry", async () => {
     const rollback = vi.fn()
       .mockRejectedValueOnce(new TypeError("connection closed"))
