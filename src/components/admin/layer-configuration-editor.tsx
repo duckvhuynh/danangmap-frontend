@@ -100,8 +100,9 @@ function toggleListValue<T extends string>(values: T[], value: T, checked: boole
 }
 
 function ReadOnlyNotice({ role, canAuthor, status }: { role: AdminRole; canAuthor: boolean; status: string }) {
-  const title = status !== "draft" ? "Revision này được giữ bất biến" : role !== "editor" ? "Cấu hình chỉ đọc theo vai trò" : "Sửa cấu hình cần máy tính";
-  const description = status !== "draft"
+  const isEditableStatus = status === "draft" || status === "changes_requested";
+  const title = !isEditableStatus ? "Revision này được giữ bất biến" : role !== "editor" ? "Cấu hình chỉ đọc theo vai trò" : "Sửa cấu hình cần máy tính";
+  const description = !isEditableStatus
     ? "Chỉ draft hoặc successor draft mới nhận thay đổi schema, geometry và hiển thị."
     : role !== "editor"
       ? "Reviewer, Publisher và System Admin có thể xem cấu hình nhưng không thay đổi nội dung layer."
@@ -250,7 +251,7 @@ export function LayerConfigurationEditor({ initial, groups, principalRole, canAu
   const submitLock = useRef(false);
   const errorRef = useRef<HTMLDivElement>(null);
   const canCatalogMutate = principalRole === "editor" && canAuthor;
-  const canRevisionMutate = canCatalogMutate && draft.revisionStatus === "draft";
+  const canRevisionMutate = canCatalogMutate && (draft.revisionStatus === "draft" || draft.revisionStatus === "changes_requested");
   const catalogDirty = useMemo(() => mode === "edit" && hasCatalogConfigurationChanges(baseline, draft), [baseline, draft, mode]);
   const revisionDirty = useMemo(() => mode === "edit" && hasRevisionConfigurationChanges(baseline, draft), [baseline, draft, mode]);
   const heuristicImpact = useMemo(() => mode === "edit" && hasConfigurationImpact(baseline, draft), [baseline, draft, mode]);

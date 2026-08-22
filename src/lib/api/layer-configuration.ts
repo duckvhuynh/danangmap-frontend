@@ -374,7 +374,7 @@ export async function loadLayerConfiguration(layerId: string, signal?: AbortSign
   const detailResult = await client.GET("/api/v1/admin/layers/{layerId}", { signal, params: { path: { layerId } } });
   const detail = assertAdminResult(detailResult).data;
   const layerEtag = requiredEtag(detailResult.response, "layer");
-  const openStatuses = new Set(["draft", "in_review", "approved", "publishing"]);
+  const openStatuses = new Set(["draft", "in_review", "approved", "changes_requested", "publishing"]);
   const selected = [detail.draftRevision, detail.latestRevision].find((revision) => revision && openStatuses.has(revision.status))
     ?? detail.publishedRevision
     ?? detail.latestRevision;
