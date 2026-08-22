@@ -53,15 +53,18 @@ function formatExpiry(value: string) {
 function InviteAlert({
   message,
   errorRef,
+  id,
   title = "Không thể xử lý lời mời",
 }: {
   message: string;
   errorRef: React.RefObject<HTMLDivElement | null>;
+  id?: string;
   title?: string;
 }) {
   return (
     <Alert
       className="border-destructive/25 bg-red-50 text-destructive"
+      id={id}
       ref={errorRef}
       tabIndex={-1}
       variant="destructive"
@@ -79,19 +82,35 @@ export function InviteAcceptForm() {
   const acceptLock = useRef(false);
   const errorRef = useRef<HTMLDivElement>(null);
   const detailsRef = useRef<HTMLHeadingElement>(null);
+  const tokenRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+  const confirmationRef = useRef<HTMLInputElement>(null);
   const [stage, setStage] = useState<InviteStage>({ name: "entry" });
   const [pending, setPending] = useState<"inspect" | "accept" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [errorField, setErrorField] = useState<"token" | "password" | "confirmation" | null>(null);
 
   useEffect(() => {
     if (stage.name === "details") detailsRef.current?.focus();
   }, [stage.name]);
 
   useEffect(() => {
-    if (error) errorRef.current?.focus();
-  }, [error]);
+    if (!error) return;
+    if (errorField === "token") tokenRef.current?.focus();
+    else if (errorField === "password") passwordRef.current?.focus();
+    else if (errorField === "confirmation") confirmationRef.current?.focus();
+    else errorRef.current?.focus();
+  }, [error, errorField]);
 
-  const focusError = () => globalThis.setTimeout(() => errorRef.current?.focus(), 0);
+  const focusError = (field: typeof errorField = null) => {
+    setErrorField(field);
+    globalThis.setTimeout(() => {
+      if (field === "token") tokenRef.current?.focus();
+      else if (field === "password") passwordRef.current?.focus();
+      else if (field === "confirmation") confirmationRef.current?.focus();
+      else errorRef.current?.focus();
+    }, 0);
+  };
 
   const submitInspection = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -99,19 +118,27 @@ export function InviteAcceptForm() {
     const token = String(new FormData(event.currentTarget).get("inviteToken") ?? "").trim();
     if (token.length < 32) {
       setError("Mã lời mời phải có ít nhất 32 ký tự.");
-      focusError();
+      focusError("token");
       return;
     }
     inspectLock.current = true;
     setPending("inspect");
     setError(null);
+    setErrorField(null);
     try {
       const inspection = await inspectInvite(token);
       setStage({ name: "details", token, inspection });
     } catch (caught) {
       inspectLock.current = false;
       setError(inviteErrorMessage(caught, "inspect"));
-      focusError();
+      if (
+        caught instanceof InviteApiError &&
+        (caught.code === "INVITE_INVALID_OR_EXPIRED" || [400, 404, 410].includes(caught.status))
+      ) {
+        focusError("token");
+      } else {
+        focusError();
+      }
     } finally {
       setPending(null);
     }
@@ -120,7 +147,8 @@ export function InviteAcceptForm() {
   const submitAcceptance = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (stage.name !== "details" || acceptLock.current) return;
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const password = String(form.get("password") ?? "");
     const passwordConfirmation = String(form.get("passwordConfirmation") ?? "");
     if (password.length < 12 || password.length > 200 || password !== passwordConfirmation) {
@@ -129,14 +157,16 @@ export function InviteAcceptForm() {
           ? "Hai ô mật khẩu chưa trùng khớp."
           : "Mật khẩu phải có từ 12 đến 200 ký tự.",
       );
-      focusError();
+      focusError(password !== passwordConfirmation ? "confirmation" : "password");
       return;
     }
     acceptLock.current = true;
     setPending("accept");
     setError(null);
+    setErrorField(null);
     try {
       await acceptInvite({ token: stage.token, password, passwordConfirmation });
+      formElement.reset();
       setStage({ name: "accepted" });
       globalThis.setTimeout(
         () => router.replace("/login/mfa?enrollment=required"),
@@ -145,11 +175,13 @@ export function InviteAcceptForm() {
     } catch (caught) {
       const message = inviteErrorMessage(caught, "accept");
       if (caught instanceof InviteApiError && caught.ambiguous) {
+        formElement.reset();
         setStage({ name: "uncertain", message });
       } else {
         acceptLock.current = false;
         setError(message);
-        focusError();
+        if (caught instanceof InviteApiError && caught.status === 422) focusError("password");
+        else focusError();
       }
     } finally {
       setPending(null);
@@ -171,7 +203,7 @@ export function InviteAcceptForm() {
   if (stage.name === "uncertain") {
     return (
       <div className="mt-6 flex flex-col gap-4">
-        <Alert className="border-warning/30 bg-surface-subtle text-warning">
+        <Alert aria-live="assertive" className="border-warning/30 bg-surface-subtle text-warning">
           <IconAlertCircle size={18} stroke={1.75} />
           <AlertTitle>Trạng thái kích hoạt chưa xác định</AlertTitle>
           <AlertDescription>
@@ -195,10 +227,11 @@ export function InviteAcceptForm() {
   if (stage.name === "entry") {
     return (
       <form className="mt-7 flex flex-col gap-5" onSubmit={submitInspection}>
-        <Field data-invalid={Boolean(error)}>
+        <Field data-invalid={errorField === "token"}>
           <FieldLabel htmlFor="invite-token">Mã lời mời</FieldLabel>
           <Input
-            aria-invalid={Boolean(error)}
+            aria-describedby={`invite-token-help${error ? " invite-error" : ""}`}
+            aria-invalid={errorField === "token"}
             autoCapitalize="none"
             autoComplete="off"
             disabled={pending === "inspect"}
@@ -208,13 +241,14 @@ export function InviteAcceptForm() {
             name="inviteToken"
             placeholder="Dán mã trong nội dung email"
             required
+            ref={tokenRef}
             spellCheck={false}
           />
-          <FieldDescription>
+          <FieldDescription id="invite-token-help">
             Chỉ dán mã tại đây. Không đưa mã vào địa chỉ trang hoặc chia sẻ ảnh chụp màn hình.
           </FieldDescription>
         </Field>
-        {error && <InviteAlert errorRef={errorRef} message={error} />}
+        {error && <InviteAlert errorRef={errorRef} id="invite-error" message={error} />}
         <Button disabled={pending === "inspect"} type="submit">
           <IconMail data-icon="inline-start" stroke={1.75} />
           {pending === "inspect" ? "Đang kiểm tra..." : "Kiểm tra lời mời"}
@@ -273,10 +307,11 @@ export function InviteAcceptForm() {
 
       <form className="flex flex-col gap-5" onSubmit={submitAcceptance}>
         <FieldGroup className="gap-5">
-          <Field data-invalid={Boolean(error)}>
+          <Field data-invalid={errorField === "password"}>
             <FieldLabel htmlFor="invite-password">Mật khẩu mới</FieldLabel>
             <Input
-              aria-invalid={Boolean(error)}
+              aria-describedby={`invite-password-help${error ? " invite-error" : ""}`}
+              aria-invalid={errorField === "password"}
               autoComplete="new-password"
               disabled={pending === "accept"}
               id="invite-password"
@@ -284,14 +319,16 @@ export function InviteAcceptForm() {
               minLength={12}
               name="password"
               required
+              ref={passwordRef}
               type="password"
             />
-            <FieldDescription>Tối thiểu 12 ký tự. Không dùng lại mật khẩu ở hệ thống khác.</FieldDescription>
+            <FieldDescription id="invite-password-help">Tối thiểu 12 ký tự. Không dùng lại mật khẩu ở hệ thống khác.</FieldDescription>
           </Field>
-          <Field data-invalid={Boolean(error)}>
+          <Field data-invalid={errorField === "confirmation"}>
             <FieldLabel htmlFor="invite-password-confirmation">Nhập lại mật khẩu</FieldLabel>
             <Input
-              aria-invalid={Boolean(error)}
+              aria-describedby={error ? "invite-error" : undefined}
+              aria-invalid={errorField === "confirmation"}
               autoComplete="new-password"
               disabled={pending === "accept"}
               id="invite-password-confirmation"
@@ -299,11 +336,12 @@ export function InviteAcceptForm() {
               minLength={12}
               name="passwordConfirmation"
               required
+              ref={confirmationRef}
               type="password"
             />
           </Field>
         </FieldGroup>
-        {error && <InviteAlert errorRef={errorRef} message={error} />}
+        {error && <InviteAlert errorRef={errorRef} id="invite-error" message={error} />}
         <Button disabled={pending === "accept"} type="submit">
           <IconKey data-icon="inline-start" stroke={1.75} />
           {pending === "accept" ? "Đang tạo tài khoản..." : "Tạo mật khẩu và tiếp tục"}

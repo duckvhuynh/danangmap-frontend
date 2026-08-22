@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { IconAlertTriangle, IconArrowsDiff, IconEyeOff, IconPaperclip } from "@tabler/icons-react";
 import { AdminErrorNotice } from "@/components/admin/admin-session";
 import { compactIdentifier } from "@/components/admin/history-format";
@@ -95,12 +95,14 @@ function PublicFieldKeys({ label, keys }: { label: string; keys: string[] }) {
 }
 
 export function RevisionDiffView({ revisionId, transport = defaultTransport }: { revisionId: string; transport?: RevisionDiffTransport }) {
+  const entryRefs = useRef<Array<HTMLElement | null>>([]);
   const [comparison, setComparison] = useState<"parent" | "active">("parent");
   const [resource, setResource] = useState<HistoryResource<RevisionDiff> | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [loading, setLoading] = useState(process.env.NEXT_PUBLIC_DANANGMAP_DEMO_MODE !== "true");
   const [loadingMore, setLoadingMore] = useState(false);
   const [reloadVersion, setReloadVersion] = useState(0);
+  const [activeEntryIndex, setActiveEntryIndex] = useState(0);
 
   const retry = useCallback(() => {
     setResource(null);
@@ -139,6 +141,19 @@ export function RevisionDiffView({ revisionId, transport = defaultTransport }: {
     }
   }
 
+  function navigateEntries(event: React.KeyboardEvent<HTMLElement>, index: number, count: number) {
+    if (event.target !== event.currentTarget) return;
+    let nextIndex: number | null = null;
+    if (event.key === "ArrowDown") nextIndex = Math.min(index + 1, count - 1);
+    if (event.key === "ArrowUp") nextIndex = Math.max(index - 1, 0);
+    if (event.key === "Home") nextIndex = 0;
+    if (event.key === "End") nextIndex = count - 1;
+    if (nextIndex === null || nextIndex === index) return;
+    event.preventDefault();
+    setActiveEntryIndex(nextIndex);
+    entryRefs.current[nextIndex]?.focus();
+  }
+
   if (process.env.NEXT_PUBLIC_DANANGMAP_DEMO_MODE === "true") return <Alert><IconArrowsDiff stroke={1.75}/><AlertTitle>Diff cần API thật</AlertTitle><AlertDescription>Chế độ demo không dựng dữ liệu diff. Bản triển khai kết nối trực tiếp endpoint revision diff.</AlertDescription></Alert>;
   if (loading) return <DiffSkeleton/>;
   if (error instanceof AdminApiError && error.code === "DIFF_TOO_LARGE") {
@@ -156,8 +171,12 @@ export function RevisionDiffView({ revisionId, transport = defaultTransport }: {
 
   const diff = resource?.data;
   if (!diff) return null;
+  const entryInstructionsId = `revision-diff-entry-instructions-${revisionId}`;
 
   return <div className="flex flex-col gap-5">
+    <p aria-atomic="true" aria-live="polite" className="sr-only">
+      Đã tải {diff.entries.length.toLocaleString("vi-VN")} feature thay đổi so với {comparison === "active" ? "bản đang công bố" : "revision trước"}.
+    </p>
     <Field>
       <FieldLabel htmlFor="diff-comparison">Mốc so sánh</FieldLabel>
       <Select value={comparison} onValueChange={(value: "parent" | "active") => { setComparison(value); setResource(null); setError(null); setLoading(true); }}>
@@ -198,8 +217,18 @@ export function RevisionDiffView({ revisionId, transport = defaultTransport }: {
       </AlertDescription>
     </Alert>
 
-    {diff.entries.length === 0 ? <Empty className="border"><EmptyHeader><EmptyMedia variant="icon"><IconArrowsDiff stroke={1.75}/></EmptyMedia><EmptyTitle>Không có thay đổi feature</EmptyTitle><EmptyDescription>Revision không khác mốc so sánh đã chọn trong phạm vi dữ liệu hiện tại.</EmptyDescription></EmptyHeader></Empty> : <ol className="divide-y rounded-panel border bg-surface" aria-label="Các feature thay đổi">
-      {diff.entries.map((entry) => <li key={`${entry.featureId}:${entry.changeType}`} className="p-4">
+    {diff.entries.length === 0 ? <Empty className="border"><EmptyHeader><EmptyMedia variant="icon"><IconArrowsDiff stroke={1.75}/></EmptyMedia><EmptyTitle>Không có thay đổi feature</EmptyTitle><EmptyDescription>Revision không khác mốc so sánh đã chọn trong phạm vi dữ liệu hiện tại.</EmptyDescription></EmptyHeader></Empty> : <div>
+      <p className="sr-only" id={entryInstructionsId}>Dùng phím mũi tên lên và xuống, Home hoặc End để di chuyển giữa các feature thay đổi.</p>
+      <ol aria-describedby={entryInstructionsId} aria-label="Các feature thay đổi" className="divide-y rounded-panel border bg-surface">
+      {diff.entries.map((entry, index) => <li key={`${entry.featureId}:${entry.changeType}`} className="p-4">
+        <article
+          aria-label={`${changeLabel(entry.changeType)} feature ${compactIdentifier(entry.featureId)}, mục ${index + 1} trên ${diff.entries.length}`}
+          className="rounded-control outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-4"
+          onFocus={() => setActiveEntryIndex(index)}
+          onKeyDown={(event) => navigateEntries(event, index, diff.entries.length)}
+          ref={(node) => { entryRefs.current[index] = node; }}
+          tabIndex={index === Math.min(activeEntryIndex, diff.entries.length - 1) ? 0 : -1}
+        >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2"><Badge>{changeLabel(entry.changeType)}</Badge>{entry.redactedChange && <Badge><IconEyeOff data-icon="inline-start" stroke={1.75}/>Có thay đổi đã ẩn</Badge>}</div>
@@ -226,8 +255,9 @@ export function RevisionDiffView({ revisionId, transport = defaultTransport }: {
           <PropertiesPreview label="Thuộc tính public sau" properties={entry.properties.after}/>
         </div>
         <p className="mt-3 text-xs text-muted-foreground">Attachment: {entry.attachments.reasonCode}</p>
+        </article>
       </li>)}
-    </ol>}
+    </ol></div>}
     {error !== null && resource && (
       <AdminErrorNotice error={error} onRetry={loadMore}/>
     )}

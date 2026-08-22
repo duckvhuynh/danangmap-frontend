@@ -23,7 +23,10 @@ export function SessionSecurityPanel({
   const router = useRouter();
   const { principal, clearClientPrincipal } = useAdminSession();
   const submitLock = useRef(false);
+  const attemptKey = useRef<string | null>(null);
   const errorRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const confirmButtonRef = useRef<HTMLButtonElement>(null);
   const [confirming, setConfirming] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +36,10 @@ export function SessionSecurityPanel({
   }, [error]);
 
   const focusError = () => globalThis.setTimeout(() => errorRef.current?.focus(), 0);
+
+  useEffect(() => {
+    if (confirming) confirmButtonRef.current?.focus();
+  }, [confirming]);
 
   async function endLocalSession() {
     await clearPrincipalRecovery(principal.id).catch(() => undefined);
@@ -47,7 +54,9 @@ export function SessionSecurityPanel({
     setPending(true);
     setError(null);
     try {
-      await revokeAllSessions(crypto.randomUUID());
+      attemptKey.current ??= crypto.randomUUID();
+      await revokeAllSessions(attemptKey.current);
+      attemptKey.current = null;
       await endLocalSession();
     } catch (caught) {
       if (shouldEndClientSessionAfterRevoke(caught)) {
@@ -80,26 +89,30 @@ export function SessionSecurityPanel({
       {error && <div className="mt-4"><SecurityError errorRef={errorRef} message={error} /></div>}
 
       {confirming ? (
-        <div className="mt-4 flex flex-col gap-3">
+        <div aria-labelledby="session-revoke-confirmation-title" className="mt-4 flex flex-col gap-3" role="group">
           <Alert className="border-warning/30 bg-surface-subtle text-warning" role="note">
             <IconAlertCircle size={18} stroke={1.75} />
-            <AlertTitle>Xác nhận thu hồi toàn bộ phiên</AlertTitle>
+            <AlertTitle id="session-revoke-confirmation-title">Xác nhận thu hồi toàn bộ phiên</AlertTitle>
             <AlertDescription>
               Bạn sẽ phải đăng nhập và xác thực MFA lại trên mọi thiết bị. Thao tác này không thể hoàn tác.
             </AlertDescription>
           </Alert>
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button disabled={pending} onClick={() => setConfirming(false)} type="button" variant="outline">
+            <Button disabled={pending} onClick={() => {
+              attemptKey.current = null;
+              setConfirming(false);
+              globalThis.setTimeout(() => triggerRef.current?.focus(), 0);
+            }} type="button" variant="outline">
               Hủy
             </Button>
-            <Button disabled={pending} onClick={() => void revoke()} type="button" variant="destructive">
+            <Button disabled={pending} onClick={() => void revoke()} ref={confirmButtonRef} type="button" variant="destructive">
               <IconLogout data-icon="inline-start" stroke={1.75} />
               {pending ? "Đang thu hồi..." : "Xác nhận thu hồi"}
             </Button>
           </div>
         </div>
       ) : (
-        <Button className="mt-4" onClick={() => setConfirming(true)} type="button" variant="outline">
+        <Button className="mt-4" onClick={() => setConfirming(true)} ref={triggerRef} type="button" variant="outline">
           <IconLogout data-icon="inline-start" stroke={1.75} />
           Thu hồi toàn bộ phiên
         </Button>

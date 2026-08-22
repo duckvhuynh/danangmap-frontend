@@ -138,7 +138,8 @@ test("invalid, expired, used and revoked invite states stay indistinguishable", 
   const alert = page.locator('[role="alert"][tabindex="-1"]');
   await expect(alert).toContainText("không hợp lệ hoặc đã hết hiệu lực");
   await expect(alert).not.toContainText("internal invite state");
-  await expect(alert).toBeFocused();
+  await expect(page.getByLabel("Mã lời mời")).toBeFocused();
+  await expect(page.getByLabel("Mã lời mời")).toHaveAttribute("aria-describedby", /invite-error/u);
   await expect(page).toHaveURL(`${appOrigin}/invite/accept`);
   expect(page.url()).not.toContain(inviteToken);
 });

@@ -11,9 +11,9 @@
 
 The selected direction is `Direction 1 — Civic Focus (refined)`. Live Mapbox captures and same-input comparisons were recorded on 2026-08-22 at the exact CSS targets listed in `../../design-qa.md`.
 
-Status: `SELECTED_LIVE_QA_BLOCKED`
+Status: `SELECTED_LIVE_QA_ACCEPTED_DEFERRED_OPS`
 
-The live application now renders the product-owner-supplied custom Street style and the official Light style. Runtime and core interaction checks pass. Final release sign-off remains blocked because the supplied public token still accepts an unauthorized origin and the small demo fixture is not feature-for-feature identical to the approved source rasters.
+The live application renders the product-owner-supplied custom Street style and the official Light style. A fresh automated browser gate passed Street → Light → Street plus the approved public/admin desktop/mobile targets. The product owner accepted frontend issue #4 with URL restriction deferred to deployment operations; this is not a claim that the token is already restricted. The small demo fixture remains visibly different from the approved source rasters and is tracked as later visual-fidelity work.
 
 | Lựa chọn | Artifact | Trọng tâm |
 |---|---|---|

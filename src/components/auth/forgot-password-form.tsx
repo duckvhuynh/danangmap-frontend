@@ -22,15 +22,25 @@ export function ForgotPasswordForm({
   const attemptKey = useRef<string | null>(null);
   const attemptEmail = useRef<string | null>(null);
   const errorRef = useRef<HTMLDivElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState(false);
   const [complete, setComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [emailInvalid, setEmailInvalid] = useState(false);
 
   useEffect(() => {
-    if (error) errorRef.current?.focus();
-  }, [error]);
+    if (!error) return;
+    if (emailInvalid) emailRef.current?.focus();
+    else errorRef.current?.focus();
+  }, [emailInvalid, error]);
 
-  const focusError = () => globalThis.setTimeout(() => errorRef.current?.focus(), 0);
+  const focusError = (fieldInvalid = false) => {
+    setEmailInvalid(fieldInvalid);
+    globalThis.setTimeout(() => {
+      if (fieldInvalid) emailRef.current?.focus();
+      else errorRef.current?.focus();
+    }, 0);
+  };
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -40,7 +50,7 @@ export function ForgotPasswordForm({
       .toLocaleLowerCase("vi");
     if (!email || !email.includes("@")) {
       setError("Nhập địa chỉ email hợp lệ.");
-      focusError();
+      focusError(true);
       return;
     }
     if (!attemptKey.current || attemptEmail.current !== email) {
@@ -50,6 +60,7 @@ export function ForgotPasswordForm({
     submitLock.current = true;
     setPending(true);
     setError(null);
+    setEmailInvalid(false);
     try {
       await requestPasswordReset(email, attemptKey.current);
       attemptKey.current = null;
@@ -81,10 +92,11 @@ export function ForgotPasswordForm({
 
   return (
     <form className="mt-7 flex flex-col gap-5" onSubmit={submit}>
-      <Field data-invalid={Boolean(error)}>
+      <Field data-invalid={emailInvalid}>
         <FieldLabel htmlFor="reset-email">Email tài khoản nội bộ</FieldLabel>
         <Input
-          aria-invalid={Boolean(error)}
+          aria-describedby={`reset-email-help${error ? " reset-request-error" : ""}`}
+          aria-invalid={emailInvalid}
           autoCapitalize="none"
           autoComplete="email"
           disabled={pending}
@@ -94,14 +106,16 @@ export function ForgotPasswordForm({
           onChange={() => {
             attemptKey.current = null;
             attemptEmail.current = null;
+            setEmailInvalid(false);
           }}
+          ref={emailRef}
           required
           spellCheck={false}
           type="email"
         />
-        <FieldDescription>Vì bảo mật, DanangMap luôn trả cùng một thông báo cho mọi email.</FieldDescription>
+        <FieldDescription id="reset-email-help">Vì bảo mật, DanangMap luôn trả cùng một thông báo cho mọi email.</FieldDescription>
       </Field>
-      {error && <SecurityError errorRef={errorRef} message={error} />}
+      {error && <SecurityError errorRef={errorRef} id="reset-request-error" message={error} />}
       <Button disabled={pending} type="submit">
         <IconMailForward data-icon="inline-start" stroke={1.75} />
         {pending ? "Đang gửi yêu cầu..." : "Gửi hướng dẫn đặt lại"}

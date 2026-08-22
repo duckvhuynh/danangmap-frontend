@@ -172,7 +172,8 @@ describe("public invite errors and accessibility", () => {
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("không hợp lệ hoặc đã hết hiệu lực");
     expect(alert).not.toHaveTextContent(failure.message);
-    expect(alert).toHaveFocus();
+    expect(screen.getByLabelText("Mã lời mời")).toHaveFocus();
+    expect(screen.getByLabelText("Mã lời mời")).toHaveAttribute("aria-describedby", expect.stringContaining("invite-error"));
   });
 
   it.each([
@@ -205,7 +206,8 @@ describe("public invite errors and accessibility", () => {
     fireEvent.submit(screen.getByLabelText("Mật khẩu mới").closest("form")!);
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("chưa trùng khớp");
-    expect(alert).toHaveFocus();
+    expect(screen.getByLabelText("Nhập lại mật khẩu")).toHaveFocus();
+    expect(screen.getByLabelText("Nhập lại mật khẩu")).toHaveAttribute("aria-describedby", "invite-error");
     expect(vi.mocked(acceptInvite)).not.toHaveBeenCalled();
   });
 });

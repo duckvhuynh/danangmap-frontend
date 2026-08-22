@@ -64,6 +64,7 @@ describe("revoke-all session security", () => {
     openConfirmation();
     expect(screen.getByRole("note")).toHaveTextContent("Thao tác này không thể hoàn tác");
     const confirm = screen.getByRole("button", { name: "Xác nhận thu hồi" });
+    expect(confirm).toHaveFocus();
     fireEvent.click(confirm);
     fireEvent.click(confirm);
     expect(revokeAllSessions).toHaveBeenCalledTimes(1);
@@ -83,6 +84,29 @@ describe("revoke-all session security", () => {
     expect(session.clearClientPrincipal).toHaveBeenCalledTimes(1);
     expect(router.replace).toHaveBeenCalledWith("/login");
     expect(router.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("restores trigger focus on cancel and reuses the same key after a nonterminal retry", async () => {
+    const revokeAllSessions = vi
+      .fn<AccountSecurityActions["revokeAllSessions"]>()
+      .mockRejectedValueOnce(new AccountSecurityError(409, "COMMAND_IN_PROGRESS", "processing"))
+      .mockRejectedValueOnce(new AccountSecurityError(503, "SERVICE_UNAVAILABLE", "down"));
+    render(<SessionSecurityPanel revokeAllSessions={revokeAllSessions} />);
+    const trigger = screen.getByRole("button", { name: "Thu hồi toàn bộ phiên" });
+    trigger.focus();
+    openConfirmation();
+    expect(screen.getByRole("button", { name: "Xác nhận thu hồi" })).toHaveFocus();
+    fireEvent.click(screen.getByRole("button", { name: "Hủy" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Thu hồi toàn bộ phiên" })).toHaveFocus());
+
+    openConfirmation();
+    const confirm = screen.getByRole("button", { name: "Xác nhận thu hồi" });
+    fireEvent.click(confirm);
+    await screen.findByRole("alert");
+    fireEvent.click(confirm);
+    await waitFor(() => expect(revokeAllSessions).toHaveBeenCalledTimes(2));
+    expect(revokeAllSessions).toHaveBeenNthCalledWith(1, operationKey);
+    expect(revokeAllSessions).toHaveBeenNthCalledWith(2, operationKey);
   });
 
   it.each([
