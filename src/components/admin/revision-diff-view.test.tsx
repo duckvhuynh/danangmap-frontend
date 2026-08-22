@@ -126,7 +126,7 @@ describe("revision diff view", () => {
       nextCursor: null,
       hasMore: false,
     }));
-    render(<RevisionDiffView revisionId={revisionId} transport={{ load } as RevisionDiffTransport}/>);
+    const view = render(<RevisionDiffView revisionId={revisionId} transport={{ load } as RevisionDiffTransport}/>);
 
     expect((await screen.findAllByText("Có thay đổi đã ẩn")).length).toBeGreaterThan(0);
     expect(screen.getByText(/Dùng phím mũi tên lên và xuống/u)).toBeInTheDocument();
@@ -148,6 +148,15 @@ describe("revision diff view", () => {
     expect(entries[1]).toHaveFocus();
     fireEvent.keyDown(entries[1]!, { key: "ArrowUp" });
     expect(entries[0]).toHaveFocus();
+    fireEvent.keyDown(entries[0]!, { key: "ArrowDown" });
+    expect(entries[1]).toHaveAttribute("tabindex", "0");
+
+    view.rerender(<RevisionDiffView revisionId="66666666-6666-4666-8666-666666666666" transport={{ load } as RevisionDiffTransport}/>);
+    await waitFor(() => {
+      const reloadedEntries = screen.getAllByRole("article");
+      expect(reloadedEntries[0]).toHaveAttribute("tabindex", "0");
+      expect(reloadedEntries[1]).toHaveAttribute("tabindex", "-1");
+    });
   });
 
   it("preserves bounded DIFF_TOO_LARGE details in the typed error state", async () => {

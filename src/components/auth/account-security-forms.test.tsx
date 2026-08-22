@@ -179,6 +179,21 @@ describe("mandatory password change", () => {
 });
 
 describe("generic password reset request", () => {
+  it("clears a stale validation error as soon as the email is edited", async () => {
+    const requestPasswordReset = vi.fn<AccountSecurityActions["requestPasswordReset"]>();
+    render(<ForgotPasswordForm requestPasswordReset={requestPasswordReset} />);
+    const email = screen.getByLabelText("Email tài khoản nội bộ");
+    fireEvent.change(email, { target: { value: "not-an-email" } });
+    fireEvent.submit(email.closest("form")!);
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(email).toHaveAttribute("aria-invalid", "true");
+
+    fireEvent.change(email, { target: { value: "editor@danang.gov.vn" } });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(email).toHaveAttribute("aria-invalid", "false");
+    expect(email).toHaveAttribute("aria-describedby", "reset-email-help");
+  });
+
   it.each(["known@danang.gov.vn", "unknown@danang.gov.vn"])(
     "renders the same public success for %s",
     async (email) => {

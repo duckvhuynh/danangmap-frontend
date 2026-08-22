@@ -106,6 +106,7 @@ export function ForgotPasswordForm({
           onChange={() => {
             attemptKey.current = null;
             attemptEmail.current = null;
+            setError(null);
             setEmailInvalid(false);
           }}
           ref={emailRef}

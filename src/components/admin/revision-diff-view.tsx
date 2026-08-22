@@ -102,7 +102,8 @@ export function RevisionDiffView({ revisionId, transport = defaultTransport }: {
   const [loading, setLoading] = useState(process.env.NEXT_PUBLIC_DANANGMAP_DEMO_MODE !== "true");
   const [loadingMore, setLoadingMore] = useState(false);
   const [reloadVersion, setReloadVersion] = useState(0);
-  const [activeEntryIndex, setActiveEntryIndex] = useState(0);
+  const diffIdentity = `${revisionId}:${comparison}:${reloadVersion}`;
+  const [activeEntry, setActiveEntry] = useState({ identity: "", index: 0 });
 
   const retry = useCallback(() => {
     setResource(null);
@@ -150,7 +151,7 @@ export function RevisionDiffView({ revisionId, transport = defaultTransport }: {
     if (event.key === "End") nextIndex = count - 1;
     if (nextIndex === null || nextIndex === index) return;
     event.preventDefault();
-    setActiveEntryIndex(nextIndex);
+    setActiveEntry({ identity: diffIdentity, index: nextIndex });
     entryRefs.current[nextIndex]?.focus();
   }
 
@@ -172,6 +173,7 @@ export function RevisionDiffView({ revisionId, transport = defaultTransport }: {
   const diff = resource?.data;
   if (!diff) return null;
   const entryInstructionsId = `revision-diff-entry-instructions-${revisionId}`;
+  const activeEntryIndex = activeEntry.identity === diffIdentity ? activeEntry.index : 0;
 
   return <div className="flex flex-col gap-5">
     <p aria-atomic="true" aria-live="polite" className="sr-only">
@@ -224,7 +226,7 @@ export function RevisionDiffView({ revisionId, transport = defaultTransport }: {
         <article
           aria-label={`${changeLabel(entry.changeType)} feature ${compactIdentifier(entry.featureId)}, mục ${index + 1} trên ${diff.entries.length}`}
           className="rounded-control outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-4"
-          onFocus={() => setActiveEntryIndex(index)}
+          onFocus={() => setActiveEntry({ identity: diffIdentity, index })}
           onKeyDown={(event) => navigateEntries(event, index, diff.entries.length)}
           ref={(node) => { entryRefs.current[index] = node; }}
           tabIndex={index === Math.min(activeEntryIndex, diff.entries.length - 1) ? 0 : -1}
