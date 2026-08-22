@@ -5,6 +5,8 @@ services:
       args:
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:4000}
         NEXT_PUBLIC_MAPBOX_TOKEN: ${NEXT_PUBLIC_MAPBOX_TOKEN:-}
+        NEXT_PUBLIC_MAPBOX_STREET_STYLE: ${NEXT_PUBLIC_MAPBOX_STREET_STYLE:-mapbox://styles/mapbox/streets-v12}
+        NEXT_PUBLIC_MAPBOX_LIGHT_STYLE: ${NEXT_PUBLIC_MAPBOX_LIGHT_STYLE:-mapbox://styles/mapbox/light-v11}
         NEXT_PUBLIC_DANANGMAP_DEMO_MODE: "false"
     environment:
       NODE_ENV: production

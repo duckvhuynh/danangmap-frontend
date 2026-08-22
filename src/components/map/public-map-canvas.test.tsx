@@ -3,7 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import PublicMapCanvas from "./public-map-canvas";
 
 const mapboxMocks = vi.hoisted(() => ({
-  maps: [] as Array<{ remove: ReturnType<typeof vi.fn> }>,
+  maps: [] as Array<{ remove: ReturnType<typeof vi.fn>; setStyle: ReturnType<typeof vi.fn> }>,
+  mapOptions: [] as unknown[],
   markers: [] as Array<{ remove: ReturnType<typeof vi.fn>; attributes: Map<string, string> }>,
 }));
 
@@ -19,7 +20,7 @@ vi.mock("mapbox-gl", () => {
     zoomIn = vi.fn();
     zoomOut = vi.fn();
     setStyle = vi.fn();
-    constructor() { mapboxMocks.maps.push(this); }
+    constructor(options: unknown) { mapboxMocks.maps.push(this); mapboxMocks.mapOptions.push(options); }
   }
   class MockMarker {
     remove = vi.fn();
@@ -45,7 +46,10 @@ const baseProps = {
 
 beforeEach(() => {
   vi.stubEnv("NEXT_PUBLIC_MAPBOX_TOKEN", "pk.test-restricted-token");
+  vi.stubEnv("NEXT_PUBLIC_MAPBOX_STREET_STYLE", "mapbox://styles/example/custom-street");
+  vi.stubEnv("NEXT_PUBLIC_MAPBOX_LIGHT_STYLE", "mapbox://styles/mapbox/light-v11");
   mapboxMocks.maps.length = 0;
+  mapboxMocks.mapOptions.length = 0;
   mapboxMocks.markers.length = 0;
 });
 
@@ -55,6 +59,15 @@ afterEach(() => {
 });
 
 describe("temporary public search marker lifecycle", () => {
+  it("loads the configured street style and switches safely between street and light", () => {
+    const view = render(<PublicMapCanvas {...baseProps}/>);
+    expect(mapboxMocks.mapOptions[0]).toMatchObject({ style: "mapbox://styles/example/custom-street" });
+    view.rerender(<PublicMapCanvas {...baseProps} basemap="light"/>);
+    expect(mapboxMocks.maps[0].setStyle).toHaveBeenLastCalledWith("mapbox://styles/mapbox/light-v11");
+    view.rerender(<PublicMapCanvas {...baseProps} basemap="street"/>);
+    expect(mapboxMocks.maps[0].setStyle).toHaveBeenLastCalledWith("mapbox://styles/example/custom-street");
+  });
+
   it("labels and removes a temporary place marker on selection change and unmount", () => {
     const { rerender, unmount } = render(<PublicMapCanvas {...baseProps} focusTarget={{ requestId: 1, longitude: 108.22, latitude: 16.06, temporaryMarker: true }} />);
     expect(mapboxMocks.markers).toHaveLength(1);

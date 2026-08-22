@@ -1,4 +1,5 @@
 .git
+.env*
 .next
 node_modules
 playwright-report

@@ -5,6 +5,7 @@ import mapboxgl, { type Map as MapboxMap } from "mapbox-gl";
 import type { PublicFeature, PublicLayer } from "@/lib/domain/map";
 import { renderableFeatureCollection, sharedGeoJsonFeatures } from "@/components/map/map-geometry";
 import { ensurePublicCustomLayers, interactivePublicLayerIds } from "@/components/map/map-style";
+import { resolveMapboxStyle } from "@/components/map/mapbox-config";
 import type { MapFocusTarget } from "@/lib/search/public-search-state";
 
 export type MapCommand = { id: number; type: "zoom-in" | "zoom-out" | "locate" | "reset" };
@@ -43,7 +44,7 @@ export default function PublicMapCanvas({ features, layerColors, layers, hiddenL
     mapboxgl.accessToken = token;
     const map = new mapboxgl.Map({
       container: containerRef.current,
-      style: basemapRef.current === "street" ? "mapbox://styles/mapbox/streets-v12" : "mapbox://styles/mapbox/light-v11",
+      style: resolveMapboxStyle(basemapRef.current),
       center: [108.2208, 16.0668],
       zoom: 13,
       minZoom: 8,
@@ -94,7 +95,7 @@ export default function PublicMapCanvas({ features, layerColors, layers, hiddenL
     if (!map) return;
     if (basemapRef.current === basemap) return;
     basemapRef.current = basemap;
-    map.setStyle(basemap === "street" ? "mapbox://styles/mapbox/streets-v12" : "mapbox://styles/mapbox/light-v11");
+    map.setStyle(resolveMapboxStyle(basemap));
   }, [basemap]);
 
   useEffect(() => {
