@@ -605,7 +605,7 @@ function RevisionReviewSession({
     </div>
 
     <div className={cn("mx-auto max-w-5xl flex-col gap-8 px-4 pb-8 md:flex md:px-6", mobileSection === "map" ? "hidden md:flex" : "flex")}>
-      <div ref={(element) => { mobilePanelRefs.current.changes = element ?? undefined; }} id="mobile-review-changes-panel" role="tabpanel" aria-labelledby="mobile-review-changes-tab" tabIndex={mobileSection === "changes" ? 0 : -1} className={cn("scroll-mt-28 outline-none focus-visible:ring-2 focus-visible:ring-ring md:contents", mobileSection === "changes" ? "block" : "hidden")}>
+      <div ref={(element) => { mobilePanelRefs.current.changes = element ?? undefined; }} id="mobile-review-changes-panel" role="tabpanel" aria-labelledby="mobile-review-changes-tab" tabIndex={mobileSection === "changes" ? 0 : -1} className={cn("scroll-mt-28 outline-none focus-visible:ring-2 focus-visible:ring-ring md:contents", mobileSection === "changes" ? "flex flex-col gap-8" : "hidden")}>
         {historyError !== null && (
           <AdminErrorNotice error={historyError} onRetry={() => { void load(); }}/>
         )}
