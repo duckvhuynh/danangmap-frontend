@@ -1,6 +1,6 @@
 // This file is generated. Do not edit it by hand.
 // Source: openapi/openapi.json
-// Source SHA-256: cef2be58bcc26b996438862dd9de6c8454af2d5b2b8136f648d4b9af4c049d45
+// Source SHA-256: 3c3e75d6426a460915839ac2396de092b412b5b657e838bdba227123b62307f9
 export interface paths {
     "/api/v1/auth/login": {
         parameters: {
@@ -850,6 +850,12 @@ export interface components {
             /** @default true */
             defaultVisible: boolean;
         };
+        LayerFieldValidationDto: {
+            minLength?: number;
+            maxLength?: number;
+            minimum?: number;
+            maximum?: number;
+        };
         LayerFieldDto: {
             /** @example address */
             key: string;
@@ -878,13 +884,59 @@ export interface components {
                 [key: string]: unknown;
             } | unknown[]) | null;
             /** @default {} */
-            validation: {
-                [key: string]: unknown;
-            };
+            validation: components["schemas"]["LayerFieldValidationDto"];
             /** @default [] */
-            options: unknown[];
+            options: string[];
             /** @default 0 */
             displayOrder: number;
+        };
+        PointStyleDto: {
+            /** @example #0068B5 */
+            color?: string;
+            radius?: number;
+            /** @example #FFFFFF */
+            strokeColor?: string;
+            strokeWidth?: number;
+            cluster?: boolean;
+        };
+        LineStyleDto: {
+            /** @example #0068B5 */
+            color?: string;
+            width?: number;
+            opacity?: number;
+        };
+        PolygonStyleDto: {
+            /** @example #DDEFFC */
+            fillColor?: string;
+            fillOpacity?: number;
+            /** @example #0068B5 */
+            strokeColor?: string;
+            strokeWidth?: number;
+        };
+        LayerStyleDto: {
+            point?: components["schemas"]["PointStyleDto"];
+            line?: components["schemas"]["LineStyleDto"];
+            polygon?: components["schemas"]["PolygonStyleDto"];
+        };
+        LayerRenderConfigDto: {
+            /** @default 0 */
+            minZoom: number;
+            /** @default 18 */
+            maxZoom: number;
+            /** @default false */
+            cluster: boolean;
+            /**
+             * @default auto
+             * @enum {string}
+             */
+            sourcePolicy: "auto" | "geojson" | "mvt" | "hybrid";
+        };
+        LayerPopupConfigDto: {
+            titleField?: string;
+            subtitleField?: string;
+            fieldKeys?: string[];
+            /** @default false */
+            showCoordinates: boolean;
         };
         CreateLayerDto: {
             /** @example administrative-offices */
@@ -893,6 +945,8 @@ export interface components {
             groupId?: string;
             /** @default 0 */
             displayOrder: number;
+            /** @default true */
+            defaultVisible: boolean;
             /** @example Trụ sở hành chính */
             title: string;
             description?: string;
@@ -901,17 +955,11 @@ export interface components {
             allowedGeometryKinds: ("point" | "multipoint" | "line" | "multiline" | "polygon" | "multipolygon" | "circle")[];
             fields: components["schemas"]["LayerFieldDto"][];
             /** @default {} */
-            style: {
-                [key: string]: unknown;
-            };
+            style: components["schemas"]["LayerStyleDto"];
             /** @default {} */
-            renderConfig: {
-                [key: string]: unknown;
-            };
+            renderConfig: components["schemas"]["LayerRenderConfigDto"];
             /** @default {} */
-            popupConfig: {
-                [key: string]: unknown;
-            };
+            popupConfig: components["schemas"]["LayerPopupConfigDto"];
         };
         FeatureMutationDto: {
             /**
@@ -1716,6 +1764,7 @@ export interface operations {
             query?: never;
             header: {
                 "X-CSRF-Token": string;
+                "Idempotency-Key": string;
             };
             path?: never;
             cookie?: never;
@@ -1777,6 +1826,7 @@ export interface operations {
                             /** Format: uuid */
                             groupId?: string | null;
                             displayOrder: number;
+                            defaultVisible: boolean;
                             /** Format: date-time */
                             archivedAt?: string | null;
                             /** Format: uuid */
@@ -1825,6 +1875,7 @@ export interface operations {
                                 /** Format: uuid */
                                 groupId: string | null;
                                 displayOrder: number;
+                                defaultVisible: boolean;
                                 /** Format: uuid */
                                 createdBy: string;
                                 /** Format: date-time */
@@ -1847,13 +1898,37 @@ export interface operations {
                                 geometryMode: "point" | "circle" | "polyline" | "polygon" | "mixed";
                                 allowedGeometryKinds: string[];
                                 style: {
-                                    [key: string]: unknown;
+                                    point?: {
+                                        color?: string;
+                                        radius?: number;
+                                        strokeColor?: string;
+                                        strokeWidth?: number;
+                                        cluster?: boolean;
+                                    };
+                                    line?: {
+                                        color?: string;
+                                        width?: number;
+                                        opacity?: number;
+                                    };
+                                    polygon?: {
+                                        fillColor?: string;
+                                        fillOpacity?: number;
+                                        strokeColor?: string;
+                                        strokeWidth?: number;
+                                    };
                                 };
                                 renderConfig: {
-                                    [key: string]: unknown;
+                                    minZoom?: number;
+                                    maxZoom?: number;
+                                    cluster?: boolean;
+                                    /** @enum {string} */
+                                    sourcePolicy?: "auto" | "geojson" | "mvt" | "hybrid";
                                 };
                                 popupConfig: {
-                                    [key: string]: unknown;
+                                    titleField?: string;
+                                    subtitleField?: string;
+                                    fieldKeys?: string[];
+                                    showCoordinates?: boolean;
                                 };
                                 schemaVersion: number;
                                 lockVersion: number;
@@ -1913,13 +1988,37 @@ export interface operations {
                                 geometryMode: "point" | "circle" | "polyline" | "polygon" | "mixed";
                                 allowedGeometryKinds: string[];
                                 style: {
-                                    [key: string]: unknown;
+                                    point?: {
+                                        color?: string;
+                                        radius?: number;
+                                        strokeColor?: string;
+                                        strokeWidth?: number;
+                                        cluster?: boolean;
+                                    };
+                                    line?: {
+                                        color?: string;
+                                        width?: number;
+                                        opacity?: number;
+                                    };
+                                    polygon?: {
+                                        fillColor?: string;
+                                        fillOpacity?: number;
+                                        strokeColor?: string;
+                                        strokeWidth?: number;
+                                    };
                                 };
                                 renderConfig: {
-                                    [key: string]: unknown;
+                                    minZoom?: number;
+                                    maxZoom?: number;
+                                    cluster?: boolean;
+                                    /** @enum {string} */
+                                    sourcePolicy?: "auto" | "geojson" | "mvt" | "hybrid";
                                 };
                                 popupConfig: {
-                                    [key: string]: unknown;
+                                    titleField?: string;
+                                    subtitleField?: string;
+                                    fieldKeys?: string[];
+                                    showCoordinates?: boolean;
                                 };
                                 schemaVersion: number;
                                 lockVersion: number;
@@ -1958,9 +2057,12 @@ export interface operations {
                                 offlineCache: boolean;
                                 defaultValue?: unknown;
                                 validation: {
-                                    [key: string]: unknown;
+                                    minLength?: number;
+                                    maxLength?: number;
+                                    minimum?: number;
+                                    maximum?: number;
                                 };
-                                options: unknown[];
+                                options: string[];
                                 displayOrder: number;
                             }[];
                         };
@@ -2529,6 +2631,7 @@ export interface operations {
                                 displayOrder: number;
                             } | null;
                             displayOrder: number;
+                            defaultVisible: boolean;
                             title: string;
                             description?: string | null;
                             /** @enum {string} */
@@ -2550,10 +2653,30 @@ export interface operations {
                             maxZoom: number;
                             cluster: boolean;
                             style: {
-                                [key: string]: unknown;
+                                point?: {
+                                    color?: string;
+                                    radius?: number;
+                                    strokeColor?: string;
+                                    strokeWidth?: number;
+                                    cluster?: boolean;
+                                };
+                                line?: {
+                                    color?: string;
+                                    width?: number;
+                                    opacity?: number;
+                                };
+                                polygon?: {
+                                    fillColor?: string;
+                                    fillOpacity?: number;
+                                    strokeColor?: string;
+                                    strokeWidth?: number;
+                                };
                             };
                             popupConfig: {
-                                [key: string]: unknown;
+                                titleField?: string;
+                                subtitleField?: string;
+                                fieldKeys?: string[];
+                                showCoordinates?: boolean;
                             };
                             filterCapabilities: {
                                 fieldKeys: string[];
@@ -2603,6 +2726,7 @@ export interface operations {
                                 displayOrder: number;
                             } | null;
                             displayOrder: number;
+                            defaultVisible: boolean;
                             title: string;
                             description?: string | null;
                             /** @enum {string} */
@@ -2624,10 +2748,30 @@ export interface operations {
                             maxZoom: number;
                             cluster: boolean;
                             style: {
-                                [key: string]: unknown;
+                                point?: {
+                                    color?: string;
+                                    radius?: number;
+                                    strokeColor?: string;
+                                    strokeWidth?: number;
+                                    cluster?: boolean;
+                                };
+                                line?: {
+                                    color?: string;
+                                    width?: number;
+                                    opacity?: number;
+                                };
+                                polygon?: {
+                                    fillColor?: string;
+                                    fillOpacity?: number;
+                                    strokeColor?: string;
+                                    strokeWidth?: number;
+                                };
                             };
                             popupConfig: {
-                                [key: string]: unknown;
+                                titleField?: string;
+                                subtitleField?: string;
+                                fieldKeys?: string[];
+                                showCoordinates?: boolean;
                             };
                             filterCapabilities: {
                                 fieldKeys: string[];
@@ -2653,9 +2797,12 @@ export interface operations {
                                 sortable?: boolean;
                                 defaultValue?: unknown;
                                 validation?: {
-                                    [key: string]: unknown;
+                                    minLength?: number;
+                                    maxLength?: number;
+                                    minimum?: number;
+                                    maximum?: number;
                                 };
-                                options?: unknown[];
+                                options?: string[];
                                 displayOrder?: number;
                             }[];
                         };

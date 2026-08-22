@@ -121,6 +121,9 @@ export function assertAdminResult<T>(result: { data?: T; error?: unknown; respon
 export function adminErrorMessage(error: unknown) {
   if (!(error instanceof AdminApiError)) return error instanceof Error ? error.message : "Không thể hoàn tất yêu cầu.";
   const prefix = ({
+    SLUG_CONFLICT: "Mã lớp đã tồn tại.",
+    SCHEMA_VIOLATION: "Cấu hình chưa hợp lệ.",
+  } as Record<string, string>)[error.code] ?? ({
     401: "Phiên đăng nhập đã hết hạn.",
     403: "Bạn không có quyền thực hiện thao tác này.",
     409: "Trạng thái revision đã thay đổi.",
