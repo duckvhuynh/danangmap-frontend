@@ -176,11 +176,12 @@ async function assertEditorApproveDenied(page: Page, revisionId: string) {
 
 async function approveAsReviewer(page: Page, revisionId: string) {
   await page.goto(`/admin/layers/${revisionId}/review`);
-  await expect(page.getByText("in_review", { exact: true })).toBeVisible();
+  const header = page.locator("header");
+  await expect(header.getByText("Chờ duyệt", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Công bố revision" })).not.toBeAttached();
   await page.getByLabel("Bình luận review").fill("Gate B reviewer xác nhận dữ liệu hợp lệ.");
   await page.getByRole("button", { name: "Duyệt thay đổi" }).click();
-  await expect(page.getByText("approved", { exact: true })).toBeVisible();
+  await expect(header.getByText("Đã duyệt", { exact: true })).toBeVisible();
 }
 
 async function publishAsPublisher(page: Page, revisionId: string) {
