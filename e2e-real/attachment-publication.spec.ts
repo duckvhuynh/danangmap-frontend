@@ -238,7 +238,10 @@ test("clean attachment crosses MinIO and publication while rejected content stay
     const publicPage = await publicContext.newPage();
     await publicPage.goto("/");
     await publicPage.getByRole("button", { name: "Xem danh sách" }).click();
-    await publicPage.getByRole("button", { name: new RegExp(title, "u") }).click();
+    const resultList = publicPage.locator("section").filter({
+      has: publicPage.getByRole("heading", { name: "Đối tượng trong vùng xem" }),
+    });
+    await resultList.getByRole("button", { name: new RegExp(title, "u") }).click();
     const detailPanel = publicPage.getByLabel("Thông tin kết quả");
     await expect(detailPanel.getByRole("link", { name: /tru-so-clean\.png/u })).toHaveAttribute("href", `/api/v1/public/attachments/${cleanAttachmentId}`);
     await expect(detailPanel).not.toContainText("tru-so-rejected.png");
