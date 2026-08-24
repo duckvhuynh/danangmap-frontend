@@ -4,7 +4,7 @@
 
 `openapi/openapi.json` pins the backend contract used by this repository. After a reviewed backend contract change, run `npm run api:sync` from a checkout where `danangmap-backend` is the sibling directory. Normal generation and CI drift checks use `npm run api:generate` and `npm run api:check`; they do not depend on a running backend.
 
-The current pin was synced from backend commit `1b7d861e8bacfff3a0dc0b85ec616455c8b006eb` (OpenAPI SHA-256 `0983279b4c20eeec174aeaedfbf783bea338bd6902e425f17d98407edb07e295`). Browser requests use the full generated `/api/v1/...` paths, so `NEXT_PUBLIC_API_BASE_URL` is only the API origin (local default `http://localhost:4000`) and must not include `/api/v1`.
+The current pin was synced from backend commit `99a1191f9f61c427449207c2f988543f6d25d456` (OpenAPI SHA-256 `4736032831d8182ed5f86ddb10315bbf517be8130d5489211fb0838b1ee647a5`). Browser requests use the full generated `/api/v1/...` paths, so `NEXT_PUBLIC_API_BASE_URL` is only the API origin (local default `http://localhost:4000`) and must not include `/api/v1`.
 
 For revision configuration reads, an omitted `renderConfig.sourcePolicy` is interpreted as `auto`, matching the backend default. Configuration writes always send the resolved value explicitly and only send style families compatible with the allowed geometry kinds.
 

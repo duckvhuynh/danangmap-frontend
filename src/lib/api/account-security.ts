@@ -8,6 +8,8 @@ import {
   type PasswordResetRequestResult,
   type PasswordResetResult,
   type SessionRevocationResult,
+  type RecoveryCodesRegenerationInput,
+  type RecoveryCodesRegenerationResult,
 } from "@/lib/auth/account-security-model";
 
 type ApiClient = ReturnType<typeof createDanangMapClient>;
@@ -188,6 +190,23 @@ function decodeRevocation(value: unknown): SessionRevocationResult {
   };
 }
 
+function decodeRecoveryCodesRegeneration(value: unknown): RecoveryCodesRegenerationResult {
+  const data = unwrapEnvelope(value);
+  if (
+    !isRecord(data) ||
+    data.status !== "recovery_codes_regenerated" ||
+    !Array.isArray(data.recoveryCodes) ||
+    data.recoveryCodes.length !== 10 ||
+    !data.recoveryCodes.every((code) => typeof code === "string" && /^[A-F0-9]{4}(?:-[A-F0-9]{4}){4}$/u.test(code))
+  ) {
+    throw new AccountSecurityError(502, "CONTRACT_INVALID", "Phản hồi tạo lại mã khôi phục không đúng hợp đồng.");
+  }
+  return {
+    status: "recovery_codes_regenerated",
+    recoveryCodes: [...data.recoveryCodes],
+  };
+}
+
 export async function changePassword(
   input: ChangePasswordInput,
   idempotencyKey: string,
@@ -302,6 +321,34 @@ export async function revokeAllSessions(
       },
     });
     return decodeRevocation(resultData(result));
+  } catch (error) {
+    throw networkError(error, !(error instanceof AccountSecurityError));
+  }
+}
+
+export async function regenerateRecoveryCodes(
+  input: RecoveryCodesRegenerationInput,
+  idempotencyKey: string,
+  client: ApiClient = apiClient,
+): Promise<RecoveryCodesRegenerationResult> {
+  if (demoMode()) {
+    return {
+      status: "recovery_codes_regenerated",
+      recoveryCodes: Array.from({ length: 10 }, (_, index) => `DEMO-${String(index + 1).padStart(4, "0")}-SAFE-CODE-2026`),
+    };
+  }
+  const csrfToken = await acquireCsrfToken(client);
+  try {
+    const result = await client.POST("/api/v1/auth/mfa/recovery-codes:regenerate", {
+      params: {
+        header: {
+          "X-CSRF-Token": csrfToken,
+          "Idempotency-Key": idempotencyKey,
+        },
+      },
+      body: input,
+    });
+    return decodeRecoveryCodesRegeneration(resultData(result));
   } catch (error) {
     throw networkError(error, !(error instanceof AccountSecurityError));
   }

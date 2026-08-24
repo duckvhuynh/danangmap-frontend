@@ -2,16 +2,19 @@ import type { components, operations } from "@/lib/api/generated/schema";
 
 export type ChangePasswordInput = components["schemas"]["ChangePasswordDto"];
 export type PasswordResetInput = components["schemas"]["PasswordResetConfirmDto"];
+export type RecoveryCodesRegenerationInput = components["schemas"]["RegenerateRecoveryCodesDto"];
 export type PasswordChangeResult = operations["changePassword"]["responses"][200]["content"]["application/json"]["data"];
 export type PasswordResetRequestResult = operations["requestPasswordReset"]["responses"][202]["content"]["application/json"]["data"];
 export type PasswordResetResult = operations["confirmPasswordReset"]["responses"][200]["content"]["application/json"]["data"];
 export type SessionRevocationResult = operations["revokeAllSessions"]["responses"][200]["content"]["application/json"]["data"];
+export type RecoveryCodesRegenerationResult = operations["regenerateRecoveryCodes"]["responses"][200]["content"]["application/json"]["data"];
 
 export interface AccountSecurityActions {
   changePassword(input: ChangePasswordInput, idempotencyKey: string): Promise<PasswordChangeResult>;
   requestPasswordReset(email: string, idempotencyKey: string): Promise<PasswordResetRequestResult>;
   confirmPasswordReset(input: PasswordResetInput): Promise<PasswordResetResult>;
   revokeAllSessions(idempotencyKey: string): Promise<SessionRevocationResult>;
+  regenerateRecoveryCodes(input: RecoveryCodesRegenerationInput, idempotencyKey: string): Promise<RecoveryCodesRegenerationResult>;
 }
 
 export class AccountSecurityError extends Error {
@@ -32,7 +35,7 @@ const RETRY_LATER = "Dịch vụ bảo mật đang tạm gián đoạn. Vui lòn
 
 export function accountSecurityErrorMessage(
   error: unknown,
-  context: "change" | "request-reset" | "confirm-reset" | "revoke",
+  context: "change" | "request-reset" | "confirm-reset" | "revoke" | "recovery-codes",
 ) {
   if (!(error instanceof AccountSecurityError)) {
     return error instanceof Error ? error.message : "Không thể hoàn tất yêu cầu bảo mật lúc này.";
@@ -73,6 +76,22 @@ export function accountSecurityErrorMessage(
     if (error.status === 409) return "Yêu cầu thu hồi phiên đang được xử lý. DanangMap sẽ không tự gửi lại.";
     if (error.status === 422) return "Yêu cầu thu hồi phiên không hợp lệ.";
   }
+  if (context === "recovery-codes") {
+    if (error.status === 401 && error.code === "AUTH_INVALID_CREDENTIALS") {
+      return "Mật khẩu hiện tại không đúng.";
+    }
+    if (error.status === 401 && error.code === "AUTH_MFA_INVALID") {
+      return "Mã xác thực MFA hoặc mã khôi phục không đúng.";
+    }
+    if (error.status === 409 && error.code === "AUTH_MFA_REQUIRED") {
+      return "Tài khoản chưa đăng ký MFA.";
+    }
+    if (error.status === 409) {
+      return "Yêu cầu trước có thể đã thay mã khôi phục. Hãy bắt đầu một lượt tạo mới; DanangMap không tự gửi lại để tránh làm lộ mã.";
+    }
+    if (error.status === 403) return "Phiên bảo mật không hợp lệ. Hãy tải lại trang và thử lại.";
+    if (error.status === 422) return "Mật khẩu hoặc mã xác thực chưa đúng định dạng.";
+  }
   if (error.status === 401) return "Phiên đăng nhập đã hết hạn.";
   if (error.status === 0) return "Không thể kết nối dịch vụ bảo mật. Kiểm tra mạng và thử lại.";
   return error.message;
@@ -91,4 +110,12 @@ export function isTerminalResetConfirmation(error: unknown) {
 
 export function shouldEndClientSessionAfterRevoke(error: unknown) {
   return error instanceof AccountSecurityError && (error.ambiguous || error.status === 401);
+}
+
+export function mustRestartRecoveryCodeRegeneration(error: unknown) {
+  return error instanceof AccountSecurityError && (
+    error.ambiguous ||
+    error.status === 409 ||
+    (error.status === 401 && error.code !== "AUTH_INVALID_CREDENTIALS" && error.code !== "AUTH_MFA_INVALID")
+  );
 }
