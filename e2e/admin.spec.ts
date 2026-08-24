@@ -46,6 +46,7 @@ test("reviewer can approve or request changes on mobile", async ({ page }, testI
   await page.goto("/admin/layers/wards/review");
   const approve = page.getByRole("button", { name: "Duyệt thay đổi" });
   await expect(approve).toBeEnabled();
+  await page.getByRole("tab", { name: "Nhận xét" }).click();
   await page.getByLabel("Bình luận review").fill("Cần kiểm tra nhãn");
   await expect(page.getByRole("button", { name: "Yêu cầu chỉnh sửa" })).toBeEnabled();
   expect(await approve.evaluate((button) => {

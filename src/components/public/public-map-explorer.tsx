@@ -1,12 +1,14 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   IconAdjustmentsHorizontal,
   IconBuildingCommunity,
   IconChevronRight,
+  IconDownload,
   IconInfoCircle,
   IconLayersIntersect,
   IconList,
@@ -68,7 +70,14 @@ function FeatureRows({ features, onSelect }: { features: PublicFeature[]; onSele
   );
 }
 
-function FeatureDetail({ feature, layer, onClose, showClose = true }: { feature: PublicFeature; layer?: PublicLayer; onClose: () => void; showClose?: boolean }) {
+function formatBytes(sizeBytes: number) {
+  if (sizeBytes < 1024) return `${sizeBytes} B`;
+  if (sizeBytes < 1024 * 1024) return `${Math.round(sizeBytes / 1024)} KB`;
+  return `${(sizeBytes / (1024 * 1024)).toLocaleString("vi-VN", { maximumFractionDigits: 1 })} MB`;
+}
+
+export function FeatureDetail({ feature, layer, loading = false, onClose, showClose = true }: { feature: PublicFeature; layer?: PublicLayer; loading?: boolean; onClose: () => void; showClose?: boolean }) {
+  const attachments = feature.attachments ?? [];
   return (
     <div>
       <div className="flex items-start justify-between gap-4">
@@ -80,6 +89,30 @@ function FeatureDetail({ feature, layer, onClose, showClose = true }: { feature:
         {feature.properties.geometryKind === "circle" && typeof feature.properties.radiusM === "number" && <div><dt className="text-muted-foreground">Bán kính</dt><dd className="mt-1 font-medium">{feature.properties.radiusM.toLocaleString("vi-VN")} mét</dd></div>}
         <div><dt className="text-muted-foreground">Loại dữ liệu</dt><dd className="mt-1 font-medium">{feature.geometry.type}</dd></div>
       </dl>
+      {loading && <p className="mt-4 text-xs text-muted-foreground" role="status">Đang tải thông tin công bố mới nhất...</p>}
+      {attachments.length > 0 && (
+        <section className="mt-6 border-t pt-5" aria-label="Tệp đính kèm">
+          <h3 className="text-sm font-semibold">Tệp đính kèm</h3>
+          <div className="mt-3 space-y-3">
+            {attachments.map((attachment) => {
+              const fieldName = layer?.fields.find((field) => field.key === attachment.fieldKey)?.name;
+              const isImage = attachment.contentType.startsWith("image/");
+              return (
+                <a key={attachment.id} href={attachment.url} target="_blank" rel="noreferrer" className="group block overflow-hidden rounded-control border bg-surface transition-shadow hover:map-control-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  {isImage && <Image unoptimized src={attachment.url} alt={attachment.fileName} width={600} height={400} className="h-auto max-h-56 w-full object-cover" />}
+                  <span className="flex min-h-11 items-center gap-3 px-3 py-2.5">
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium text-foreground group-hover:text-primary">{attachment.fileName}</span>
+                      <span className="block text-xs text-muted-foreground">{fieldName ? `${fieldName} · ` : ""}{formatBytes(attachment.sizeBytes)}</span>
+                    </span>
+                    <IconDownload className="shrink-0 text-muted-foreground" size={19} stroke={1.75} aria-hidden="true" />
+                  </span>
+                </a>
+              );
+            })}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
@@ -104,6 +137,7 @@ function ExternalPlaceDetail({ place, onClose, showClose = true }: { place: Exte
 
 export function PublicMapExplorer() {
   const demoMode = process.env.NEXT_PUBLIC_DANANGMAP_DEMO_MODE === "true";
+  const publicSearchE2eMode = process.env.NEXT_PUBLIC_DANANGMAP_PUBLIC_SEARCH_E2E_MODE === "true";
   const [data, setData] = useState<PublicMapData>(() => demoMode ? sampleMapData : { source: "api", layers: [], features: [], issues: [] });
   const [dataState, setDataState] = useState<"loading" | "ready" | "partial" | "error">("loading");
   const [retryId, setRetryId] = useState(0);
@@ -111,7 +145,7 @@ export function PublicMapExplorer() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [remoteFeature, setRemoteFeature] = useState<PublicFeature | null>(null);
   const [externalPlace, setExternalPlace] = useState<ExternalPlace | null>(null);
-  const [externalPlaceLoading, setExternalPlaceLoading] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [focusTarget, setFocusTarget] = useState<MapFocusTarget | null>(null);
   const [sheet, setSheet] = useState<MobileSheet>(null);
   const [listOpen, setListOpen] = useState(false);
@@ -134,24 +168,54 @@ export function PublicMapExplorer() {
   useEffect(() => () => placeRequestRef.current?.abort(), []);
 
   const visibleFeatures = useMemo(() => data.features.filter((feature) => !hiddenLayers.has(feature.properties.layerId)), [data.features, hiddenLayers]);
-  const selected = data.features.find((feature) => feature.properties.id === selectedId) ?? (remoteFeature?.properties.id === selectedId ? remoteFeature : null);
+  const selected = (remoteFeature?.properties.id === selectedId ? remoteFeature : null) ?? data.features.find((feature) => feature.properties.id === selectedId);
   const selectedLayer = selected ? data.layers.find((layer) => layer.id === selected.properties.layerId) : undefined;
   const layerColors = useMemo(() => Object.fromEntries(data.layers.map((layer) => [layer.id, layer.color])), [data.layers]);
   const mapFeatures = useMemo(() => {
     const geoJsonLayerIds = new Set(data.layers.filter((layer) => layer.sourceKind === "geojson").map((layer) => layer.id));
     return visibleFeatures.filter((feature) => geoJsonLayerIds.has(feature.properties.layerId));
   }, [data.layers, visibleFeatures]);
-  const publicSearch = useMemo(() => demoMode ? createDemoPublicSearch(data) : searchPublicMap, [data, demoMode]);
+  const publicSearch = useMemo(
+    () => demoMode && !publicSearchE2eMode ? createDemoPublicSearch(data) : searchPublicMap,
+    [data, demoMode, publicSearchE2eMode],
+  );
 
   function toggleLayer(id: string) {
     setHiddenLayers((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   }
-  function selectFeature(id: string) { setRemoteFeature(null); setSelectedId(id); setExternalPlace(null); setFocusTarget(null); setSheet("detail"); }
+  async function loadInternalFeature(featureId: string, layer: PublicLayer) {
+    if (demoMode && !publicSearchE2eMode) return;
+    placeRequestRef.current?.abort();
+    const controller = new AbortController();
+    placeRequestRef.current = controller;
+    setDetailLoading(true);
+    try {
+      const detail = await getPublicFeature(layer.slug, featureId, controller.signal);
+      if (controller.signal.aborted) return;
+      setRemoteFeature(decodePublicFeatureDetail(detail, layer));
+    } catch {
+      if (!controller.signal.aborted) setMapMessage("Không tải được thông tin công bố mới nhất của đối tượng.");
+    } finally {
+      if (!controller.signal.aborted) setDetailLoading(false);
+    }
+  }
+
+  function selectFeature(id: string) {
+    const feature = data.features.find((candidate) => candidate.properties.id === id);
+    const layer = feature ? data.layers.find((candidate) => candidate.id === feature.properties.layerId) : undefined;
+    setRemoteFeature(null);
+    setSelectedId(id);
+    setExternalPlace(null);
+    setFocusTarget(null);
+    setMapMessage(null);
+    setSheet("detail");
+    if (layer) void loadInternalFeature(id, layer);
+  }
   function run(type: MapCommand["type"]) { setCommand((current) => ({ id: current.id + 1, type })); }
 
   async function selectSearchResult(result: PublicSearchResult) {
     placeRequestRef.current?.abort();
-    setExternalPlaceLoading(false);
+    setDetailLoading(false);
     setMapMessage(null);
     focusSequenceRef.current += 1;
     const initialFocus = searchResultFocus(result, focusSequenceRef.current);
@@ -163,9 +227,11 @@ export function PublicMapExplorer() {
     if (result.source === "internal") {
       const feature = data.features.find((candidate) => candidate.properties.id === result.featureId);
       if (feature) {
+        const layer = data.layers.find((candidate) => candidate.id === feature.properties.layerId);
         setHiddenLayers((current) => { const next = new Set(current); next.delete(feature.properties.layerId); return next; });
         setSelectedId(feature.properties.id);
         setSheet("detail");
+        if (layer) await loadInternalFeature(feature.properties.id, layer);
       } else {
         const slug = searchResultLayerSlug(result);
         const layer = data.layers.find((candidate) => candidate.slug === slug);
@@ -174,22 +240,10 @@ export function PublicMapExplorer() {
           setMapMessage("Đã đưa bản đồ đến kết quả nhưng chưa đủ tham chiếu để tải chi tiết.");
           return;
         }
-        const controller = new AbortController();
-        placeRequestRef.current = controller;
-        setExternalPlaceLoading(true);
+        setSelectedId(result.featureId);
+        setHiddenLayers((current) => { const next = new Set(current); next.delete(layer.id); return next; });
         setSheet("detail");
-        try {
-          const detail = await getPublicFeature(slug, result.featureId, controller.signal);
-          if (controller.signal.aborted) return;
-          const decoded = decodePublicFeatureDetail(detail, layer);
-          setRemoteFeature(decoded);
-          setSelectedId(decoded.properties.id);
-          setHiddenLayers((current) => { const next = new Set(current); next.delete(layer.id); return next; });
-        } catch {
-          if (!controller.signal.aborted) setMapMessage("Không tải được chi tiết đối tượng. Vị trí kết quả vẫn được giữ trên bản đồ.");
-        } finally {
-          if (!controller.signal.aborted) setExternalPlaceLoading(false);
-        }
+        await loadInternalFeature(result.featureId, layer);
       }
       return;
     }
@@ -199,7 +253,7 @@ export function PublicMapExplorer() {
     }
     const controller = new AbortController();
     placeRequestRef.current = controller;
-    setExternalPlaceLoading(true);
+    setDetailLoading(true);
     setSheet("detail");
     try {
       const place = await getExternalPlace(result.providerPlaceId, controller.signal);
@@ -214,7 +268,7 @@ export function PublicMapExplorer() {
     } catch {
       if (!controller.signal.aborted) setMapMessage("Không tải được chi tiết địa điểm. Vị trí kết quả vẫn được giữ trên bản đồ.");
     } finally {
-      if (!controller.signal.aborted) setExternalPlaceLoading(false);
+      if (!controller.signal.aborted) setDetailLoading(false);
     }
   }
 
@@ -222,7 +276,7 @@ export function PublicMapExplorer() {
     setSelectedId(null);
     setRemoteFeature(null);
     setExternalPlace(null);
-    setExternalPlaceLoading(false);
+    setDetailLoading(false);
     setFocusTarget(null);
     setSheet(null);
   }
@@ -251,7 +305,7 @@ export function PublicMapExplorer() {
 
       {listOpen && <section className="absolute bottom-5 left-[332px] top-24 z-10 hidden w-[340px] overflow-hidden rounded-panel border bg-surface map-panel-shadow md:block"><div className="border-b p-4"><h2 className="font-semibold">Đối tượng trong vùng xem</h2><p className="mt-1 text-xs text-muted-foreground">{visibleFeatures.length} kết quả</p></div><div className="max-h-[calc(100%-70px)] overflow-y-auto p-2"><FeatureRows features={visibleFeatures} onSelect={selectFeature} /></div></section>}
 
-      {(selected || externalPlace || externalPlaceLoading) && <aside aria-label="Thông tin kết quả" className="absolute right-20 top-24 z-10 hidden max-h-[calc(100dvh-8rem)] w-[340px] overflow-y-auto rounded-panel border bg-surface p-5 map-panel-shadow md:block">{selected ? <FeatureDetail feature={selected} layer={selectedLayer} onClose={closeDetail} /> : externalPlace ? <ExternalPlaceDetail place={externalPlace} onClose={closeDetail} /> : <p className="text-sm text-muted-foreground" role="status">Đang tải chi tiết kết quả...</p>}</aside>}
+      {(selected || externalPlace || detailLoading) && <aside aria-label="Thông tin kết quả" className="absolute right-20 top-24 z-10 hidden max-h-[calc(100dvh-8rem)] w-[340px] overflow-y-auto rounded-panel border bg-surface p-5 map-panel-shadow md:block">{selected ? <FeatureDetail feature={selected} layer={selectedLayer} loading={detailLoading} onClose={closeDetail} /> : externalPlace ? <ExternalPlaceDetail place={externalPlace} onClose={closeDetail} /> : <p className="text-sm text-muted-foreground" role="status">Đang tải chi tiết kết quả...</p>}</aside>}
 
       <div className="absolute right-3 top-[140px] z-10 flex flex-col gap-2 md:right-4 md:top-24">
         <div className="flex flex-col overflow-hidden rounded-map-control bg-surface map-control-shadow"><Button variant="ghost" size="icon" className="rounded-none border-b" onClick={() => run("zoom-in")} aria-label="Phóng to"><IconPlus stroke={1.75} /></Button><Button variant="ghost" size="icon" className="rounded-none" onClick={() => run("zoom-out")} aria-label="Thu nhỏ"><IconMinus stroke={1.75} /></Button></div>
@@ -272,7 +326,7 @@ export function PublicMapExplorer() {
         <div className="mb-3 flex items-center justify-between"><h2 className="font-semibold">{sheet === "layers" ? "Lớp dữ liệu" : sheet === "list" ? `${visibleFeatures.length} kết quả` : "Thông tin đối tượng"}</h2><Button variant="ghost" size="icon-sm" onClick={() => setSheet(null)} aria-label="Đóng bảng"><IconX stroke={1.75} /></Button></div>
         {sheet === "layers" && <LayerList layers={data.layers} hidden={hiddenLayers} onToggle={toggleLayer} />}
         {sheet === "list" && <FeatureRows features={visibleFeatures} onSelect={selectFeature} />}
-        {sheet === "detail" && (selected ? <FeatureDetail feature={selected} layer={selectedLayer} showClose={false} onClose={closeDetail} /> : externalPlace ? <ExternalPlaceDetail place={externalPlace} showClose={false} onClose={closeDetail} /> : externalPlaceLoading ? <p className="py-5 text-sm text-muted-foreground" role="status">Đang tải chi tiết kết quả...</p> : null)}
+        {sheet === "detail" && (selected ? <FeatureDetail feature={selected} layer={selectedLayer} loading={detailLoading} showClose={false} onClose={closeDetail} /> : externalPlace ? <ExternalPlaceDetail place={externalPlace} showClose={false} onClose={closeDetail} /> : detailLoading ? <p className="py-5 text-sm text-muted-foreground" role="status">Đang tải chi tiết kết quả...</p> : null)}
       </section>}
 
       <div className="absolute bottom-[76px] left-3 z-10 flex items-center gap-1.5 rounded-control bg-surface px-2.5 py-1.5 text-[11px] text-muted-foreground map-control-shadow md:bottom-5 md:left-auto md:right-4">

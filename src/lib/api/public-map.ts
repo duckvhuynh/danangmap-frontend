@@ -5,6 +5,7 @@ import type {
   LayerKind,
   MetadataField,
   PopupConfig,
+  PublicAttachment,
   PublicFeature,
   PublicLayer,
   PublicMapData,
@@ -40,6 +41,36 @@ const asNumber = (value: unknown, field: string) => {
   return value;
 };
 
+function decodePublicAttachments(value: unknown): PublicAttachment[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((attachment) => {
+    if (!isRecord(attachment) || attachment.status !== "clean") return [];
+    if (
+      typeof attachment.id !== "string"
+      || typeof attachment.fieldKey !== "string"
+      || typeof attachment.displayOrder !== "number"
+      || !Number.isInteger(attachment.displayOrder)
+      || typeof attachment.fileName !== "string"
+      || typeof attachment.contentType !== "string"
+      || typeof attachment.sizeBytes !== "number"
+      || !Number.isFinite(attachment.sizeBytes)
+      || typeof attachment.url !== "string"
+    ) return [];
+    const expectedUrl = `/api/v1/public/attachments/${encodeURIComponent(attachment.id)}`;
+    if (attachment.url !== expectedUrl) return [];
+    return [{
+      id: attachment.id,
+      fieldKey: attachment.fieldKey,
+      displayOrder: attachment.displayOrder,
+      fileName: attachment.fileName,
+      contentType: attachment.contentType,
+      sizeBytes: attachment.sizeBytes,
+      status: "clean" as const,
+      url: attachment.url,
+    }];
+  }).sort((left, right) => left.displayOrder - right.displayOrder);
+}
+
 function decodePosition(value: unknown): number[] {
   if (!Array.isArray(value) || value.length < 2 || value.some((coordinate) => typeof coordinate !== "number" || !Number.isFinite(coordinate))) throw new Error("Tọa độ GeoJSON không hợp lệ.");
   return value;
@@ -74,6 +105,7 @@ export function decodePublicFeatureDetail(value: unknown, layer: PublicLayer): P
     type: "Feature",
     id,
     geometry,
+    attachments: decodePublicAttachments(value.attachments),
     properties: {
       id,
       layerId: layer.id,

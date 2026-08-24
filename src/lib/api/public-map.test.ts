@@ -58,8 +58,21 @@ describe("public catalog aggregation", () => {
 
   it("decodes an individually fetched MVT feature with the catalog popup schema", async () => {
     const catalog = await aggregatePublicCatalog(transport());
-    const feature = decodePublicFeatureDetail({ type: "Feature", id: "33333333-3333-4333-8333-333333333333", geometry: { type: "Point", coordinates: [108.21, 16.08] }, properties: { title: "Điểm dữ liệu lớn", address: "Hải Châu", nested: { hidden: true } }, meta: { geometryKind: "point", radiusM: null } }, catalog.layers[1]);
+    const attachmentId = "44444444-4444-4444-8444-444444444444";
+    const feature = decodePublicFeatureDetail({
+      type: "Feature",
+      id: "33333333-3333-4333-8333-333333333333",
+      geometry: { type: "Point", coordinates: [108.21, 16.08] },
+      properties: { title: "Điểm dữ liệu lớn", address: "Hải Châu", nested: { hidden: true } },
+      attachments: [
+        { id: attachmentId, fieldKey: "images", displayOrder: 1, fileName: "tru-so.png", contentType: "image/png", sizeBytes: 1024, status: "clean", url: `/api/v1/public/attachments/${attachmentId}` },
+        { id: "55555555-5555-4555-8555-555555555555", fieldKey: "images", displayOrder: 0, fileName: "pending.png", contentType: "image/png", sizeBytes: 512, status: "pending", url: "/api/v1/public/attachments/55555555-5555-4555-8555-555555555555" },
+        { id: "66666666-6666-4666-8666-666666666666", fieldKey: "files", displayOrder: 2, fileName: "external.pdf", contentType: "application/pdf", sizeBytes: 2048, status: "clean", url: "https://example.com/external.pdf" },
+      ],
+      meta: { geometryKind: "point", radiusM: null },
+    }, catalog.layers[1]);
     expect(feature).toMatchObject({ properties: { id: "33333333-3333-4333-8333-333333333333", layerId: "large", name: "Điểm dữ liệu lớn", kind: "Dữ liệu lớn", metadata: { title: "Điểm dữ liệu lớn", address: "Hải Châu" } } });
+    expect(feature.attachments).toEqual([{ id: attachmentId, fieldKey: "images", displayOrder: 1, fileName: "tru-so.png", contentType: "image/png", sizeBytes: 1024, status: "clean", url: `/api/v1/public/attachments/${attachmentId}` }]);
     expect(feature.properties.metadata).not.toHaveProperty("nested");
   });
 });

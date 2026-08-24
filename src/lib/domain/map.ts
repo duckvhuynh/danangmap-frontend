@@ -39,6 +39,17 @@ export interface PublicLayer {
   popupConfig: PopupConfig;
 }
 
+export interface PublicAttachment {
+  id: string;
+  fieldKey: string;
+  displayOrder: number;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+  status: "clean";
+  url: string;
+}
+
 export type PublicFeature = Feature<Geometry, {
   id: string;
   layerId: string;
@@ -47,7 +58,9 @@ export type PublicFeature = Feature<Geometry, {
   geometryKind?: string;
   radiusM?: number | null;
   metadata: Record<string, string | number | null>;
-}>;
+}> & {
+  attachments?: PublicAttachment[];
+};
 
 export interface PublicMapData {
   layers: PublicLayer[];
