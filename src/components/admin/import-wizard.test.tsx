@@ -69,6 +69,13 @@ describe("admin import wizard", () => {
     expect(screen.getByRole("heading", { name: "Không có quyền nhập dữ liệu" })).toBeInTheDocument();
   });
 
+  it("allows a System Admin to use the editor import capability", async () => {
+    render(<ImportWizard revisionId={revisionId} principalRole="system_admin" csrfToken="csrf-1" canAuthor/>);
+
+    expect(await screen.findByRole("heading", { name: "Nhập dữ liệu không gian" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Tải lên và tiếp tục/ })).toBeInTheDocument();
+  });
+
   it("reuses upload operation keys only while retrying the same ambiguous attempt", async () => {
     vi.mocked(createSpatialImport).mockRejectedValueOnce(new TypeError("network interrupted")).mockResolvedValueOnce({ ...baseJob, status: "uploaded" });
     vi.mocked(getSpatialImport).mockResolvedValue({ ...baseJob, status: "mapping_required", progress: 100 });
