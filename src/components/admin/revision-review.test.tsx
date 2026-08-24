@@ -190,6 +190,29 @@ describe("revision review publication capability", () => {
     expect(screen.queryByRole("button", { name: /Công bố|Thử công bố/u })).not.toBeInTheDocument();
   });
 
+  it("allows a System Admin to use the publisher capability on desktop", async () => {
+    setCapability({ mediaMatches: true, userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", platform: "Win32", maxTouchPoints: 0 });
+    vi.mocked(useAdminSession).mockReturnValue({ principal: { ...principal, role: "system_admin" }, csrfToken: "csrf-fixed", refreshCsrf: vi.fn(), clearClientPrincipal: vi.fn() });
+    render(<RevisionReview revisionId={revisionId}/>);
+
+    expect(await screen.findByLabelText("Ghi chú công bố")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Công bố revision" })).toBeInTheDocument();
+  });
+
+  it("allows a System Admin to use reviewer decisions for an in-review revision", async () => {
+    setCapability({ mediaMatches: true, userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", platform: "Win32", maxTouchPoints: 0 });
+    vi.mocked(useAdminSession).mockReturnValue({ principal: { ...principal, role: "system_admin" }, csrfToken: "csrf-fixed", refreshCsrf: vi.fn(), clearClientPrincipal: vi.fn() });
+    const reviewBundle: RevisionBundle = {
+      ...bundle,
+      revision: { ...bundle.revision, status: "in_review" },
+      workspace: { ...bundle.workspace, status: "in_review" },
+    };
+    render(<RevisionReview revisionId={revisionId} transport={realTransport({ bundle: vi.fn().mockResolvedValue(reviewBundle) })}/>);
+
+    expect(await screen.findByRole("button", { name: "Duyệt thay đổi" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Yêu cầu chỉnh sửa" })).toBeInTheDocument();
+  });
+
   it("uses a compact map-first mobile review and keeps both reviewer decisions operable", async () => {
     setCapability({ mediaMatches: false, userAgent: "Mozilla/5.0 (Linux; Android 15; Mobile)", platform: "Linux armv8l", maxTouchPoints: 5 });
     vi.mocked(useAdminSession).mockReturnValue({ principal: { ...principal, role: "reviewer" }, csrfToken: "csrf-fixed", refreshCsrf: vi.fn(), clearClientPrincipal: vi.fn() });

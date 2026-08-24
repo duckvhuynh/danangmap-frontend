@@ -243,9 +243,17 @@ test("CMS-1 creates and reloads a private draft while every non-authoring capabi
     expect(invalidProblem).toMatchObject({ status: 422, code: "SCHEMA_VIOLATION" });
     expect(typeof invalidProblem.requestId === "string" && invalidProblem.requestId.length > 0).toBe(true);
 
-    for (const actor of ["REVIEWER", "PUBLISHER", "SYSTEM_ADMIN"] as const) {
+    for (const actor of ["REVIEWER", "PUBLISHER"] as const) {
       deniedContexts.push(await deniedRoleContext(browser, actor, baseURL));
     }
+
+    const systemAdminContext = await browser.newContext({ baseURL, ignoreHTTPSErrors: true });
+    deniedContexts.push(systemAdminContext);
+    const systemAdminPage = await systemAdminContext.newPage();
+    await loginActor(systemAdminPage, "SYSTEM_ADMIN");
+    await systemAdminPage.goto("/admin/layers/new");
+    await expect(systemAdminPage.getByRole("heading", { name: "Tạo lớp dữ liệu" })).toBeVisible();
+    await expect(systemAdminPage.getByRole("button", { name: "Tạo layer" })).toBeVisible();
 
     const mobileContext = await browser.newContext({
       ...devices["Pixel 7"],

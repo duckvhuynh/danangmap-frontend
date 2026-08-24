@@ -183,6 +183,13 @@ describe("publication history screen", () => {
     if (role === "publisher") expect(screen.getByText("Rollback chỉ dùng trên desktop")).toBeInTheDocument();
   });
 
+  it("allows a System Admin to use the publisher rollback capability on desktop", async () => {
+    vi.mocked(useAdminSession).mockReturnValue({ principal: { ...principal, role: "system_admin" }, csrfToken: "csrf-fixed", refreshCsrf: vi.fn(), clearClientPrincipal: vi.fn() });
+    render(<PublicationHistoryScreen layerId={layerId} transport={transport()}/>);
+
+    expect(await screen.findByRole("button", { name: "Khôi phục bản này, generation 6" })).toBeInTheDocument();
+  });
+
   it("renders a typed load error", async () => {
     const api = transport();
     vi.mocked(api.publications).mockRejectedValue(new Error("history unavailable"));
