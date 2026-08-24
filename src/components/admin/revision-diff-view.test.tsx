@@ -17,7 +17,7 @@ function diffResource(overrides: Partial<RevisionDiff> = {}): HistoryResource<Re
       baseRevisionId: "33333333-3333-4333-8333-333333333333",
       geometry: { currentFeatureCount: 3, baseFeatureCount: 2, added: 1, removed: 1, modified: 1 },
       properties: { featuresModified: 1, publicFieldKeysChanged: ["name"] },
-      attachments: { available: false, status: "unavailable", reasonCode: "ATTACHMENT_CONTRACT_PENDING" },
+      attachments: { available: true, featuresModified: 1, added: 1, removed: 1, reordered: 1, redactedChangeCount: 1 },
       schema: { publicFieldsAdded: [], publicFieldsRemoved: [], publicFieldsChanged: [], redactedChangeCount: 1 },
       entries: [{
         featureId: "44444444-4444-4444-8444-444444444444",
@@ -36,7 +36,14 @@ function diffResource(overrides: Partial<RevisionDiff> = {}): HistoryResource<Re
           afterBounds: [108.15, 16.05, 108.15, 16.05],
         },
         properties: { before: { name: "Cũ" }, after: { name: "Mới" }, changedKeys: ["name"] },
-        attachments: { available: false, status: "unavailable", reasonCode: "ATTACHMENT_CONTRACT_PENDING" },
+        attachments: {
+          available: true,
+          changed: true,
+          added: [{ id: "77777777-7777-4777-8777-777777777771", fieldKey: "documents", displayOrder: 2, fileName: "quyet-dinh-moi.pdf", contentType: "application/pdf", sizeBytes: 12_800, status: "clean" }],
+          removed: [{ id: "77777777-7777-4777-8777-777777777772", fieldKey: "documents", displayOrder: 1, fileName: "quyet-dinh-cu.pdf", contentType: "application/pdf", sizeBytes: 10_240, status: "clean" }],
+          reordered: [{ id: "77777777-7777-4777-8777-777777777773", fieldKey: "documents", fileName: "ban-do.pdf", beforeDisplayOrder: 0, afterDisplayOrder: 1 }],
+          redactedChange: true,
+        },
         redactedChange: true,
       }],
       nextCursor: "opaque:diff:page:2/+==",
@@ -50,13 +57,20 @@ function diffResource(overrides: Partial<RevisionDiff> = {}): HistoryResource<Re
 afterEach(cleanup);
 
 describe("revision diff view", () => {
-  it("renders safe exact and bbox previews, circle radius, redaction and attachment-unavailable state", async () => {
+  it("renders safe geometry, typed attachment changes and private redaction", async () => {
     const second = diffResource({ entries: [{ ...diffResource().data.entries[0]!, featureId: "55555555-5555-4555-8555-555555555555", changeType: "added" }], nextCursor: null, hasMore: false });
     const load = vi.fn().mockResolvedValueOnce(diffResource()).mockResolvedValueOnce(second);
     render(<RevisionDiffView revisionId={revisionId} transport={{ load } as RevisionDiffTransport}/>);
 
-    expect(await screen.findByText("So sánh tệp đính kèm chưa khả dụng")).toBeInTheDocument();
-    expect(screen.getAllByText("ATTACHMENT_CONTRACT_PENDING").length).toBeGreaterThan(0);
+    const attachmentSummary = await screen.findByRole("region", { name: "Thay đổi tệp đính kèm" });
+    expect(attachmentSummary).toHaveTextContent("1 thay đổi đã ẩn");
+    expect(attachmentSummary).toHaveTextContent("Đối tượng có thay đổi1");
+    expect(screen.getByText("quyet-dinh-moi.pdf")).toBeInTheDocument();
+    expect(screen.getByText("quyet-dinh-cu.pdf")).toBeInTheDocument();
+    expect(screen.getByText("ban-do.pdf")).toBeInTheDocument();
+    expect(screen.getByText(/vị trí 1 → 2/u)).toBeInTheDocument();
+    expect(screen.getByText(/attachment private hoặc nhạy cảm đã được ẩn/u)).toBeInTheDocument();
+    expect(screen.queryByText(/objectKey|checksum|ownerId/u)).not.toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Hình học trước thay đổi" })).toHaveTextContent("Khung giới hạn");
     expect(screen.getByRole("region", { name: "Hình học sau thay đổi" })).toHaveTextContent("Hình học chính xác");
     expect(screen.getByRole("region", { name: "Hình học sau thay đổi" })).toHaveTextContent("Bán kính 125 m");
@@ -75,11 +89,11 @@ describe("revision diff view", () => {
     expect((await screen.findAllByText("Đã thêm")).length).toBeGreaterThan(1);
   });
 
-  it("renders an explicit empty state without inferring attachment equality", async () => {
+  it("renders an explicit feature empty state with zero attachment summary", async () => {
     const load = vi.fn().mockResolvedValue(diffResource({ entries: [], nextCursor: null, hasMore: false }));
     render(<RevisionDiffView revisionId={revisionId} transport={{ load } as RevisionDiffTransport}/>);
     expect(await screen.findByText("Không có thay đổi feature")).toBeInTheDocument();
-    expect(screen.getByText("So sánh tệp đính kèm chưa khả dụng")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Thay đổi tệp đính kèm" })).toBeInTheDocument();
   });
 
   it("wraps an opaque history ETag instead of widening the mobile review viewport", async () => {

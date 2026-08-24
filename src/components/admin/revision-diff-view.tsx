@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { IconAlertTriangle, IconArrowsDiff, IconEyeOff, IconPaperclip } from "@tabler/icons-react";
+import { IconAlertTriangle, IconArrowsDiff, IconArrowsSort, IconEyeOff, IconFile, IconMinus, IconPaperclip, IconPlus } from "@tabler/icons-react";
 import { AdminErrorNotice } from "@/components/admin/admin-session";
 import { compactIdentifier } from "@/components/admin/history-format";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -92,6 +92,59 @@ function PublicFieldKeys({ label, keys }: { label: string; keys: string[] }) {
       {keys.length === 0 ? <span className="text-sm text-muted-foreground">Không có</span> : keys.map((key) => <Badge key={key}>{key}</Badge>)}
     </dd>
   </div>;
+}
+
+type AttachmentDiff = RevisionDiff["entries"][number]["attachments"];
+type AttachmentDescriptor = AttachmentDiff["added"][number];
+
+function formatFileSize(sizeBytes: number) {
+  if (sizeBytes < 1024) return `${sizeBytes.toLocaleString("vi-VN")} B`;
+  if (sizeBytes < 1024 * 1024) return `${(sizeBytes / 1024).toLocaleString("vi-VN", { maximumFractionDigits: 1 })} KB`;
+  return `${(sizeBytes / (1024 * 1024)).toLocaleString("vi-VN", { maximumFractionDigits: 1 })} MB`;
+}
+
+function AttachmentList({ label, items, icon: Icon }: { label: string; items: AttachmentDescriptor[]; icon: typeof IconFile }) {
+  if (items.length === 0) return null;
+  return <div>
+    <h5 className="flex items-center gap-1.5 text-xs font-semibold text-foreground"><Icon size={16} stroke={1.75}/>{label}</h5>
+    <ul className="mt-2 space-y-2">
+      {items.map((item) => <li key={`${item.id}:${item.fieldKey}`} className="flex min-w-0 items-start gap-2 rounded-control border bg-surface px-3 py-2.5">
+        <IconFile className="mt-0.5 shrink-0 text-muted-foreground" size={17} stroke={1.75}/>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium" title={item.fileName}>{item.fileName}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{item.fieldKey} · {formatFileSize(item.sizeBytes)} · {item.status === "clean" ? "Đã quét sạch" : item.status}</p>
+        </div>
+      </li>)}
+    </ul>
+  </div>;
+}
+
+function AttachmentDiffDetails({ featureId, diff }: { featureId: string; diff: AttachmentDiff }) {
+  if (!diff.changed) return <p className="mt-3 text-xs text-muted-foreground">Tệp đính kèm không thay đổi.</p>;
+  return <section className="mt-3 rounded-control border bg-surface-subtle p-3" aria-label={`Thay đổi tệp đính kèm của feature ${compactIdentifier(featureId)}`}>
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <h4 className="flex items-center gap-2 text-sm font-semibold"><IconPaperclip size={17} stroke={1.75}/>Tệp đính kèm</h4>
+      <div className="flex flex-wrap gap-1.5" aria-label="Tóm tắt thay đổi tệp của feature">
+        {diff.added.length > 0 && <Badge><IconPlus data-icon="inline-start" stroke={1.75}/>{diff.added.length} thêm</Badge>}
+        {diff.removed.length > 0 && <Badge><IconMinus data-icon="inline-start" stroke={1.75}/>{diff.removed.length} xóa</Badge>}
+        {diff.reordered.length > 0 && <Badge><IconArrowsSort data-icon="inline-start" stroke={1.75}/>{diff.reordered.length} đổi thứ tự</Badge>}
+      </div>
+    </div>
+    <div className="mt-3 grid gap-3 lg:grid-cols-2">
+      <AttachmentList label="Tệp đã thêm" items={diff.added} icon={IconPlus}/>
+      <AttachmentList label="Tệp đã xóa" items={diff.removed} icon={IconMinus}/>
+    </div>
+    {diff.reordered.length > 0 && <div className="mt-3">
+      <h5 className="flex items-center gap-1.5 text-xs font-semibold"><IconArrowsSort size={16} stroke={1.75}/>Đã đổi thứ tự</h5>
+      <ul className="mt-2 space-y-2">
+        {diff.reordered.map((item) => <li key={`${item.id}:${item.fieldKey}`} className="rounded-control border bg-surface px-3 py-2.5 text-sm">
+          <span className="font-medium">{item.fileName}</span>
+          <span className="ml-2 text-xs text-muted-foreground">{item.fieldKey} · vị trí {item.beforeDisplayOrder + 1} → {item.afterDisplayOrder + 1}</span>
+        </li>)}
+      </ul>
+    </div>}
+    {diff.redactedChange && <p className="mt-3 flex items-center gap-2 text-xs text-muted-foreground"><IconEyeOff size={16} stroke={1.75}/>Có thêm thay đổi attachment private hoặc nhạy cảm đã được ẩn.</p>}
+  </section>;
 }
 
 export function RevisionDiffView({ revisionId, transport = defaultTransport }: { revisionId: string; transport?: RevisionDiffTransport }) {
@@ -211,13 +264,18 @@ export function RevisionDiffView({ revisionId, transport = defaultTransport }: {
       </dl>
     </section>
 
-    <Alert>
-      <IconPaperclip stroke={1.75}/>
-      <AlertTitle>So sánh tệp đính kèm chưa khả dụng</AlertTitle>
-      <AlertDescription>
-        Backend trả trạng thái {diff.attachments.status}. Mã lý do: <code>{diff.attachments.reasonCode}</code>. Giao diện không suy diễn đây là không có thay đổi.
-      </AlertDescription>
-    </Alert>
+    <section className="rounded-panel border bg-surface p-4" aria-labelledby="attachment-diff-title">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div><h3 id="attachment-diff-title" className="flex items-center gap-2 text-sm font-semibold"><IconPaperclip size={18} stroke={1.75}/>Thay đổi tệp đính kèm</h3><p className="mt-1 text-xs text-muted-foreground">Chỉ hiển thị metadata an toàn của field public; tệp private và nhạy cảm được ẩn.</p></div>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground"><IconEyeOff size={17} stroke={1.75}/><span><strong className="font-semibold text-foreground">{diff.attachments.redactedChangeCount.toLocaleString("vi-VN")}</strong> thay đổi đã ẩn</span></div>
+      </div>
+      <dl className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="rounded-control bg-surface-subtle p-3"><dt className="text-xs text-muted-foreground">Đối tượng có thay đổi</dt><dd className="mt-1 text-lg font-semibold tabular-nums">{diff.attachments.featuresModified.toLocaleString("vi-VN")}</dd></div>
+        <div className="rounded-control bg-surface-subtle p-3"><dt className="text-xs text-muted-foreground">Tệp đã thêm</dt><dd className="mt-1 text-lg font-semibold tabular-nums">{diff.attachments.added.toLocaleString("vi-VN")}</dd></div>
+        <div className="rounded-control bg-surface-subtle p-3"><dt className="text-xs text-muted-foreground">Tệp đã xóa</dt><dd className="mt-1 text-lg font-semibold tabular-nums">{diff.attachments.removed.toLocaleString("vi-VN")}</dd></div>
+        <div className="rounded-control bg-surface-subtle p-3"><dt className="text-xs text-muted-foreground">Đổi thứ tự</dt><dd className="mt-1 text-lg font-semibold tabular-nums">{diff.attachments.reordered.toLocaleString("vi-VN")}</dd></div>
+      </dl>
+    </section>
 
     {diff.entries.length === 0 ? <Empty className="border"><EmptyHeader><EmptyMedia variant="icon"><IconArrowsDiff stroke={1.75}/></EmptyMedia><EmptyTitle>Không có thay đổi feature</EmptyTitle><EmptyDescription>Revision không khác mốc so sánh đã chọn trong phạm vi dữ liệu hiện tại.</EmptyDescription></EmptyHeader></Empty> : <div>
       <p className="sr-only" id={entryInstructionsId}>Dùng phím mũi tên lên và xuống, Home hoặc End để di chuyển giữa các feature thay đổi.</p>
@@ -256,7 +314,7 @@ export function RevisionDiffView({ revisionId, transport = defaultTransport }: {
           <PropertiesPreview label="Thuộc tính public trước" properties={entry.properties.before}/>
           <PropertiesPreview label="Thuộc tính public sau" properties={entry.properties.after}/>
         </div>
-        <p className="mt-3 text-xs text-muted-foreground">Attachment: {entry.attachments.reasonCode}</p>
+        <AttachmentDiffDetails featureId={entry.featureId} diff={entry.attachments}/>
         </article>
       </li>)}
     </ol></div>}

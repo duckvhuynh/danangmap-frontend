@@ -426,6 +426,15 @@ Publish dùng ngôn ngữ control nổi hiện có: nền trắng, border xanh n
 - Status card chỉ có `role=progressbar` khi determinate và giữ `aria-valuenow=0`. Live region polite chỉ đọc thay đổi status/phase, không đọc từng phần trăm. Failure chỉ render `userMessage`, `code`, `requestId` và `retryable`, không render raw details, stack hoặc SQL.
 - Mobile/non-Publisher tiếp tục xem và theo dõi job, nhưng publish, retry và rollback mutation không xuất hiện. Mapbox visual QA vẫn cần public token đã giới hạn theo URL; kiểm thử contract không được mô tả là visual QA bản đồ.
 
+### 10.7 Attachment diff trong review
+
+Revision review hiển thị attachment diff từ typed backend contract, không suy diễn từ JSON properties. Summary dùng cùng card trắng, border xanh nhạt, shadow/radius hiện hữu và gồm số feature có thay đổi, tệp thêm, tệp xóa, đổi thứ tự cùng số thay đổi đã ẩn.
+
+- Entry chỉ hiển thị descriptor an toàn của field public, non-sensitive: file name, field key, size, scan status và display order trước/sau.
+- Object/quarantine key, checksum, owner và descriptor của field private/sensitive không được render hoặc lưu client-side. Thay đổi ẩn chỉ xuất hiện dưới dạng count/boolean redacted.
+- Empty state “không đổi attachment” chỉ dùng khi backend trả `changed=false`; UI không tự suy ra từ mảng thiếu hoặc contract lỗi.
+- Danh sách attachment nằm trong semantic section của từng feature, có heading/icon Tabler bằng text, không phụ thuộc màu để phân biệt add/remove/reorder và vẫn đọc được trên mobile review.
+
 ## 11. IndexedDB và Dexie crash-safe autosave
 
 ### 11.1 Vai trò và giới hạn
@@ -634,6 +643,7 @@ Tất cả breakpoint phải test với zoom trình duyệt 200%. Viewport width
 - [ ] Publisher từng là Editor hoặc Reviewer của revision bị chặn publish kể cả sau khi đổi role; UI giải thích và backend deny đều được kiểm thử.
 - [ ] Login, MFA, admin review, conflict và workflow dialogs dùng được chỉ bằng bàn phím và không có axe violation mức critical/serious.
 - [x] Attachment upload có progress, quarantine/scan, bind/reorder/unbind, retry metadata sau reload và diagnostics cho 401/403/409/412/422/scanner failure.
+- [x] Revision review hiển thị typed attachment add/remove/reorder, aggregate count và private redaction; real-stack attachment publication xác nhận tệp sạch xuất hiện trong diff còn tệp rejected không xuất hiện.
 - [x] System Admin nhìn thấy các action phù hợp của Editor, Reviewer và Publisher; mobile vẫn giữ giới hạn view/review.
 
 ### 16.3 Dexie recovery
