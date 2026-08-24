@@ -134,10 +134,10 @@ async function uploadFromEditor(page: Page, fileName: string, buffer: Buffer) {
 
 async function approve(page: Page, revisionId: string) {
   await page.goto(`/admin/layers/${revisionId}/review`);
-  const header = page.locator("header");
-  await expect(header.getByText("Chờ duyệt", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Duyệt thay đổi" }).click();
-  await expect(header.getByText("Đã duyệt", { exact: true })).toBeVisible();
+  const approveButton = page.getByRole("button", { name: "Duyệt thay đổi" });
+  await expect(approveButton).toBeVisible();
+  await approveButton.click();
+  await expect(page.getByRole("status").filter({ hasText: "Đã duyệt revision." })).toBeVisible();
 }
 
 async function publish(page: Page, revisionId: string) {
