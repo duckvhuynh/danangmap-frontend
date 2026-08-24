@@ -321,7 +321,7 @@ Role hiển thị đúng capability:
 - Editor tạo và sửa draft, import dữ liệu, gửi duyệt.
 - Reviewer xem diff, comment, approve hoặc yêu cầu sửa; không duyệt revision do chính mình tạo.
 - Publisher xuất bản revision đã approve và rollback snapshot đã publish.
-- System Admin tạo thủ công, invite hoặc import account; cấu hình role và session. Không có nút bypass workflow ngầm.
+- System Admin tạo thủ công, invite hoặc import account; cấu hình role và session, đồng thời có đủ capability Editor, Reviewer và Publisher. Mọi mutation vẫn đi qua revision state machine, ETag, idempotency, audit, ownership và separation-of-duties; không có nút bypass workflow ngầm.
 
 ## 10. Admin editor
 
@@ -374,6 +374,14 @@ AdminLayerEditPage (RSC auth + bootstrap)
 - Kích thước panel được lưu như user preference, không nằm trong draft revision.
 
 Admin là product UI có dữ liệu dày. Không áp dụng marketing patterns, bento, glass, hero, marquee hoặc motion kể chuyện.
+
+### 10.3 Attachment authoring và public visibility
+
+- Editor và System Admin chọn feature đã lưu trên server, chọn field `image` hoặc `attachment`, rồi upload tối đa 25 MiB bằng upload intent do backend cấp.
+- UI hiển thị tiến độ upload, trạng thái quarantine/scanning và lỗi có request ID. Không preview file đang upload, pending, infected hoặc rejected.
+- Chỉ attachment `clean` mới được bind. Bind, reorder và unbind luôn dùng revision ETag cùng idempotency key; geometry đang dirty phải được lưu trước để tránh ghi đè attachment metadata bằng snapshot cũ.
+- Reorder có nút lên/xuống dùng được bằng bàn phím; drag-and-drop không phải cách thao tác duy nhất.
+- Public catalog, GeoJSON và search không mang attachment. Public feature-detail chỉ render attachment sạch thuộc active snapshot qua URL tương đối `/api/v1/public/attachments/{id}`; không chấp nhận URL ngoài hoặc presigned URL.
 
 ### 10.3 Terra Draw
 
@@ -447,10 +455,13 @@ Database được version riêng với app và có các table logic:
 | `localCheckpoints` | Snapshot cục bộ theo chunk để phục hồi nhanh và compact command log; không phải server checkpoint |
 | `uiPreferences` | Panel sizes, grid columns và tool preference; tách khỏi revision data |
 | `recoveryEvents` | Log kỹ thuật tối thiểu về local checkpoint, quota và migration; không chứa property values |
+| `attachmentIntents` | Metadata tối thiểu để tiếp tục finalize/scan/bind sau reload: principal, revision/feature/field IDs, upload/attachment IDs, tên/MIME/kích thước/hash, phase, idempotency key và timestamps; không chứa file bytes hoặc upload URL |
 
 `clientId` định danh browser client trong phạm vi principal, không phải credential. Mỗi mutation có `clientMutationId` duy nhất trước khi ghi Dexie để retry idempotent. Ack chỉ hoàn tất khi response có đúng mutation ID; create ack phải lưu canonical ID mapping trước khi xóa pending payload.
 
 Không lưu original import file, import binary, attachment binary, MinIO presigned URL hoặc Mapbox tile vào Dexie. File import tối đa **25 MiB (26,214,400 bytes)** được upload vào MinIO qua backend; local cache chỉ giữ normalized mutation/delta và trạng thái mapping không chứa binary.
+
+Attachment recovery chỉ tiếp tục các bước server-side đã có định danh (`complete`, `poll scan`, `bind`). Nếu tab đóng trước khi bytes upload xong, UI không giả vờ có thể phục hồi binary; người dùng phải chọn lại file hoặc xóa intent quarantine.
 
 ### 11.3 Ghi dữ liệu cục bộ và batch sync
 
@@ -622,6 +633,8 @@ Tất cả breakpoint phải test với zoom trình duyệt 200%. Viewport width
 - [ ] Không có hành động editor tự duyệt revision của mình.
 - [ ] Publisher từng là Editor hoặc Reviewer của revision bị chặn publish kể cả sau khi đổi role; UI giải thích và backend deny đều được kiểm thử.
 - [ ] Login, MFA, admin review, conflict và workflow dialogs dùng được chỉ bằng bàn phím và không có axe violation mức critical/serious.
+- [x] Attachment upload có progress, quarantine/scan, bind/reorder/unbind, retry metadata sau reload và diagnostics cho 401/403/409/412/422/scanner failure.
+- [x] System Admin nhìn thấy các action phù hợp của Editor, Reviewer và Publisher; mobile vẫn giữ giới hạn view/review.
 
 ### 16.3 Dexie recovery
 
@@ -639,6 +652,7 @@ Tất cả breakpoint phải test với zoom trình duyệt 200%. Viewport width
 - [ ] Field `sensitive=true` mặc định có `offlineCache=false`; mọi field `offlineCache=false` bị loại khỏi local recovery payload.
 - [ ] TTL 30 ngày chỉ dọn synced/closed/discarded workspace; unsynced mutation không bị TTL hoặc LRU eviction.
 - [ ] Session/MFA/invite/CSRF secret, presigned URL, original import file, import binary và attachment binary không xuất hiện trong IndexedDB.
+- [x] Attachment recovery intent không lưu file bytes hoặc presigned upload URL và bị tách theo principal.
 
 ### 16.4 Visual và responsive
 
