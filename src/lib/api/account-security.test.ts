@@ -3,6 +3,7 @@ import { createDanangMapClient } from "./generated/client";
 import {
   changePassword,
   confirmPasswordReset,
+  regenerateRecoveryCodes,
   requestPasswordReset,
   revokeAllSessions,
 } from "./account-security";
@@ -153,6 +154,48 @@ describe("generated account-security boundary", () => {
     expect(requests[1].headers.get("x-csrf-token")).toBe("csrf-security");
     expect(requests[1].headers.get("idempotency-key")).toBe(key);
     expect(requests.every((request) => request.credentials === "include")).toBe(true);
+  });
+
+  it("regenerates exactly ten one-time recovery codes with CSRF and caller idempotency", async () => {
+    const requests: Request[] = [];
+    const codes = Array.from({ length: 10 }, (_, index) => `ABCD-${String(index).padStart(4, "0")}-EF01-2345-6789`);
+    const client = createDanangMapClient(async (input, init) => {
+      const request = new Request(input, init);
+      requests.push(request);
+      if (request.url.endsWith("/auth/csrf")) return csrfResponse();
+      return new Response(
+        envelope({ status: "recovery_codes_regenerated", recoveryCodes: codes }),
+        { status: 200, headers: jsonHeaders },
+      );
+    });
+
+    await expect(regenerateRecoveryCodes({ password: "Current-password-2026!", mfaCode: "123456" }, key, client)).resolves.toEqual({
+      status: "recovery_codes_regenerated",
+      recoveryCodes: codes,
+    });
+    expect(requests.map((request) => new URL(request.url).pathname)).toEqual([
+      "/api/v1/auth/csrf",
+      "/api/v1/auth/mfa/recovery-codes:regenerate",
+    ]);
+    expect(requests[1].headers.get("x-csrf-token")).toBe("csrf-security");
+    expect(requests[1].headers.get("idempotency-key")).toBe(key);
+    expect(await requests[1].clone().json()).toEqual({ password: "Current-password-2026!", mfaCode: "123456" });
+  });
+
+  it("rejects a malformed recovery-code success without exposing partial data", async () => {
+    let calls = 0;
+    const client = createDanangMapClient(async () => {
+      calls += 1;
+      return calls === 1
+        ? csrfResponse()
+        : new Response(envelope({ status: "recovery_codes_regenerated", recoveryCodes: ["NOT-A-CODE"] }), {
+            status: 200,
+            headers: jsonHeaders,
+          });
+    });
+    await expect(
+      regenerateRecoveryCodes({ password: "Current-password-2026!", mfaCode: "123456" }, key, client),
+    ).rejects.toMatchObject({ code: "CONTRACT_INVALID" });
   });
 
   it("marks only post-dispatch transport failures as ambiguous and preserves explicit status metadata", async () => {

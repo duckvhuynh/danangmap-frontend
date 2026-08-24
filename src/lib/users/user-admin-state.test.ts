@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { AdminUser } from "@/lib/api/users";
 import { filterAdminUsers, initialAdminUserForm, toCreateInviteInput, toCreateUserInput, validateAdminUserForm } from "@/lib/users/user-admin-state";
 
 const valid = { ...initialAdminUserForm, email: "editor@danang.gov.vn", username: "editor01", displayName: "Biên tập viên 01", temporaryPassword: "Temporary-123" };
@@ -18,7 +19,23 @@ describe("System Admin user form state", () => {
   });
 
   it("filters only the already-loaded list by identity or localized role", () => {
-    const users = [{ id: "1", email: valid.email, username: valid.username, displayName: valid.displayName, role: "editor" as const, status: "active" as const, mfaEnabled: true, mustChangePassword: false }];
+    const users: AdminUser[] = [{
+      id: "11111111-1111-4111-8111-111111111111",
+      email: valid.email,
+      username: valid.username,
+      displayName: valid.displayName,
+      role: "editor",
+      status: "active",
+      mfaEnabled: true,
+      mustChangePassword: false,
+      disabledAt: null,
+      lockedUntil: null,
+      lockVersion: 1,
+      etag: '"user-v1"',
+      createdAt: "2026-08-20T00:00:00.000Z",
+      updatedAt: "2026-08-24T00:00:00.000Z",
+      security: { activeSessionCount: 1, latestSessionCreatedAt: "2026-08-24T00:00:00.000Z", recoveryCodesRemaining: 8, pendingInviteCount: 0, pendingPasswordReset: false },
+    }];
     expect(filterAdminUsers(users, "biên tập")).toEqual(users);
     expect(filterAdminUsers(users, "không có")).toEqual([]);
   });

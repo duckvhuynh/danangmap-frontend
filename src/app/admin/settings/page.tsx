@@ -1,5 +1,6 @@
 import { IconDatabase, IconMap, IconShieldLock } from "@tabler/icons-react";
 import { SessionSecurityPanel } from "@/components/admin/session-security-panel";
+import { RecoveryCodesPanel } from "@/components/admin/recovery-codes-panel";
 import { Badge } from "@/components/ui/badge";
 import { apiBaseUrl } from "@/lib/api/generated/client";
 
@@ -45,6 +46,7 @@ export default function SettingsPage() {
             <Badge>{status}</Badge>
           </section>
         ))}
+        <RecoveryCodesPanel />
         <SessionSecurityPanel />
       </div>
     </main>
