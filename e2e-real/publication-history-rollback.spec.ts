@@ -179,7 +179,7 @@ test("history, diff, role gates, synchronous rollback, stale pointer and idempot
 
     await rollbackPage.goto(`/admin/layers/${first.layerId}/revisions/${secondRevisionId}/review`);
     await expect(rollbackPage.getByRole("heading", { name: "So sánh thay đổi" })).toBeVisible();
-    const attachmentDiff = rollbackPage.getByRole("region", { name: "Thay đổi tệp đính kèm" });
+    const attachmentDiff = rollbackPage.getByRole("region", { name: "Thay đổi tệp đính kèm", exact: true });
     await expect(attachmentDiff).toBeVisible();
     await expect(attachmentDiff.getByText("Đối tượng có thay đổi")).toBeVisible();
     await expect(rollbackPage.getByText("Đã thêm").first()).toBeVisible();

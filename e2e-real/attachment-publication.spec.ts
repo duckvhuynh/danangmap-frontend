@@ -215,7 +215,7 @@ test("clean attachment crosses MinIO and publication while rejected content stay
     const publisherPage = await publisherContext.newPage();
     await login(publisherPage, "PUBLISHER");
     await publish(publisherPage, revisionId);
-    const attachmentDiff = publisherPage.getByRole("region", { name: "Thay đổi tệp đính kèm" });
+    const attachmentDiff = publisherPage.getByRole("region", { name: "Thay đổi tệp đính kèm", exact: true });
     await expect(attachmentDiff).toBeVisible();
     await expect(attachmentDiff.getByText("tru-so-clean.png", { exact: true })).toBeVisible();
     await expect(attachmentDiff).not.toContainText("tru-so-rejected.png");
