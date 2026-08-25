@@ -1,0 +1,8 @@
+# Default ownership keeps every change reviewable once branch protection is enabled.
+* @duckvhuynh
+
+# Product, design and generated API contracts require an explicit owner review.
+/.github/ @duckvhuynh
+/docs/ @duckvhuynh
+/openapi/ @duckvhuynh
+/src/lib/api/ @duckvhuynh
