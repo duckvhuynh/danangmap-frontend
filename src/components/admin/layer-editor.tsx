@@ -160,6 +160,7 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
   const [dirty, setDirty] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const workflowKeyRef = useRef<string | null>(null);
+  const loadGenerationRef = useRef(0);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<"save" | "submit" | null>(null);
   const [error, setError] = useState<unknown>(null);
@@ -200,10 +201,12 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
     [],
   );
   const load = useCallback(() => {
+    const generation = ++loadGenerationRef.current;
     setLoading(true);
     setError(null);
     loadRevisionBundle(revisionId)
       .then((next) => {
+        if (loadGenerationRef.current !== generation) return;
         setBundle(next);
         const drawable = next.features.flatMap((feature) => {
           const converted = adminFeatureToTerra(feature);
@@ -217,12 +220,19 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
         setDirty(false);
         setSuccess(null);
       })
-      .catch(setError)
-      .finally(() => setLoading(false));
+      .catch((reason) => {
+        if (loadGenerationRef.current === generation) setError(reason);
+      })
+      .finally(() => {
+        if (loadGenerationRef.current === generation) setLoading(false);
+      });
   }, [revisionId]);
   useEffect(() => {
     const timer = window.setTimeout(load, 0);
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(timer);
+      loadGenerationRef.current += 1;
+    };
   }, [load]);
 
   const draftId = useMemo(
@@ -243,7 +253,10 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
         : null,
     [bundle, principal.id],
   );
-  const refreshSyncState = useCallback(async (workspaceId: string) => {
+  const refreshSyncState = useCallback(async (
+    workspaceId: string,
+    preserveActivePhase = true,
+  ) => {
     const mutations = await listWorkspaceMutations(workspaceId);
     const issues = mutations.filter(
       (entry) => entry.status === "conflict" || entry.status === "rejected",
@@ -256,7 +269,8 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
     setSyncPhase((current) =>
       issues.length
         ? "issues"
-        : current === "syncing" || current === "observing"
+        : preserveActivePhase &&
+            (current === "syncing" || current === "observing")
           ? current
           : pending
             ? "offline"
@@ -265,16 +279,21 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
   }, []);
   useEffect(() => {
     if (!bundle || !syncWorkspaceId) return;
+    let active = true;
     ensureEditorSyncWorkspace(principal.id, bundle)
       .then(async () => {
         await cleanupStaleEditorWorkspaces(principal.id, syncWorkspaceId);
-        await refreshSyncState(syncWorkspaceId);
+        if (active) await refreshSyncState(syncWorkspaceId);
       })
       .catch(() => undefined);
+    return () => {
+      active = false;
+    };
   }, [bundle, principal.id, refreshSyncState, syncWorkspaceId]);
   useEffect(() => {
     if (!syncWorkspaceId) return;
-    return subscribeSyncActivity(syncWorkspaceId, (activity) => {
+    let active = true;
+    const unsubscribe = subscribeSyncActivity(syncWorkspaceId, (activity) => {
       if (activity.state === "started" && busy !== "save")
         setSyncPhase("observing");
       if (activity.state === "finished" && busy !== "save") {
@@ -283,16 +302,23 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
           listWorkspaceMutations(syncWorkspaceId),
         ])
           .then(([fresh, mutations]) => {
+            if (!active) return;
             const mappings = acknowledgedFeatureMappings(mutations);
             applyBundleAndSnapshot(
               fresh,
               remapSnapshotFeatureIds(featuresRef.current, mappings),
             );
-            return refreshSyncState(syncWorkspaceId);
+            return refreshSyncState(syncWorkspaceId, false);
           })
-          .catch(() => setSyncPhase("offline"));
+          .catch(() => {
+            if (active) setSyncPhase("offline");
+          });
       }
     });
+    return () => {
+      active = false;
+      unsubscribe();
+    };
   }, [
     applyBundleAndSnapshot,
     busy,
@@ -419,35 +445,47 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
     setSyncPhase("syncing");
     try {
       const preserveLocalSnapshot = dirty;
-      let workspace = await ensureEditorSyncWorkspace(principal.id, bundle);
-      const ledger = await listWorkspaceMutations(workspace.id);
-      const persistedMappings = acknowledgedFeatureMappings(ledger);
-      const recoveredSnapshot = remapSnapshotFeatureIds(
-        featuresRef.current,
-        persistedMappings,
-      );
-      featuresRef.current = recoveredSnapshot;
-      const hasAmbiguousRetry = ledger.some(
-        (entry) =>
-          (entry.status === "retry" || entry.status === "syncing") &&
-          entry.attempts > 0,
-      );
-      if (!hasAmbiguousRetry && !syncIssues.length) {
-        const feed = await refreshWorkspaceChangeFeed(workspace);
-        workspace = feed.workspace;
-        setRemoteChanges(feed.remoteChanges);
-      }
-      const desiredSnapshot = structuredClone(recoveredSnapshot);
-      await enqueueEditorSnapshot(workspace, bundle, desiredSnapshot);
-      const ownership = await withEditorSyncOwnership(workspace.id, () =>
-        syncPendingFeatureMutations(workspace.id, csrfToken),
-      );
+      const desiredSnapshot = structuredClone(featuresRef.current);
+      const workspaceId = syncWorkspaceKey(principal.id, bundle.revision.id);
+      const ownership = await withEditorSyncOwnership(workspaceId, async () => {
+        let workspace = await ensureEditorSyncWorkspace(principal.id, bundle);
+        const ledger = await listWorkspaceMutations(workspace.id);
+        const persistedMappings = acknowledgedFeatureMappings(ledger);
+        const recoveredSnapshot = remapSnapshotFeatureIds(
+          desiredSnapshot,
+          persistedMappings,
+        );
+        const hasAmbiguousRetry = ledger.some(
+          (entry) =>
+            (entry.status === "retry" || entry.status === "syncing") &&
+            entry.attempts > 0,
+        );
+        const hasIssues = ledger.some(
+          (entry) =>
+            entry.status === "conflict" || entry.status === "rejected",
+        );
+        let receivedRemoteChanges = 0;
+        if (!hasAmbiguousRetry && !hasIssues) {
+          const feed = await refreshWorkspaceChangeFeed(workspace);
+          workspace = feed.workspace;
+          receivedRemoteChanges = feed.remoteChanges;
+        }
+        await enqueueEditorSnapshot(workspace, bundle, recoveredSnapshot);
+        return {
+          summary: await syncPendingFeatureMutations(workspace.id, csrfToken),
+          recoveredSnapshot,
+          receivedRemoteChanges,
+        };
+      });
       if (!ownership.acquired) {
         setSyncPhase("observing");
         setSuccess("Một tab khác đang đồng bộ workspace này.");
         return;
       }
-      const summary = ownership.value;
+      const { summary, recoveredSnapshot, receivedRemoteChanges } =
+        ownership.value;
+      featuresRef.current = recoveredSnapshot;
+      setRemoteChanges(receivedRemoteChanges);
       const fresh = await loadRevisionBundle(revisionId);
       const remappedSnapshot = preserveLocalSnapshot
         ? remapSnapshotFeatureIds(featuresRef.current, summary.mappings)
@@ -456,7 +494,7 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
             return converted ? [converted] : [];
           });
       applyBundleAndSnapshot(fresh, remappedSnapshot);
-      const issues = await activeWorkspaceIssues(workspace.id);
+      const issues = await activeWorkspaceIssues(workspaceId);
       setSyncIssues(issues);
       setPendingSyncCount(summary.pending);
       setSyncPhase(issues.length ? "issues" : summary.pending ? "offline" : "idle");

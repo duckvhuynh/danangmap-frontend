@@ -70,6 +70,15 @@ export function revisionVersionFromEtag(etag: string) {
   return value;
 }
 
+function safeRevisionVersion(etag: string | undefined) {
+  if (!etag) return -1;
+  try {
+    return revisionVersionFromEtag(etag);
+  } catch {
+    return -1;
+  }
+}
+
 export async function ensureEditorSyncWorkspace(
   principalId: string,
   bundle: RevisionBundle,
@@ -77,14 +86,23 @@ export async function ensureEditorSyncWorkspace(
   const id = syncWorkspaceKey(principalId, bundle.revision.id);
   const existing = await draftDb.syncWorkspaces.get(id);
   const now = new Date().toISOString();
+  const preserveExisting =
+    existing !== undefined &&
+    safeRevisionVersion(existing.baseEtag) >=
+      revisionVersionFromEtag(bundle.etag);
   const workspace: EditorSyncWorkspace = {
     id,
     principalId,
     layerId: bundle.workspace.layerId,
     revisionId: bundle.revision.id,
     clientId: existing?.clientId ?? crypto.randomUUID(),
-    baseEtag: bundle.etag,
-    serverCursor: bundle.workspace.serverCursor,
+    // Keep the ETag/cursor pair atomic. A stale rendered bundle must not move
+    // another tab's durable state backwards, while a genuinely newer bundle
+    // may advance a workspace reopened after server-side changes.
+    baseEtag: preserveExisting ? existing.baseEtag : bundle.etag,
+    serverCursor: preserveExisting
+      ? existing.serverCursor
+      : bundle.workspace.serverCursor,
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
     lastOpenedAt: now,

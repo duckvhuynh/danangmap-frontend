@@ -107,6 +107,42 @@ afterEach(async () => {
 });
 
 describe("durable editor mutation ledger", () => {
+  it("never moves a durable workspace cursor backwards from a stale bundle", async () => {
+    const current = bundle();
+    const workspace = await ensureEditorSyncWorkspace("admin-a", current);
+    await draftDb.syncWorkspaces.put({
+      ...workspace,
+      baseEtag: `"rev-${revisionId}-v9"`,
+      serverCursor: "OQ",
+    });
+
+    const reopened = await ensureEditorSyncWorkspace("admin-a", current);
+
+    expect(reopened).toMatchObject({
+      baseEtag: `"rev-${revisionId}-v9"`,
+      serverCursor: "OQ",
+      clientId: workspace.clientId,
+    });
+  });
+
+  it("adopts a genuinely newer bundle ETag and cursor as one pair", async () => {
+    const current = bundle();
+    const workspace = await ensureEditorSyncWorkspace("admin-a", current);
+    const newer = {
+      ...current,
+      etag: `"rev-${revisionId}-v9"`,
+      workspace: { ...current.workspace, serverCursor: "OQ" },
+    };
+
+    const reopened = await ensureEditorSyncWorkspace("admin-a", newer);
+
+    expect(reopened).toMatchObject({
+      baseEtag: `"rev-${revisionId}-v9"`,
+      serverCursor: "OQ",
+      clientId: workspace.clientId,
+    });
+  });
+
   it("hashes the canonical payload exactly as the backend contract", async () => {
     const mutation = {
       clientMutationId: revisionId,

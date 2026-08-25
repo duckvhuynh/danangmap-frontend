@@ -461,14 +461,9 @@ test("real editor ledger survives reload, retries identically, reports partial c
         ),
         terraPoint(tabLocalId, tabName, 108.224),
       ],
-      entries: [
-        createEntry(
-          tabLocalId,
-          revisionVersion(beforeTabs.etag),
-          tabName,
-          108.224,
-        ),
-      ],
+      // Both tabs recover the same dirty snapshot with an empty ledger. The
+      // owner must enqueue and send it while the observer remains read-only.
+      entries: [],
     });
     const secondPage = await context.newPage();
     await secondPage.goto(`/admin/layers/${created.revisionId}/edit`);
