@@ -82,6 +82,7 @@ import {
   decodeTerraFeature,
   diffEditorFeatures,
   editorGeometryKindProperty,
+  editorGeometryKindForNewFeature,
   editorLogicalFeatureId,
   editorParentIdProperty,
   editorPartIndexProperty,
@@ -475,27 +476,11 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
               bundle.fields,
               feature.properties,
             );
-            const simpleKind =
-              feature.properties.mode === "circle"
-                ? "circle"
-                : feature.geometry.type === "Point"
-                  ? "point"
-                  : feature.geometry.type === "LineString"
-                    ? "line"
-                    : "polygon";
-            const multiKind =
-              simpleKind === "point"
-                ? "multipoint"
-                : simpleKind === "line"
-                  ? "multiline"
-                  : simpleKind === "polygon"
-                    ? "multipolygon"
-                    : "circle";
-            const geometryKind = bundle.revision.allowedGeometryKinds.includes(
-              simpleKind,
-            )
-              ? simpleKind
-              : multiKind;
+            const geometryKind = editorGeometryKindForNewFeature(
+              feature,
+              bundle.revision.allowedGeometryKinds,
+            );
+            if (!geometryKind) return feature;
             return {
               ...feature,
               properties: {

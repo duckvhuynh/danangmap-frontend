@@ -4,6 +4,7 @@ import {
   adminFeatureToTerraParts,
   diffEditorFeatures,
   editorGeometryKindProperty,
+  editorGeometryKindForNewFeature,
   editorParentIdProperty,
   editorPartIndexProperty,
   rebaseEditorSnapshot,
@@ -231,4 +232,55 @@ describe("Terra Draw server synchronization", () => {
       },
     });
   });
+
+  it.each([
+    ["Point", "point", "multipoint"],
+    ["LineString", "line", "multiline"],
+    ["Polygon", "polygon", "multipolygon"],
+  ] as const)(
+    "chooses the allowed Multi kind for a newly drawn %s",
+    (geometryType, simpleKind, multiKind) => {
+      const geometry =
+        geometryType === "Point"
+          ? { type: "Point" as const, coordinates: [108.22, 16.06] }
+          : geometryType === "LineString"
+            ? {
+                type: "LineString" as const,
+                coordinates: [
+                  [108.22, 16.06],
+                  [108.23, 16.07],
+                ],
+              }
+            : {
+                type: "Polygon" as const,
+                coordinates: [
+                  [
+                    [108.22, 16.06],
+                    [108.23, 16.06],
+                    [108.22, 16.06],
+                    [108.22, 16.06],
+                  ],
+                ],
+              };
+      const feature = {
+        type: "Feature" as const,
+        id: "12345678-1234-4234-9234-123456789abc",
+        geometry,
+        properties: {
+          mode:
+            geometryType === "Point"
+              ? "point"
+              : geometryType === "LineString"
+                ? "linestring"
+                : "polygon",
+        },
+      };
+      expect(editorGeometryKindForNewFeature(feature, [multiKind])).toBe(
+        multiKind,
+      );
+      expect(
+        editorGeometryKindForNewFeature(feature, [simpleKind, multiKind]),
+      ).toBe(simpleKind);
+    },
+  );
 });

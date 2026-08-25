@@ -280,6 +280,32 @@ export function editorLogicalFeatureId(feature: TerraFeature) {
     : String(feature.id);
 }
 
+export function editorGeometryKindForNewFeature(
+  feature: TerraFeature,
+  allowedGeometryKinds: string[],
+): FeatureMutation["geometryKind"] | null {
+  const simpleKind: FeatureMutation["geometryKind"] =
+    feature.properties.mode === "circle"
+      ? "circle"
+      : feature.geometry.type === "Point"
+        ? "point"
+        : feature.geometry.type === "LineString"
+          ? "line"
+          : "polygon";
+  if (allowedGeometryKinds.includes(simpleKind)) return simpleKind;
+  const multiKind =
+    simpleKind === "point"
+      ? "multipoint"
+      : simpleKind === "line"
+        ? "multiline"
+        : simpleKind === "polygon"
+          ? "multipolygon"
+          : null;
+  return multiKind && allowedGeometryKinds.includes(multiKind)
+    ? multiKind
+    : null;
+}
+
 export function remapEditorFeatureId(
   feature: TerraFeature,
   canonicalId: string,
