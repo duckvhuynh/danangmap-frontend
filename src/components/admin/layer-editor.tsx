@@ -31,15 +31,17 @@ import {
   useAdminSession,
 } from "@/components/admin/admin-session";
 import { FeatureAttachmentPanel } from "@/components/admin/feature-attachment-panel";
+import {
+  EditorSyncStatus,
+  type EditorSyncPhase,
+} from "@/components/admin/editor-sync-status";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  createAdminFeature,
-  deleteAdminFeature,
+  AdminApiError,
   loadRevisionBundle,
   submitRevision,
-  updateAdminFeature,
   type AdminFeature,
   type RevisionBundle,
 } from "@/lib/api/admin";
@@ -49,13 +51,31 @@ import {
   draftKey,
   draftMatchesWorkspace,
   shouldAutosaveDraft,
+  cleanupStaleEditorWorkspaces,
+  syncWorkspaceKey,
+  type FeatureMutationLedgerEntry,
   type LayerDraft,
 } from "@/lib/editor/draft-db";
+import {
+  acknowledgedFeatureMappings,
+  activeWorkspaceIssues,
+  discardMutationIssue,
+  enqueueEditorSnapshot,
+  ensureEditorSyncWorkspace,
+  listWorkspaceMutations,
+  refreshWorkspaceChangeFeed,
+  remapSnapshotFeatureIds,
+  syncPendingFeatureMutations,
+} from "@/lib/editor/durable-sync";
 import {
   adminFeatureToTerra,
   decodeTerraFeature,
   diffEditorFeatures,
 } from "@/lib/editor/editor-sync";
+import {
+  subscribeSyncActivity,
+  withEditorSyncOwnership,
+} from "@/lib/editor/sync-coordinator";
 import { cn } from "@/lib/utils";
 
 const EditorMapCanvas = dynamic(
@@ -139,10 +159,6 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
   const [draftReady, setDraftReady] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
-  const [operationKeys, setOperationKeys] = useState<Record<string, string>>(
-    {},
-  );
-  const operationKeysRef = useRef(operationKeys);
   const workflowKeyRef = useRef<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<"save" | "submit" | null>(null);
@@ -152,10 +168,37 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
   const [tableOpen, setTableOpen] = useState(true);
   const [summary, setSummary] = useState("");
   const [reviewerNote, setReviewerNote] = useState("");
+  const featuresRef = useRef(features);
+  const [syncPhase, setSyncPhase] = useState<EditorSyncPhase>("idle");
+  const [syncIssues, setSyncIssues] = useState<
+    FeatureMutationLedgerEntry[]
+  >([]);
+  const [pendingSyncCount, setPendingSyncCount] = useState(0);
+  const [remoteChanges, setRemoteChanges] = useState(0);
 
   useEffect(() => {
-    operationKeysRef.current = operationKeys;
-  }, [operationKeys]);
+    featuresRef.current = features;
+  }, [features]);
+  const applyBundleAndSnapshot = useCallback(
+    (next: RevisionBundle, snapshot: unknown[]) => {
+      setBundle(next);
+      setFeatures(snapshot);
+      featuresRef.current = snapshot;
+      setRestore((current) => ({
+        version: current.version + 1,
+        features: snapshot,
+      }));
+      const diff = diffEditorFeatures(
+        next.features,
+        snapshot,
+        next.fields.map((field) => field.key),
+      );
+      setDirty(
+        diff.creates.length + diff.updates.length + diff.deletes.length > 0,
+      );
+    },
+    [],
+  );
   const load = useCallback(() => {
     setLoading(true);
     setError(null);
@@ -172,41 +215,15 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
           features: drawable,
         }));
         setDirty(false);
-        setOperationKeys({});
         setSuccess(null);
       })
       .catch(setError)
       .finally(() => setLoading(false));
   }, [revisionId]);
   useEffect(() => {
-    let active = true;
-    loadRevisionBundle(revisionId)
-      .then((next) => {
-        if (!active) return;
-        setBundle(next);
-        const drawable = next.features.flatMap((feature) => {
-          const converted = adminFeatureToTerra(feature);
-          return converted ? [converted] : [];
-        });
-        setFeatures(drawable);
-        setRestore((current) => ({
-          version: current.version + 1,
-          features: drawable,
-        }));
-        setDirty(false);
-        setOperationKeys({});
-        setSuccess(null);
-      })
-      .catch((reason: unknown) => {
-        if (active) setError(reason);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [revisionId]);
+    const timer = window.setTimeout(load, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
   const draftId = useMemo(
     () =>
@@ -219,6 +236,70 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
         : null,
     [bundle, principal.id],
   );
+  const syncWorkspaceId = useMemo(
+    () =>
+      bundle
+        ? syncWorkspaceKey(principal.id, bundle.revision.id)
+        : null,
+    [bundle, principal.id],
+  );
+  const refreshSyncState = useCallback(async (workspaceId: string) => {
+    const mutations = await listWorkspaceMutations(workspaceId);
+    const issues = mutations.filter(
+      (entry) => entry.status === "conflict" || entry.status === "rejected",
+    );
+    const pending = mutations.filter((entry) =>
+      ["pending", "syncing", "retry"].includes(entry.status),
+    ).length;
+    setSyncIssues(issues);
+    setPendingSyncCount(pending);
+    setSyncPhase((current) =>
+      issues.length
+        ? "issues"
+        : current === "syncing" || current === "observing"
+          ? current
+          : pending
+            ? "offline"
+            : "idle",
+    );
+  }, []);
+  useEffect(() => {
+    if (!bundle || !syncWorkspaceId) return;
+    ensureEditorSyncWorkspace(principal.id, bundle)
+      .then(async () => {
+        await cleanupStaleEditorWorkspaces(principal.id, syncWorkspaceId);
+        await refreshSyncState(syncWorkspaceId);
+      })
+      .catch(() => undefined);
+  }, [bundle, principal.id, refreshSyncState, syncWorkspaceId]);
+  useEffect(() => {
+    if (!syncWorkspaceId) return;
+    return subscribeSyncActivity(syncWorkspaceId, (activity) => {
+      if (activity.state === "started" && busy !== "save")
+        setSyncPhase("observing");
+      if (activity.state === "finished" && busy !== "save") {
+        Promise.all([
+          loadRevisionBundle(revisionId),
+          listWorkspaceMutations(syncWorkspaceId),
+        ])
+          .then(([fresh, mutations]) => {
+            const mappings = acknowledgedFeatureMappings(mutations);
+            applyBundleAndSnapshot(
+              fresh,
+              remapSnapshotFeatureIds(featuresRef.current, mappings),
+            );
+            return refreshSyncState(syncWorkspaceId);
+          })
+          .catch(() => setSyncPhase("offline"));
+      }
+    });
+  }, [
+    applyBundleAndSnapshot,
+    busy,
+    refreshSyncState,
+    revisionId,
+    syncWorkspaceId,
+  ]);
   useEffect(() => {
     if (!draftId) return;
     draftDb.drafts
@@ -261,7 +342,6 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
           title: bundle.revision.title,
           description: bundle.revision.description,
           features,
-          operationKeys,
         })
         .then(() => {
           setSavedAt(now);
@@ -275,48 +355,9 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
     draftReady,
     features,
     dirty,
-    operationKeys,
     principal.id,
     recoveredDraft,
   ]);
-
-  const ensureOperationKeys = useCallback(
-    (nextFeatures: unknown[]) => {
-      if (!bundle) return;
-      const diff = diffEditorFeatures(
-        bundle.features,
-        nextFeatures,
-        bundle.fields.map((field) => field.key),
-      );
-      const required = diff.creates.map((item) => `create:${item.clientId}`);
-      const next = { ...operationKeysRef.current };
-      let changed = false;
-      for (const key of required)
-        if (!next[key]) {
-          next[key] = crypto.randomUUID();
-          changed = true;
-        }
-      if (changed) {
-        operationKeysRef.current = next;
-        setOperationKeys(next);
-      }
-    },
-    [bundle],
-  );
-
-  function featureOperationKey(key: string) {
-    const existing = operationKeysRef.current[key];
-    if (existing) return existing;
-    const generated = crypto.randomUUID();
-    const next = { ...operationKeysRef.current, [key]: generated };
-    operationKeysRef.current = next;
-    setOperationKeys(next);
-    if (draftId)
-      draftDb.drafts
-        .update(draftId, { operationKeys: next })
-        .catch(() => undefined);
-    return generated;
-  }
 
   const handleSnapshot = useCallback(
     (next: unknown[]) => {
@@ -330,17 +371,14 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
       const changed =
         diff.creates.length + diff.updates.length + diff.deletes.length > 0;
       setDirty(changed);
-      if (changed) ensureOperationKeys(next);
     },
-    [bundle, ensureOperationKeys, recoveredDraft],
+    [bundle, recoveredDraft],
   );
 
   function resumeDraft() {
     if (!recoveredDraft) return;
     const snapshot = structuredClone(recoveredDraft.features);
     setFeatures(snapshot);
-    setOperationKeys(recoveredDraft.operationKeys ?? {});
-    operationKeysRef.current = recoveredDraft.operationKeys ?? {};
     setRestore((current) => ({
       version: current.version + 1,
       features: snapshot,
@@ -370,7 +408,7 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
   async function saveServer() {
     if (
       !bundle ||
-      !dirty ||
+      (!dirty && pendingSyncCount === 0) ||
       bundle.truncated ||
       bundle.features.some((feature) => !adminFeatureToTerra(feature))
     )
@@ -378,43 +416,124 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
     setBusy("save");
     setError(null);
     setSuccess(null);
+    setSyncPhase("syncing");
     try {
-      const diff = diffEditorFeatures(
-        bundle.features,
-        features,
-        bundle.fields.map((field) => field.key),
+      const preserveLocalSnapshot = dirty;
+      let workspace = await ensureEditorSyncWorkspace(principal.id, bundle);
+      const ledger = await listWorkspaceMutations(workspace.id);
+      const persistedMappings = acknowledgedFeatureMappings(ledger);
+      const recoveredSnapshot = remapSnapshotFeatureIds(
+        featuresRef.current,
+        persistedMappings,
       );
-      let etag = bundle.etag;
-      for (const item of diff.creates)
-        etag = (
-          await createAdminFeature(
-            revisionId,
-            item.dto,
-            etag,
-            featureOperationKey(`create:${item.clientId}`),
-            { csrfToken },
-          )
-        ).etag;
-      for (const item of diff.updates)
-        etag = (
-          await updateAdminFeature(revisionId, item.featureId, item.dto, etag, {
-            csrfToken,
-          })
-        ).etag;
-      for (const item of diff.deletes)
-        etag = (
-          await deleteAdminFeature(revisionId, item.featureId, etag, {
-            csrfToken,
-          })
-        ).etag;
-      if (draftId) await draftDb.drafts.delete(draftId);
-      setSuccess("Đã đồng bộ thay đổi lên máy chủ.");
-      load();
+      featuresRef.current = recoveredSnapshot;
+      const hasAmbiguousRetry = ledger.some(
+        (entry) =>
+          (entry.status === "retry" || entry.status === "syncing") &&
+          entry.attempts > 0,
+      );
+      if (!hasAmbiguousRetry && !syncIssues.length) {
+        const feed = await refreshWorkspaceChangeFeed(workspace);
+        workspace = feed.workspace;
+        setRemoteChanges(feed.remoteChanges);
+      }
+      const desiredSnapshot = structuredClone(recoveredSnapshot);
+      await enqueueEditorSnapshot(workspace, bundle, desiredSnapshot);
+      const ownership = await withEditorSyncOwnership(workspace.id, () =>
+        syncPendingFeatureMutations(workspace.id, csrfToken),
+      );
+      if (!ownership.acquired) {
+        setSyncPhase("observing");
+        setSuccess("Một tab khác đang đồng bộ workspace này.");
+        return;
+      }
+      const summary = ownership.value;
+      const fresh = await loadRevisionBundle(revisionId);
+      const remappedSnapshot = preserveLocalSnapshot
+        ? remapSnapshotFeatureIds(featuresRef.current, summary.mappings)
+        : fresh.features.flatMap((feature) => {
+            const converted = adminFeatureToTerra(feature);
+            return converted ? [converted] : [];
+          });
+      applyBundleAndSnapshot(fresh, remappedSnapshot);
+      const issues = await activeWorkspaceIssues(workspace.id);
+      setSyncIssues(issues);
+      setPendingSyncCount(summary.pending);
+      setSyncPhase(issues.length ? "issues" : summary.pending ? "offline" : "idle");
+      if (!issues.length && summary.pending === 0) {
+        const nextDiff = diffEditorFeatures(
+          fresh.features,
+          remappedSnapshot,
+          fresh.fields.map((field) => field.key),
+        );
+        const remainsDirty =
+          nextDiff.creates.length +
+            nextDiff.updates.length +
+            nextDiff.deletes.length >
+          0;
+        if (!remainsDirty && draftId) await draftDb.drafts.delete(draftId);
+        setSuccess(
+          remainsDirty
+            ? "Đã nhận phản hồi máy chủ. Còn thay đổi mới cần đồng bộ."
+            : `Đã đồng bộ ${summary.acknowledged} mutation lên máy chủ.`,
+        );
+      } else {
+        setSuccess("Đã lưu các mutation hợp lệ. Hãy xử lý phần còn xung đột.");
+      }
     } catch (reason) {
       setError(reason);
+      setSyncPhase(
+        reason instanceof AdminApiError &&
+          [409, 412, 422].includes(reason.status)
+          ? "issues"
+          : "offline",
+      );
+      if (syncWorkspaceId)
+        await refreshSyncState(syncWorkspaceId).catch(() => undefined);
     } finally {
       setBusy(null);
     }
+  }
+
+  async function keepServerVersion(issue: FeatureMutationLedgerEntry) {
+    if (!bundle || !syncWorkspaceId) return;
+    await discardMutationIssue(issue.id);
+    const canonicalId =
+      issue.response?.status === "conflict"
+        ? issue.response.canonicalFeatureId
+        : issue.response?.status === "rejected"
+          ? issue.response.canonicalFeatureId
+          : issue.mutation.featureId;
+    const serverFeature = canonicalId
+      ? bundle.features.find((feature) => feature.id === canonicalId)
+      : undefined;
+    const serverTerra = serverFeature
+      ? adminFeatureToTerra(serverFeature)
+      : null;
+    const next = featuresRef.current.filter((value) => {
+      const feature = decodeTerraFeature(value);
+      return (
+        feature &&
+        String(feature.id) !== issue.localFeatureId &&
+        String(feature.id) !== canonicalId
+      );
+    });
+    if (serverTerra) next.push(serverTerra);
+    applyBundleAndSnapshot(bundle, next);
+    await refreshSyncState(syncWorkspaceId);
+    setSuccess("Đã giữ phiên bản máy chủ cho đối tượng này.");
+  }
+
+  async function retryLocalVersion(issue: FeatureMutationLedgerEntry) {
+    if (!syncWorkspaceId) return;
+    await discardMutationIssue(issue.id);
+    setDirty(true);
+    await refreshSyncState(syncWorkspaceId);
+    setSuccess(
+      issue.status === "conflict"
+        ? "Bản cục bộ được giữ lại. Chọn Đồng bộ để tạo mutation mới trên phiên bản máy chủ hiện tại."
+        : "Hãy sửa dữ liệu chưa hợp lệ rồi chọn Đồng bộ lại.",
+    );
   }
 
   async function submitForReview() {
@@ -536,13 +655,18 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
       (feature) => String(feature.id) === String(selectedId),
     ) ?? null;
   const canSubmit =
-    bundle.revision.status === "draft" && !dirty && summary.trim().length > 0;
+    bundle.revision.status === "draft" &&
+    !dirty &&
+    pendingSyncCount === 0 &&
+    syncIssues.length === 0 &&
+    summary.trim().length > 0;
   const recoveryMatches = recoveredDraft
     ? draftMatchesWorkspace(recoveredDraft, {
         etag: bundle.etag,
         serverCursor: bundle.workspace.serverCursor,
       })
     : false;
+  const ledgerCanRecover = pendingSyncCount > 0 || syncIssues.length > 0;
 
   return (
     <main className="grid h-[100dvh] min-h-[720px] overflow-hidden bg-surface grid-rows-[64px_minmax(0,1fr)]">
@@ -576,12 +700,16 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
         <Button
           variant="outline"
           disabled={
-            !dirty || busy !== null || bundle.truncated || unsupported > 0
+            (!dirty && pendingSyncCount === 0) ||
+            busy !== null ||
+            bundle.truncated ||
+            unsupported > 0 ||
+            syncIssues.length > 0
           }
           onClick={saveServer}
         >
           <IconDeviceFloppy stroke={1.75} />
-          {busy === "save" ? "Đang lưu..." : "Lưu máy chủ"}
+          {busy === "save" ? "Đang đồng bộ..." : "Đồng bộ"}
         </Button>
         <Button
           disabled={!canSubmit || busy !== null}
@@ -685,6 +813,16 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
               {mapError}
             </div>
           )}
+          <div className="absolute right-3 top-3">
+            <EditorSyncStatus
+              phase={syncIssues.length ? "issues" : syncPhase}
+              pendingCount={pendingSyncCount}
+              issues={syncIssues}
+              remoteChanges={remoteChanges}
+              onKeepServer={keepServerVersion}
+              onRetryLocal={retryLocalVersion}
+            />
+          </div>
           <div className="absolute bottom-3 left-3 rounded-control bg-surface px-2.5 py-1.5 text-xs text-muted-foreground map-control-shadow">
             Đơn vị: mét · Light
           </div>
@@ -850,17 +988,17 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium">
-                {recoveryMatches
+                {recoveryMatches || ledgerCanRecover
                   ? "Tìm thấy bản nháp chưa đồng bộ"
                   : "Bản nháp dựa trên dữ liệu máy chủ cũ"}
               </p>
               <p className="truncate text-xs text-muted-foreground">
-                {recoveryMatches
+                {recoveryMatches || ledgerCanRecover
                   ? `Lưu trên thiết bị lúc ${new Date(recoveredDraft.updatedAt).toLocaleString("vi-VN")}`
                   : "ETag hoặc server cursor đã thay đổi. Xuất bản nháp để đối chiếu hoặc bỏ bản nháp; không thể khôi phục trực tiếp."}
               </p>
             </div>
-            {!recoveryMatches && (
+            {!recoveryMatches && !ledgerCanRecover && (
               <Button
                 size="sm"
                 variant="outline"
@@ -869,10 +1007,24 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
                 Xuất JSON
               </Button>
             )}
-            <Button size="sm" variant="ghost" onClick={discardDraft}>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={ledgerCanRecover}
+              title={
+                ledgerCanRecover
+                  ? "Hoàn tất hoặc xử lý ledger trước khi bỏ bản nháp"
+                  : undefined
+              }
+              onClick={discardDraft}
+            >
               Bỏ bản nháp
             </Button>
-            <Button size="sm" disabled={!recoveryMatches} onClick={resumeDraft}>
+            <Button
+              size="sm"
+              disabled={!recoveryMatches && !ledgerCanRecover}
+              onClick={resumeDraft}
+            >
               Khôi phục
             </Button>
           </div>

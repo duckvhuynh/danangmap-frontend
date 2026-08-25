@@ -1,6 +1,6 @@
 // This file is generated. Do not edit it by hand.
 // Source: openapi/openapi.json
-// Source SHA-256: 4736032831d8182ed5f86ddb10315bbf517be8130d5489211fb0838b1ee647a5
+// Source SHA-256: 9cdafb735274da6b835a51362f82e124813f9f2c9247768bdf1c002761f8a103
 export interface paths {
     "/api/v1/auth/login": {
         parameters: {
@@ -628,6 +628,38 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["updateFeature"];
+        trace?: never;
+    };
+    "/api/v1/admin/revisions/{revisionId}/changes:batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["syncFeatureChangesBatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/revisions/{revisionId}/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listRevisionChanges"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/admin/revisions/{revisionId}:submit": {
@@ -1600,6 +1632,47 @@ export interface components {
             properties?: {
                 [key: string]: unknown;
             };
+        };
+        FeatureSyncPatchDto: {
+            geometry?: {
+                [key: string]: unknown;
+            };
+            /** @enum {string} */
+            geometryKind?: "point" | "multipoint" | "line" | "multiline" | "polygon" | "multipolygon" | "circle";
+            radiusM?: number | null;
+            properties?: {
+                [key: string]: unknown;
+            };
+            externalSource?: string | null;
+            externalId?: string | null;
+            unsetProperties?: string[];
+        };
+        FeatureSyncMutationDto: {
+            /** Format: uuid */
+            clientMutationId: string;
+            /** @enum {string} */
+            operation: "create" | "update" | "delete";
+            baseRevisionVersion: number;
+            payloadHash: string;
+            /** Format: uuid */
+            clientFeatureId?: string;
+            /** Format: uuid */
+            featureId?: string;
+            /** Format: uuid */
+            baseVersionId?: string;
+            feature?: components["schemas"]["FeatureMutationDto"];
+            patch?: components["schemas"]["FeatureSyncPatchDto"];
+        };
+        FeatureBatchSyncDto: {
+            /**
+             * Format: uuid
+             * @description Stable browser client UUID, not a credential.
+             */
+            clientId: string;
+            /** @enum {string} */
+            origin: "editor" | "recovery";
+            baseCursor: string;
+            mutations: components["schemas"]["FeatureSyncMutationDto"][];
         };
         SubmitRevisionDto: {
             summary: string;
@@ -5064,6 +5137,145 @@ export interface operations {
                         };
                         meta: {
                             requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    syncFeatureChangesBatch: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-CSRF-Token": string;
+                /** @description Revision ETag at batch start. */
+                "If-Match": string;
+            };
+            path: {
+                revisionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeatureBatchSyncDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    /** @description Opaque version token for the returned representation. */
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            revisionId: string;
+                            serverCursor: string;
+                            results: ({
+                                /** Format: uuid */
+                                clientMutationId: string;
+                                /** @enum {string} */
+                                status: "applied";
+                                /** @enum {string} */
+                                operation: "create" | "update" | "delete";
+                                /** Format: uuid */
+                                clientFeatureId: string | null;
+                                /** Format: uuid */
+                                canonicalFeatureId: string;
+                                /** Format: uuid */
+                                versionId: string | null;
+                                serverCursor: string;
+                            } | {
+                                /** Format: uuid */
+                                clientMutationId: string;
+                                /** @enum {string} */
+                                status: "conflict";
+                                /** @enum {string} */
+                                operation: "update" | "delete";
+                                /** Format: uuid */
+                                canonicalFeatureId: string;
+                                serverCursor: string;
+                                conflict: {
+                                    /** @enum {string} */
+                                    code: "FEATURE_VERSION_CHANGED";
+                                    /** Format: uuid */
+                                    currentVersionId: string;
+                                    changedPaths: string[];
+                                };
+                            } | {
+                                /** Format: uuid */
+                                clientMutationId: string;
+                                /** @enum {string} */
+                                status: "rejected";
+                                /** @enum {string} */
+                                operation: "create" | "update" | "delete";
+                                /** Format: uuid */
+                                canonicalFeatureId: string | null;
+                                serverCursor: string;
+                                error: {
+                                    code: string;
+                                    message: string;
+                                    details: {
+                                        [key: string]: unknown;
+                                    };
+                                };
+                            })[];
+                        };
+                        meta: {
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    listRevisionChanges: {
+        parameters: {
+            query: {
+                after: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                revisionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    /** @description Opaque version token for the returned representation. */
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            serverCursor: string;
+                            /** @enum {string} */
+                            operation: "create" | "update" | "delete";
+                            /** Format: uuid */
+                            featureId: string;
+                            /** Format: uuid */
+                            versionId: string | null;
+                            changedPaths: string[];
+                            actor: {
+                                /** Format: uuid */
+                                id: string;
+                                displayName: string;
+                            };
+                            /** Format: date-time */
+                            changedAt: string;
+                        }[];
+                        meta: {
+                            requestId: string;
+                            nextCursor: string;
+                            hasMore: boolean;
+                            limit: number;
                         };
                     };
                 };

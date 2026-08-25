@@ -22,6 +22,12 @@ type AttachmentUploadIntentContract =
   operations["createAttachmentUpload"]["responses"][201]["content"]["application/json"]["data"];
 type AttachmentMetadataContract =
   operations["getAdminAttachment"]["responses"][200]["content"]["application/json"]["data"];
+type FeatureBatchSyncInputContract =
+  operations["syncFeatureChangesBatch"]["requestBody"]["content"]["application/json"];
+type FeatureBatchSyncEnvelopeContract =
+  operations["syncFeatureChangesBatch"]["responses"][200]["content"]["application/json"];
+type RevisionChangesEnvelopeContract =
+  operations["listRevisionChanges"]["responses"][200]["content"]["application/json"];
 
 export type AdminRole = PrincipalContract["role"];
 export type RevisionStatus =
@@ -68,6 +74,11 @@ export type AttachmentUploadIntent = AttachmentUploadIntentContract;
 export type AttachmentMetadata = AttachmentMetadataContract;
 export type CreateFeatureInput = components["schemas"]["FeatureMutationDto"];
 export type UpdateFeatureInput = components["schemas"]["UpdateFeatureDto"];
+export type FeatureBatchSyncInput = FeatureBatchSyncInputContract;
+export type FeatureSyncMutation = FeatureBatchSyncInput["mutations"][number];
+export type FeatureSyncResult =
+  FeatureBatchSyncEnvelopeContract["data"]["results"][number];
+export type RevisionChange = RevisionChangesEnvelopeContract["data"][number];
 
 export interface RevisionBundle {
   revision: AdminRevision;
@@ -317,6 +328,18 @@ export function adminErrorMessage(error: unknown) {
           "Khóa idempotency đã được dùng cho nội dung khác.",
         IDEMPOTENCY_IN_PROGRESS:
           "Yêu cầu trước với cùng khóa đang được xử lý. Hãy thử lại.",
+        SYNC_CURSOR_EXPIRED:
+          "Lịch sử đồng bộ cục bộ đã quá cũ. Bản nháp vẫn được giữ để đối chiếu với workspace mới.",
+        SYNC_BASE_CURSOR_INVALID:
+          "Cursor cục bộ mới hơn trạng thái máy chủ.",
+        SYNC_BASE_REVISION_MISMATCH:
+          "Phiên bản revision của mutation không còn khớp máy chủ.",
+        SYNC_PAYLOAD_HASH_MISMATCH:
+          "Dấu kiểm toàn vẹn của mutation không hợp lệ.",
+        CLIENT_FEATURE_MAPPING_NOT_FOUND:
+          "Chưa có ánh xạ máy chủ cho đối tượng được tạo cục bộ.",
+        CLIENT_FEATURE_ID_REUSED:
+          "Định danh đối tượng cục bộ đã được dùng cho một đối tượng khác.",
         ROLLBACK_TARGET_ACTIVE: "Mốc công bố này đang là mốc hiện hành.",
         DIFF_TOO_LARGE: "Diff vượt giới hạn xử lý đồng bộ.",
         GROUP_ARCHIVED: "Nhóm layer đã được lưu trữ.",
@@ -910,6 +933,57 @@ export async function deleteAdminFeature(
   );
   resultData(result);
   return { etag: result.response.headers.get("etag") ?? etag };
+}
+
+export async function syncAdminFeatureChanges(
+  revisionId: string,
+  body: FeatureBatchSyncInput,
+  etag: string,
+  auth: MutationAuth,
+  client: ApiClient = apiClient,
+) {
+  if (process.env.NEXT_PUBLIC_DANANGMAP_DEMO_MODE === "true")
+    throw new AdminApiError(
+      503,
+      "DEMO_SYNC_UNAVAILABLE",
+      "Demo mode không kết nối dịch vụ đồng bộ.",
+    );
+  const result = await client.POST(
+    "/api/v1/admin/revisions/{revisionId}/changes:batch",
+    {
+      params: {
+        path: { revisionId },
+        header: { "X-CSRF-Token": auth.csrfToken, "If-Match": etag },
+      },
+      body,
+    },
+  );
+  const envelope = assertAdminResult(result);
+  return {
+    data: envelope.data,
+    requestId: envelope.meta.requestId,
+    etag: result.response.headers.get("etag") ?? etag,
+  };
+}
+
+export async function listAdminRevisionChanges(
+  revisionId: string,
+  after: string,
+  limit = 500,
+  client: ApiClient = apiClient,
+) {
+  const result = await client.GET(
+    "/api/v1/admin/revisions/{revisionId}/changes",
+    {
+      params: { path: { revisionId }, query: { after, limit } },
+    },
+  );
+  const envelope = assertAdminResult(result);
+  return {
+    changes: envelope.data,
+    meta: envelope.meta,
+    etag: result.response.headers.get("etag"),
+  };
 }
 
 export async function createAttachmentUpload(
