@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   adminFeatureToTerra,
+  adminFeatureToTerraParts,
   diffEditorFeatures,
   rebaseEditorSnapshot,
   terraFeatureToMutation,
@@ -37,7 +38,7 @@ describe("Terra Draw server synchronization", () => {
     expect(mutation).toMatchObject({
       geometryKind: "circle",
       radiusM: 250,
-      geometry: { type: "Point" },
+      geometry: { type: "Point", coordinates: [108.22, 16.06] },
       properties: { name: "Trụ sở" },
     });
     expect((mutation.geometry.coordinates as number[])[0]).toBeCloseTo(
@@ -55,7 +56,7 @@ describe("Terra Draw server synchronization", () => {
     const created = {
       ...retained,
       id: "terra-new",
-      properties: { ...retained.properties, name: "Điểm mới" },
+      properties: { name: "Điểm mới", mode: "point" },
     };
     const deleted: AdminFeature = { ...point, id: "delete-1" };
     const diff = diffEditorFeatures(
@@ -77,6 +78,97 @@ describe("Terra Draw server synchronization", () => {
     ]);
     expect(diff.deletes).toEqual([{ featureId: "delete-1" }]);
   });
+
+  it.each([
+    {
+      id: "multipoint-1",
+      geometry: {
+        type: "MultiPoint" as const,
+        coordinates: [
+          [108.2, 16.05],
+          [108.3, 16.1],
+        ],
+      },
+      geometryKind: "multipoint",
+      partType: "Point",
+    },
+    {
+      id: "multiline-1",
+      geometry: {
+        type: "MultiLineString" as const,
+        coordinates: [
+          [
+            [108.2, 16.05],
+            [108.21, 16.06],
+          ],
+          [
+            [108.3, 16.1],
+            [108.31, 16.11],
+          ],
+        ],
+      },
+      geometryKind: "multiline",
+      partType: "LineString",
+    },
+    {
+      id: "multipolygon-1",
+      geometry: {
+        type: "MultiPolygon" as const,
+        coordinates: [
+          [
+            [
+              [108.2, 16.05],
+              [108.21, 16.05],
+              [108.21, 16.06],
+              [108.2, 16.05],
+            ],
+          ],
+          [
+            [
+              [108.3, 16.1],
+              [108.31, 16.1],
+              [108.31, 16.11],
+              [108.3, 16.1],
+            ],
+          ],
+        ],
+      },
+      geometryKind: "multipolygon",
+      partType: "Polygon",
+    },
+  ])(
+    "round-trips $geometry.type as one logical mutation without shape loss",
+    ({ id, geometry, geometryKind, partType }) => {
+      const multi: AdminFeature = {
+        ...point,
+        id,
+        geometry,
+        meta: { ...point.meta, geometryKind },
+      };
+      const parts = adminFeatureToTerraParts(multi);
+      expect(parts).toHaveLength(2);
+      expect(parts.every((part) => part.geometry.type === partType)).toBe(true);
+      expect(diffEditorFeatures([multi], parts, ["name"])).toEqual({
+        creates: [],
+        updates: [],
+        deletes: [],
+      });
+      const changed = structuredClone(parts);
+      changed[0].properties.name = "Đã sửa";
+      changed[1].properties.name = "Đã sửa";
+      const diff = diffEditorFeatures([multi], changed, ["name"]);
+      expect(diff.updates).toEqual([
+        expect.objectContaining({
+          featureId: id,
+          dto: expect.objectContaining({
+            geometry,
+            geometryKind,
+            properties: { name: "Đã sửa" },
+          }),
+        }),
+      ]);
+    },
+  );
 
   it("rebases only local edits over fresh remote additions", () => {
     const local = {

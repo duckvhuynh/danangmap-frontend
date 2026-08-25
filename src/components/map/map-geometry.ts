@@ -2,6 +2,9 @@ import type { FeatureCollection, Geometry, Polygon, Position } from "geojson";
 import type { PublicFeature, PublicLayer } from "@/lib/domain/map";
 
 const earthRadiusM = 6_371_008.8;
+const coordinatePrecision = 9;
+const roundedCoordinate = (value: number) =>
+  Number(value.toFixed(coordinatePrecision));
 
 export function geodesicCircle(center: Position, radiusM: number, segments = 64): Polygon {
   const [longitude, latitude] = center;
@@ -13,7 +16,10 @@ export function geodesicCircle(center: Position, radiusM: number, segments = 64)
     const bearing = index / segments * Math.PI * 2;
     const targetLatitude = Math.asin(Math.sin(latitudeRad) * Math.cos(angularDistance) + Math.cos(latitudeRad) * Math.sin(angularDistance) * Math.cos(bearing));
     const targetLongitude = longitudeRad + Math.atan2(Math.sin(bearing) * Math.sin(angularDistance) * Math.cos(latitudeRad), Math.cos(angularDistance) - Math.sin(latitudeRad) * Math.sin(targetLatitude));
-    ring.push([targetLongitude * 180 / Math.PI, targetLatitude * 180 / Math.PI]);
+    ring.push([
+      roundedCoordinate((targetLongitude * 180) / Math.PI),
+      roundedCoordinate((targetLatitude * 180) / Math.PI),
+    ]);
   }
   return { type: "Polygon", coordinates: [ring] };
 }
