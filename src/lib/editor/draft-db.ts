@@ -1,4 +1,8 @@
 import Dexie, { type EntityTable } from "dexie";
+import type {
+  FeatureSyncMutation,
+  FeatureSyncResult,
+} from "@/lib/api/admin";
 
 export interface LayerDraft {
   id: string;
@@ -35,9 +39,57 @@ export interface AttachmentRecoveryIntent {
   updatedAt: string;
 }
 
+export type FeatureMutationStatus =
+  | "pending"
+  | "syncing"
+  | "retry"
+  | "acknowledged"
+  | "conflict"
+  | "rejected"
+  | "discarded";
+
+export interface EditorSyncWorkspace {
+  id: string;
+  principalId: string;
+  layerId: string;
+  revisionId: string;
+  clientId: string;
+  baseEtag: string;
+  serverCursor: string;
+  createdAt: string;
+  updatedAt: string;
+  lastOpenedAt: string;
+}
+
+export interface FeatureMutationLedgerEntry {
+  id: string;
+  workspaceId: string;
+  principalId: string;
+  revisionId: string;
+  sequence: number;
+  localFeatureId: string;
+  mutation: FeatureSyncMutation;
+  status: FeatureMutationStatus;
+  requestEtag: string | null;
+  requestCursor: string | null;
+  attempts: number;
+  response: FeatureSyncResult | null;
+  responseRequestId: string | null;
+  lastError: {
+    status: number;
+    code: string;
+    message: string;
+    requestId?: string;
+  } | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 class DanangMapDraftDatabase extends Dexie {
   drafts!: EntityTable<LayerDraft, "id">;
   attachmentIntents!: EntityTable<AttachmentRecoveryIntent, "id">;
+  syncWorkspaces!: EntityTable<EditorSyncWorkspace, "id">;
+  featureMutations!: EntityTable<FeatureMutationLedgerEntry, "id">;
 
   constructor() {
     super("danangmap-admin-drafts");
@@ -58,6 +110,16 @@ class DanangMapDraftDatabase extends Dexie {
       attachmentIntents:
         "&id, principalId, revisionId, featureId, attachmentId, phase, updatedAt",
     });
+    this.version(5).stores({
+      drafts:
+        "&id, principalId, layerId, draftRevision, updatedAt, baseRevision",
+      attachmentIntents:
+        "&id, principalId, revisionId, featureId, attachmentId, phase, updatedAt",
+      syncWorkspaces:
+        "&id, principalId, layerId, revisionId, updatedAt, lastOpenedAt",
+      featureMutations:
+        "&id, workspaceId, principalId, revisionId, status, [workspaceId+sequence], updatedAt",
+    });
   }
 }
 
@@ -69,6 +131,10 @@ export function draftKey(
   draftRevision: number,
 ) {
   return `${principalId}:${layerId}:${draftRevision}`;
+}
+
+export function syncWorkspaceKey(principalId: string, revisionId: string) {
+  return `${principalId}:${revisionId}`;
 }
 
 export function shouldAutosaveDraft({
@@ -99,12 +165,53 @@ export async function clearPrincipalRecovery(principalId: string) {
     "rw",
     draftDb.drafts,
     draftDb.attachmentIntents,
+    draftDb.syncWorkspaces,
+    draftDb.featureMutations,
     async () => {
       await draftDb.drafts.where("principalId").equals(principalId).delete();
       await draftDb.attachmentIntents
         .where("principalId")
         .equals(principalId)
         .delete();
+      await draftDb.syncWorkspaces
+        .where("principalId")
+        .equals(principalId)
+        .delete();
+      await draftDb.featureMutations
+        .where("principalId")
+        .equals(principalId)
+        .delete();
     },
   );
+}
+
+export async function cleanupStaleEditorWorkspaces(
+  principalId: string,
+  currentWorkspaceId: string,
+  olderThan = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+) {
+  const stale = await draftDb.syncWorkspaces
+    .where("principalId")
+    .equals(principalId)
+    .filter(
+      (workspace) =>
+        workspace.id !== currentWorkspaceId &&
+        new Date(workspace.lastOpenedAt).getTime() < olderThan.getTime(),
+    )
+    .primaryKeys();
+  if (!stale.length) return 0;
+  await draftDb.transaction(
+    "rw",
+    draftDb.syncWorkspaces,
+    draftDb.featureMutations,
+    async () => {
+      await draftDb.syncWorkspaces.bulkDelete(stale);
+      for (const workspaceId of stale)
+        await draftDb.featureMutations
+          .where("workspaceId")
+          .equals(workspaceId)
+          .delete();
+    },
+  );
+  return stale.length;
 }

@@ -13,8 +13,10 @@ import {
   getAdminAttachment,
   getAdminSession,
   listAdminLayers,
+  listAdminRevisionChanges,
   loadRevisionBundle,
   reorderFeatureAttachments,
+  syncAdminFeatureChanges,
   unbindFeatureAttachment,
   updateAdminFeature,
 } from "./admin";
@@ -574,5 +576,108 @@ describe("typed admin API adapter", () => {
       details: { sessionState: "authenticated" },
     });
     expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses the generated batch-sync and cursor-feed contracts with ETag and request IDs", async () => {
+    const mutationId = "77777777-7777-4777-8777-777777777777";
+    const fetcher = vi.fn(async (input: RequestInfo | URL) => {
+      const request = input instanceof Request ? input : new Request(input);
+      if (request.url.endsWith("/changes:batch"))
+        return new Response(
+          envelope({
+            revisionId,
+            serverCursor: "NA",
+            results: [
+              {
+                clientMutationId: mutationId,
+                status: "applied",
+                operation: "delete",
+                clientFeatureId: null,
+                canonicalFeatureId: feature.id,
+                versionId: null,
+                serverCursor: "NA",
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: {
+              "content-type": "application/json",
+              etag: `"rev-${revisionId}-v4"`,
+            },
+          },
+        );
+      return new Response(
+        JSON.stringify({
+          data: [
+            {
+              serverCursor: "NA",
+              operation: "delete",
+              featureId: feature.id,
+              versionId: null,
+              changedPaths: [],
+              actor: { id: "user-1", displayName: "Editor" },
+              changedAt: "2026-08-25T00:00:00.000Z",
+            },
+          ],
+          meta: {
+            requestId: "request-feed",
+            nextCursor: "NA",
+            hasMore: false,
+            limit: 500,
+          },
+        }),
+        {
+          status: 200,
+          headers: {
+            "content-type": "application/json",
+            etag: `"rev-${revisionId}-v4"`,
+          },
+        },
+      );
+    });
+    const client = createDanangMapClient(fetcher);
+    const result = await syncAdminFeatureChanges(
+      revisionId,
+      {
+        clientId: "88888888-8888-4888-8888-888888888888",
+        origin: "editor",
+        baseCursor: "Mw",
+        mutations: [
+          {
+            clientMutationId: mutationId,
+            operation: "delete",
+            baseRevisionVersion: 3,
+            payloadHash: "a".repeat(64),
+            featureId: feature.id,
+            baseVersionId: feature.meta.versionId,
+          },
+        ],
+      },
+      `"rev-${revisionId}-v3"`,
+      { csrfToken: "csrf-1" },
+      client,
+    );
+    expect(result).toMatchObject({
+      requestId: "test-request",
+      etag: `"rev-${revisionId}-v4"`,
+      data: { serverCursor: "NA" },
+    });
+    const batchRequest = fetcher.mock.calls[0]![0] as Request;
+    expect(batchRequest.headers.get("if-match")).toBe(
+      `"rev-${revisionId}-v3"`,
+    );
+    expect(batchRequest.headers.get("x-csrf-token")).toBe("csrf-1");
+
+    await expect(
+      listAdminRevisionChanges(revisionId, "Mw", 500, client),
+    ).resolves.toMatchObject({
+      changes: [{ operation: "delete", featureId: feature.id }],
+      meta: { nextCursor: "NA", hasMore: false },
+      etag: `"rev-${revisionId}-v4"`,
+    });
+    expect(new URL((fetcher.mock.calls[1]![0] as Request).url).searchParams.get("after")).toBe(
+      "Mw",
+    );
   });
 });

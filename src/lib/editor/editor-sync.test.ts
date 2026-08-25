@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   adminFeatureToTerra,
   diffEditorFeatures,
+  rebaseEditorSnapshot,
   terraFeatureToMutation,
 } from "./editor-sync";
 import type { AdminFeature } from "@/lib/api/admin";
@@ -75,5 +76,31 @@ describe("Terra Draw server synchronization", () => {
       }),
     ]);
     expect(diff.deletes).toEqual([{ featureId: "delete-1" }]);
+  });
+
+  it("rebases only local edits over fresh remote additions", () => {
+    const local = {
+      ...adminFeatureToTerra(point)!,
+      properties: { name: "Tên cục bộ", mode: "point" },
+    };
+    const remoteAddition: AdminFeature = {
+      ...point,
+      id: "remote-1",
+      properties: { name: "Đối tượng từ tab khác" },
+    };
+
+    const rebased = rebaseEditorSnapshot(
+      [point],
+      [local],
+      [point, remoteAddition],
+      ["name"],
+    );
+
+    expect(rebased.map((feature) => feature.id)).toEqual([
+      point.id,
+      remoteAddition.id,
+    ]);
+    expect(rebased[0]?.properties.name).toBe("Tên cục bộ");
+    expect(rebased[1]?.properties.name).toBe("Đối tượng từ tab khác");
   });
 });

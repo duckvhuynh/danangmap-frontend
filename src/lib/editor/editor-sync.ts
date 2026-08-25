@@ -73,3 +73,41 @@ export function diffEditorFeatures(initial: AdminFeature[], snapshot: unknown[],
   const deletes = initial.filter((feature) => !currentIds.has(feature.id)).map((feature) => ({ featureId: feature.id }));
   return { creates, updates, deletes };
 }
+
+export function rebaseEditorSnapshot(
+  initial: AdminFeature[],
+  localSnapshot: unknown[],
+  fresh: AdminFeature[],
+  fieldKeys: string[],
+) {
+  const diff = diffEditorFeatures(initial, localSnapshot, fieldKeys);
+  const local = localSnapshot.flatMap((value) => {
+    const decoded = decodeTerraFeature(value);
+    return decoded ? [decoded] : [];
+  });
+  const localById = new Map(
+    local.map((feature) => [String(feature.id), feature] as const),
+  );
+  const updatedIds = new Set(diff.updates.map((item) => item.featureId));
+  const deletedIds = new Set(diff.deletes.map((item) => item.featureId));
+  const rebased = fresh.flatMap((feature) => {
+    if (deletedIds.has(feature.id)) return [];
+    if (updatedIds.has(feature.id)) {
+      const localFeature = localById.get(feature.id);
+      return localFeature ? [structuredClone(localFeature)] : [];
+    }
+    const converted = adminFeatureToTerra(feature);
+    return converted ? [converted] : [];
+  });
+  for (const create of diff.creates) {
+    const localFeature = localById.get(create.clientId);
+    if (!localFeature) continue;
+    const existingIndex = rebased.findIndex(
+      (feature) => String(feature.id) === create.clientId,
+    );
+    if (existingIndex >= 0)
+      rebased[existingIndex] = structuredClone(localFeature);
+    else rebased.push(structuredClone(localFeature));
+  }
+  return rebased;
+}
