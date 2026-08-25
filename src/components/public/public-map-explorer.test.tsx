@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import type { PublicFeature, PublicLayer } from "@/lib/domain/map";
-import { FeatureDetail } from "./public-map-explorer";
+import { defaultHiddenLayerIds, FeatureDetail, groupPublicLayers } from "./public-map-explorer";
 
 const attachmentId = "44444444-4444-4444-8444-444444444444";
 const layer: PublicLayer = {
@@ -66,5 +66,17 @@ describe("public feature detail attachments", () => {
 
     expect(screen.queryByRole("region", { name: "Tệp đính kèm" })).not.toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("Đang tải thông tin công bố mới nhất");
+  });
+});
+
+describe("public layer catalog grouping", () => {
+  it("uses group and layer display order with ungrouped layers last", () => {
+    const administration = { ...layer, id: "admin", displayOrder: 2, group: { id: "g-admin", slug: "admin", title: "Hành chính", displayOrder: 1 } };
+    const boundary = { ...layer, id: "boundary", displayOrder: 1, group: { id: "g-admin", slug: "admin", title: "Hành chính", displayOrder: 1 } };
+    const ungrouped = { ...layer, id: "other", name: "Khác", displayOrder: 0, group: null };
+    const groups = groupPublicLayers([administration, ungrouped, boundary]);
+    expect(groups.map((group) => group.title)).toEqual(["Hành chính", "Lớp khác"]);
+    expect(groups[0].layers.map((item) => item.id)).toEqual(["boundary", "admin"]);
+    expect([...defaultHiddenLayerIds([{ ...administration, defaultVisible: false }, boundary])]).toEqual(["admin"]);
   });
 });

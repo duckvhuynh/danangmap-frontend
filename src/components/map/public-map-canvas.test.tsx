@@ -1,18 +1,20 @@
-import { cleanup, render } from "@testing-library/react";
+import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import PublicMapCanvas from "./public-map-canvas";
+import type { PublicLayer } from "@/lib/domain/map";
 
 const mapboxMocks = vi.hoisted(() => ({
-  maps: [] as Array<{ remove: ReturnType<typeof vi.fn>; setStyle: ReturnType<typeof vi.fn> }>,
+  maps: [] as Array<{ remove: ReturnType<typeof vi.fn>; setStyle: ReturnType<typeof vi.fn>; easeTo: ReturnType<typeof vi.fn>; handlers: Map<string, (...args: unknown[]) => void> }>,
   mapOptions: [] as unknown[],
   markers: [] as Array<{ remove: ReturnType<typeof vi.fn>; attributes: Map<string, string> }>,
 }));
 
 vi.mock("mapbox-gl", () => {
   class MockMap {
+    handlers = new Map<string, (...args: unknown[]) => void>();
     remove = vi.fn();
-    on = vi.fn();
-    off = vi.fn();
+    on = vi.fn((event: string, handler: (...args: unknown[]) => void) => { this.handlers.set(event, handler); });
+    off = vi.fn((event: string) => { this.handlers.delete(event); });
     getCanvas = vi.fn(() => ({ style: { cursor: "" } }));
     isStyleLoaded = vi.fn(() => false);
     flyTo = vi.fn();
@@ -20,6 +22,11 @@ vi.mock("mapbox-gl", () => {
     zoomIn = vi.fn();
     zoomOut = vi.fn();
     setStyle = vi.fn();
+    easeTo = vi.fn();
+    getLayer = vi.fn(() => ({}));
+    queryRenderedFeatures = vi.fn(() => [{ source: "danang-cluster-offices", properties: { cluster: true, cluster_id: 7 }, geometry: { type: "Point", coordinates: [108.22, 16.06] } }]);
+    getSource = vi.fn(() => ({ getClusterExpansionZoom: (_id: number, callback: (error: null, zoom: number) => void) => callback(null, 15) }));
+    getBounds = vi.fn(() => ({ getWest: () => 108.12345678, getSouth: () => 16.01234567, getEast: () => 108.34567891, getNorth: () => 16.23456789 }));
     constructor(options: unknown) { mapboxMocks.maps.push(this); mapboxMocks.mapOptions.push(options); }
   }
   class MockMarker {
@@ -81,5 +88,34 @@ describe("temporary public search marker lifecycle", () => {
     unmount();
     expect(mapboxMocks.markers[1].remove).toHaveBeenCalledTimes(1);
     expect(mapboxMocks.maps[0].remove).toHaveBeenCalledTimes(1);
+  });
+
+  it("debounces rapid viewport changes and emits the latest bbox once", () => {
+    vi.useFakeTimers();
+    const onViewportChange = vi.fn();
+    render(<PublicMapCanvas {...baseProps} onViewportChange={onViewportChange} />);
+    const moveend = mapboxMocks.maps[0].handlers.get("moveend")!;
+    act(() => {
+      moveend();
+      moveend();
+      moveend();
+      vi.advanceTimersByTime(249);
+    });
+    expect(onViewportChange).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(1));
+    expect(onViewportChange).toHaveBeenCalledTimes(1);
+    expect(onViewportChange).toHaveBeenCalledWith("108.123457,16.012346,108.345679,16.234568");
+    vi.useRealTimers();
+  });
+
+  it("expands a point cluster instead of selecting a synthetic cluster feature", () => {
+    const clusteredLayer = {
+      id: "offices", slug: "offices", name: "Trụ sở", description: "", type: "point", color: "#1A73E8", featureCount: 20, updatedAt: "2026-08-25T00:00:00.000Z", fields: [], sourceKind: "geojson", geoJsonUrl: "", tileUrlTemplate: "", sourceLayer: "features", minZoom: 0, maxZoom: 18, cluster: true, style: {}, popupConfig: { titleField: "name", fieldKeys: [], showCoordinates: false },
+    } satisfies PublicLayer;
+    const onFeatureSelect = vi.fn();
+    render(<PublicMapCanvas {...baseProps} layers={[clusteredLayer]} onFeatureSelect={onFeatureSelect} />);
+    mapboxMocks.maps[0].handlers.get("click")!({ point: { x: 1, y: 1 } });
+    expect(mapboxMocks.maps[0].easeTo).toHaveBeenCalledWith({ center: [108.22, 16.06], zoom: 15 });
+    expect(onFeatureSelect).not.toHaveBeenCalled();
   });
 });

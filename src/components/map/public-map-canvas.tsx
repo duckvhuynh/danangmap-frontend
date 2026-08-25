@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import mapboxgl, { type Map as MapboxMap } from "mapbox-gl";
 import type { PublicFeature, PublicLayer } from "@/lib/domain/map";
 import { renderableFeatureCollection, sharedGeoJsonFeatures } from "@/components/map/map-geometry";
-import { ensurePublicCustomLayers, interactivePublicLayerIds } from "@/components/map/map-style";
+import { ensurePublicCustomLayers, interactivePublicLayerIds, type PublicMapFilter } from "@/components/map/map-style";
 import { resolveMapboxStyle } from "@/components/map/mapbox-config";
 import type { MapFocusTarget } from "@/lib/search/public-search-state";
 
@@ -18,26 +18,39 @@ interface PublicMapCanvasProps {
   basemap: "street" | "light";
   command: MapCommand;
   focusTarget?: MapFocusTarget | null;
+  filter?: PublicMapFilter | null;
   onFeatureSelect: (id: string) => void;
   onError: (message: string) => void;
+  onViewportChange?: (bbox: string) => void;
 }
 
-export default function PublicMapCanvas({ features, layerColors, layers, hiddenLayerIds, basemap, command, focusTarget, onFeatureSelect, onError }: PublicMapCanvasProps) {
+export const VIEWPORT_DEBOUNCE_MS = 250;
+
+export function serializeViewportBounds(bounds: { getWest(): number; getSouth(): number; getEast(): number; getNorth(): number }) {
+  return [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()]
+    .map((coordinate) => Number(coordinate.toFixed(6)))
+    .join(",");
+}
+
+export default function PublicMapCanvas({ features, layerColors, layers, hiddenLayerIds, basemap, command, focusTarget, filter, onFeatureSelect, onError, onViewportChange }: PublicMapCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapboxMap | null>(null);
   const temporaryMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const onSelectRef = useRef(onFeatureSelect);
   const onErrorRef = useRef(onError);
+  const onViewportChangeRef = useRef(onViewportChange);
   const featuresRef = useRef(features);
   const colorsRef = useRef(layerColors);
   const layersRef = useRef(layers);
   const hiddenRef = useRef(hiddenLayerIds);
+  const filterRef = useRef(filter);
   const basemapRef = useRef(basemap);
   const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
   useEffect(() => { onSelectRef.current = onFeatureSelect; }, [onFeatureSelect]);
   useEffect(() => { onErrorRef.current = onError; }, [onError]);
-  useEffect(() => { featuresRef.current = features; colorsRef.current = layerColors; layersRef.current = layers; hiddenRef.current = hiddenLayerIds; }, [features, layerColors, layers, hiddenLayerIds]);
+  useEffect(() => { onViewportChangeRef.current = onViewportChange; }, [onViewportChange]);
+  useEffect(() => { featuresRef.current = features; colorsRef.current = layerColors; layersRef.current = layers; hiddenRef.current = hiddenLayerIds; filterRef.current = filter; }, [features, layerColors, layers, hiddenLayerIds, filter]);
 
   useEffect(() => {
     if (!containerRef.current || !token || mapRef.current) return;
@@ -55,30 +68,54 @@ export default function PublicMapCanvas({ features, layerColors, layers, hiddenL
 
     const handleError = (event: mapboxgl.ErrorEvent) => onErrorRef.current(event.error?.message ?? "Không tải được bản đồ nền.");
     map.on("error", handleError);
-    const ensureLatestLayers = () => ensurePublicCustomLayers(map, renderableFeatureCollection(sharedGeoJsonFeatures(featuresRef.current, layersRef.current)), colorsRef.current, layersRef.current, hiddenRef.current);
+    let viewportTimer: ReturnType<typeof setTimeout> | null = null;
+    const ensureLatestLayers = () => ensurePublicCustomLayers(map, renderableFeatureCollection(sharedGeoJsonFeatures(featuresRef.current, layersRef.current)), colorsRef.current, layersRef.current, hiddenRef.current, filterRef.current);
+    const queueViewport = () => {
+      if (viewportTimer) clearTimeout(viewportTimer);
+      viewportTimer = setTimeout(() => {
+        const bounds = map.getBounds();
+        if (bounds) onViewportChangeRef.current?.(serializeViewportBounds(bounds));
+      }, VIEWPORT_DEBOUNCE_MS);
+    };
     const renderedAt = (point: mapboxgl.PointLike) => {
       const layerIds = interactivePublicLayerIds(layersRef.current).filter((layerId) => map.getLayer(layerId));
       return layerIds.length ? map.queryRenderedFeatures(point, { layers: layerIds })[0] : undefined;
     };
     const handlePointer = (event: mapboxgl.MapMouseEvent) => { map.getCanvas().style.cursor = renderedAt(event.point) ? "pointer" : ""; };
     const handleClick = (event: mapboxgl.MapMouseEvent) => {
-      const properties = renderedAt(event.point)?.properties;
+      const rendered = renderedAt(event.point);
+      const properties = rendered?.properties;
+      const clusterId = properties?.cluster_id;
+      if ((properties?.cluster === true || properties?.cluster === "true") && (typeof clusterId === "string" || typeof clusterId === "number")) {
+        const source = rendered?.source ? map.getSource(rendered.source) as mapboxgl.GeoJSONSource | undefined : undefined;
+        const geometry = rendered?.geometry;
+        if (source?.getClusterExpansionZoom && geometry?.type === "Point") {
+          source.getClusterExpansionZoom(Number(clusterId), (error, zoom) => {
+            if (!error && typeof zoom === "number") map.easeTo({ center: geometry.coordinates as [number, number], zoom });
+          });
+        }
+        return;
+      }
       const id = properties?.id ?? properties?.feature_id;
       if (typeof id === "string" || typeof id === "number") onSelectRef.current(String(id));
     };
     map.on("style.load", ensureLatestLayers);
-    map.on("load", ensureLatestLayers);
+    const handleLoad = () => { ensureLatestLayers(); queueViewport(); };
+    map.on("load", handleLoad);
+    map.on("moveend", queueViewport);
     map.on("mousemove", handlePointer);
     map.on("click", handleClick);
 
     return () => {
       map.off("error", handleError);
       map.off("style.load", ensureLatestLayers);
-      map.off("load", ensureLatestLayers);
+      map.off("load", handleLoad);
+      map.off("moveend", queueViewport);
       map.off("mousemove", handlePointer);
       map.off("click", handleClick);
       temporaryMarkerRef.current?.remove();
       temporaryMarkerRef.current = null;
+      if (viewportTimer) clearTimeout(viewportTimer);
       map.remove();
       mapRef.current = null;
     };
@@ -87,8 +124,8 @@ export default function PublicMapCanvas({ features, layerColors, layers, hiddenL
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    if (map.isStyleLoaded()) ensurePublicCustomLayers(map, renderableFeatureCollection(sharedGeoJsonFeatures(features, layers)), layerColors, layers, hiddenLayerIds);
-  }, [features, hiddenLayerIds, layerColors, layers]);
+    if (map.isStyleLoaded()) ensurePublicCustomLayers(map, renderableFeatureCollection(sharedGeoJsonFeatures(features, layers)), layerColors, layers, hiddenLayerIds, filter);
+  }, [features, hiddenLayerIds, layerColors, layers, filter]);
 
   useEffect(() => {
     const map = mapRef.current;

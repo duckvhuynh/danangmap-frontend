@@ -21,13 +21,27 @@ test("public map remains useful in degraded Mapbox mode", async ({ page }, testI
   await expect(page.getByRole("heading", { name: "Bản đồ số Đà Nẵng" })).toBeAttached();
   await expect(page.getByText("Chế độ demo · Không phải dữ liệu công bố")).toBeVisible();
   await expect(page.getByTestId("map-degraded")).toBeVisible();
+  await page.keyboard.press("Tab");
+  const skipLink = page.getByRole("link", { name: "Bỏ qua bản đồ, đến danh sách dữ liệu" });
+  await expect(skipLink).toBeFocused();
+  await skipLink.press("Enter");
+  const featureList = page.locator("#public-feature-list");
+  await expect(featureList).toBeFocused();
+  await expect(featureList).toContainText("5 kết quả");
+
+  await page.getByLabel("Trường lọc").selectOption({ label: "Trụ sở hành chính · Địa chỉ" });
+  await page.getByLabel("Giá trị lọc").selectOption("24 Trần Phú, phường Hải Châu");
+  await page.getByRole("button", { name: "Áp dụng" }).click();
+  await expect(featureList).toContainText("4 kết quả");
+  await page.getByRole("button", { name: "Xóa lọc" }).click();
+  await expect(featureList).toContainText("5 kết quả");
+
   await page.getByRole("combobox", { name: "Tìm địa điểm hoặc dữ liệu" }).fill("Công an");
   await expect(page.getByRole("group", { name: "Dữ liệu công bố" })).toBeVisible();
   await expect(page.getByText(/Một nguồn tìm kiếm đang tạm gián đoạn/)).toBeVisible();
   await page.getByRole("combobox", { name: "Tìm địa điểm hoặc dữ liệu" }).press("ArrowDown");
   await page.getByRole("combobox", { name: "Tìm địa điểm hoặc dữ liệu" }).press("Enter");
   await expect(page.getByRole("heading", { name: "Công an phường Hải Châu" })).toBeVisible();
-  await page.getByRole("button", { name: "Xem danh sách" }).click();
   await expect(page.getByText("5 kết quả")).toBeVisible();
 
   await page.getByRole("combobox", { name: "Tìm địa điểm hoặc dữ liệu" }).fill("Cầu Rồng");

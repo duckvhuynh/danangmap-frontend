@@ -1,15 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
-import { aggregatePublicCatalog, DANANG_PUBLIC_BBOX, decodePublicFeatureDetail, PUBLIC_GEOJSON_LIMIT, type PublicApiTransport } from "./public-map";
+import { aggregatePublicCatalog, DANANG_PUBLIC_BBOX, decodePublicFeatureDetail, loadPublicCatalog, loadPublicViewport, PUBLIC_GEOJSON_LIMIT, type PublicApiTransport } from "./public-map";
 
 const rawLayers = [
-  { id: "wards", slug: "wards", title: "Ranh giới", description: "", geometryMode: "polygon", featureCount: 1, updatedAt: "2026-08-21T00:00:00.000Z", sourceKind: "geojson", geoJsonUrl: "/api/v1/public/layers/wards/features", tileUrlTemplate: "/api/v1/public/tiles/wards/1/{z}/{x}/{y}.pbf", sourceLayer: "features", minZoom: 0, maxZoom: 18, cluster: false, style: { polygon: { fillColor: "#137333" } }, popupConfig: { titleField: "name", fieldKeys: ["address"] } },
-  { id: "large", slug: "large", title: "Dữ liệu lớn", description: null, geometryMode: "mixed", featureCount: 20_000, updatedAt: "2026-08-21T00:00:00.000Z", sourceKind: "mvt", geoJsonUrl: "/api/v1/public/layers/large/features", tileUrlTemplate: "/api/v1/public/tiles/large/2/{z}/{x}/{y}.pbf", sourceLayer: "features", minZoom: 8, maxZoom: 18, cluster: false, style: {}, popupConfig: { titleField: "title", fieldKeys: [] } },
+  { id: "wards", slug: "wards", group: { id: "admin", slug: "hanh-chinh", title: "Hành chính", displayOrder: 1 }, displayOrder: 1, defaultVisible: true, title: "Ranh giới", description: "", geometryMode: "polygon", allowedGeometryKinds: ["polygon", "multipolygon"], featureCount: 1, bounds: [108, 16, 108.3, 16.3], updatedAt: "2026-08-21T00:00:00.000Z", sourceKind: "geojson", geoJsonUrl: "/api/v1/public/layers/wards/features", tileUrlTemplate: "/api/v1/public/tiles/wards/1/{z}/{x}/{y}.pbf", sourceLayer: "features", minZoom: 0, maxZoom: 18, cluster: false, style: { polygon: { fillColor: "#137333" } }, popupConfig: { titleField: "name", fieldKeys: ["address"] }, filterCapabilities: { fieldKeys: ["address"], maxFilters: 10 }, searchCapabilities: { enabled: true, fieldKeys: ["name"] } },
+  { id: "large", slug: "large", group: { id: "admin", slug: "hanh-chinh", title: "Hành chính", displayOrder: 1 }, displayOrder: 2, defaultVisible: false, title: "Dữ liệu lớn", description: null, geometryMode: "mixed", allowedGeometryKinds: ["point", "polygon"], featureCount: 20_000, bounds: null, updatedAt: "2026-08-21T00:00:00.000Z", sourceKind: "mvt", geoJsonUrl: "/api/v1/public/layers/large/features", tileUrlTemplate: "/api/v1/public/tiles/large/2/{z}/{x}/{y}.pbf", sourceLayer: "features", minZoom: 8, maxZoom: 18, cluster: false, style: {}, popupConfig: { titleField: "title", fieldKeys: [] }, filterCapabilities: { fieldKeys: [], maxFilters: 10 }, searchCapabilities: { enabled: false, fieldKeys: [] } },
 ];
 
 function transport(overrides: Partial<PublicApiTransport> = {}): PublicApiTransport {
   return {
     listLayers: vi.fn(async () => ({ data: rawLayers, meta: { requestId: "test" } })),
-    getLayer: vi.fn(async (slug) => ({ data: { ...rawLayers.find((layer) => layer.slug === slug), fields: [{ key: "address", label: "Địa chỉ", type: "text", icon: "map-pin" }] }, meta: {} })),
+    getLayer: vi.fn(async (slug) => ({ data: { ...rawLayers.find((layer) => layer.slug === slug), fields: [{ key: "address", label: "Địa chỉ", type: "text", icon: "map-pin", searchable: true, filterable: true, options: ["Đà Nẵng"] }] }, meta: {} })),
     getFeatures: vi.fn(async () => ({
       type: "FeatureCollection",
       features: [{
@@ -20,6 +20,7 @@ function transport(overrides: Partial<PublicApiTransport> = {}): PublicApiTransp
         radiusM: 100,
         properties: { name: "Phường Hải Châu", address: "Đà Nẵng", privateNote: { hidden: true } },
       }],
+      meta: { returned: 1, truncated: false, nextCursor: null },
     })),
     ...overrides,
   };
@@ -30,11 +31,12 @@ describe("public catalog aggregation", () => {
     const api = transport();
     const result = await aggregatePublicCatalog(api);
     expect(result.layers.map((layer) => layer.id)).toEqual(["wards", "large"]);
-    expect(result.layers[0]).toMatchObject({ color: "#137333", sourceKind: "geojson", fields: [{ key: "address", name: "Địa chỉ" }] });
+    expect(result.layers[0]).toMatchObject({ color: "#137333", sourceKind: "geojson", defaultVisible: true, group: { title: "Hành chính" }, fields: [{ key: "address", name: "Địa chỉ", filterable: true, options: ["Đà Nẵng"] }] });
     expect(result.layers[1]).toMatchObject({ sourceKind: "mvt", tileUrlTemplate: "/api/v1/public/tiles/large/2/{z}/{x}/{y}.pbf", sourceLayer: "features" });
-    expect(result.features[0].properties).toMatchObject({ id: "ward-1", name: "Phường Hải Châu", geometryKind: "circle", radiusM: 100, metadata: { address: "Đà Nẵng" } });
-    expect(result.features[0].properties.metadata).not.toHaveProperty("privateNote");
-    expect(api.getFeatures).toHaveBeenCalledTimes(1);
+    const ward = result.features.find((feature) => feature.properties.layerId === "wards")!;
+    expect(ward.properties).toMatchObject({ id: "ward-1", name: "Phường Hải Châu", geometryKind: "circle", radiusM: 100, metadata: { address: "Đà Nẵng" } });
+    expect(ward.properties.metadata).not.toHaveProperty("privateNote");
+    expect(api.getFeatures).toHaveBeenCalledTimes(2);
     expect(api.getFeatures).toHaveBeenCalledWith("wards", DANANG_PUBLIC_BBOX, PUBLIC_GEOJSON_LIMIT, undefined);
     expect(result.issues).toEqual([]);
   });
@@ -49,10 +51,14 @@ describe("public catalog aggregation", () => {
   });
 
   it("keeps the usable catalog and other layers when one GeoJSON request fails", async () => {
-    const api = transport({ getFeatures: vi.fn(async () => { throw new Error("offline"); }) });
+    const base = transport();
+    const api = transport({ getFeatures: vi.fn(async (slug, bbox, limit, signal, filter) => {
+      if (slug === "wards") throw new Error("offline");
+      return base.getFeatures(slug, bbox, limit, signal, filter);
+    }) });
     const result = await aggregatePublicCatalog(api);
     expect(result.layers).toHaveLength(2);
-    expect(result.features).toEqual([]);
+    expect(result.features.some((feature) => feature.properties.layerId === "large")).toBe(true);
     expect(result.issues).toEqual([expect.objectContaining({ layerId: "wards", code: "FEATURES_UNAVAILABLE" })]);
   });
 
@@ -70,9 +76,27 @@ describe("public catalog aggregation", () => {
         { id: "66666666-6666-4666-8666-666666666666", fieldKey: "files", displayOrder: 2, fileName: "external.pdf", contentType: "application/pdf", sizeBytes: 2048, status: "clean", url: "https://example.com/external.pdf" },
       ],
       meta: { geometryKind: "point", radiusM: null },
-    }, catalog.layers[1]);
+    }, catalog.layers.find((layer) => layer.id === "large")!);
     expect(feature).toMatchObject({ properties: { id: "33333333-3333-4333-8333-333333333333", layerId: "large", name: "Điểm dữ liệu lớn", kind: "Dữ liệu lớn", metadata: { title: "Điểm dữ liệu lớn", address: "Hải Châu" } } });
     expect(feature.attachments).toEqual([{ id: attachmentId, fieldKey: "images", displayOrder: 1, fileName: "tru-so.png", contentType: "image/png", sizeBytes: 1024, status: "clean", url: `/api/v1/public/attachments/${attachmentId}` }]);
     expect(feature.properties.metadata).not.toHaveProperty("nested");
+  });
+
+  it("applies a documented exact-match filter, reports truncation, and removes duplicate records", async () => {
+    const api = transport({
+      getFeatures: vi.fn(async () => ({
+        type: "FeatureCollection",
+        features: [
+          { type: "Feature", id: "same-id", geometry: { type: "Point", coordinates: [108.22, 16.06] }, properties: { name: "Một" } },
+          { type: "Feature", id: "same-id", geometry: { type: "Point", coordinates: [108.22, 16.06] }, properties: { name: "Một" } },
+        ],
+        meta: { returned: 2, truncated: true, nextCursor: null },
+      })),
+    });
+    const catalog = await loadPublicCatalog(api);
+    const result = await loadPublicViewport(api, [catalog.layers[0]], "108.1,16,108.3,16.2", undefined, { layerId: "wards", fieldKey: "address", value: "Đà Nẵng" });
+    expect(api.getFeatures).toHaveBeenLastCalledWith("wards", "108.1,16,108.3,16.2", PUBLIC_GEOJSON_LIMIT, undefined, "address:eq:Đà Nẵng");
+    expect(result.features).toHaveLength(1);
+    expect(result.viewport.layers).toEqual([{ layerId: "wards", returned: 2, truncated: true, nextCursor: null }]);
   });
 });
