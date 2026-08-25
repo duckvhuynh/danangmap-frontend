@@ -118,7 +118,7 @@ describe("System Admin users screen", () => {
     await screen.findAllByText(firstUser.displayName);
     fireEvent.click(screen.getByRole("button", { name: `Xem chi tiết ${firstUser.displayName}` }));
     const dialog = await screen.findByRole("dialog");
-    const input = within(dialog).getByLabelText("Tên hiển thị");
+    const input = await within(dialog).findByLabelText("Tên hiển thị");
     fireEvent.change(input, { target: { value: "Tên đã sửa" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Lưu thay đổi" }));
     await waitFor(() => expect(mocks.updateAdminUser).toHaveBeenCalledWith(firstUser.id, { displayName: "Tên đã sửa", unlock: false }, firstUser.etag, "55555555-5555-4555-8555-555555555555", { csrfToken: "csrf-test" }));
@@ -131,7 +131,7 @@ describe("System Admin users screen", () => {
     await screen.findAllByText(firstUser.displayName);
     fireEvent.click(screen.getByRole("button", { name: `Xem chi tiết ${firstUser.displayName}` }));
     const dialog = await screen.findByRole("dialog");
-    fireEvent.change(within(dialog).getByLabelText("Tên hiển thị"), { target: { value: "Tên xung đột" } });
+    fireEvent.change(await within(dialog).findByLabelText("Tên hiển thị"), { target: { value: "Tên xung đột" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Lưu thay đổi" }));
     expect(await within(dialog).findByRole("alert")).toHaveTextContent("Dữ liệu tài khoản đã thay đổi");
     expect(within(dialog).getByRole("alert")).toHaveTextContent("request-stale");
