@@ -190,9 +190,9 @@ describe("feature attachment panel", () => {
     });
 
     await waitFor(() => expect(transport.bind).toHaveBeenCalledTimes(1));
-    expect(onFeatureChanged).toHaveBeenCalledWith(
+    await waitFor(() => expect(onFeatureChanged).toHaveBeenCalledWith(
       expect.objectContaining({ etag: `"rev-${revisionId}-v4"` }),
-    );
+    ));
     expect(container.querySelector("img")).toBeNull();
     expect(container).not.toHaveTextContent("X-Amz-Signature");
     expect(await draftDb.attachmentIntents.get(attachmentId)).toBeUndefined();
