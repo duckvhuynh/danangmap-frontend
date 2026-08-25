@@ -14,7 +14,11 @@ export function coerceFieldValue(field: AdminField, input: unknown): unknown {
       : [];
   if (typeof input !== "string") return input;
   const value = input.trim();
-  if (!value && !field.required) return undefined;
+  if (!value) return undefined;
+  if (field.type === "datetime") {
+    const date = new Date(value);
+    return Number.isNaN(date.valueOf()) ? input : date.toISOString();
+  }
   if (field.type === "number" || field.type === "integer") {
     const number = Number(value);
     return Number.isFinite(number)

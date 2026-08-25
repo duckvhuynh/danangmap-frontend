@@ -3,6 +3,9 @@ import {
   adminFeatureToTerra,
   adminFeatureToTerraParts,
   diffEditorFeatures,
+  editorGeometryKindProperty,
+  editorParentIdProperty,
+  editorPartIndexProperty,
   rebaseEditorSnapshot,
   terraFeatureToMutation,
 } from "./editor-sync";
@@ -194,5 +197,38 @@ describe("Terra Draw server synchronization", () => {
     ]);
     expect(rebased[0]?.properties.name).toBe("Tên cục bộ");
     expect(rebased[1]?.properties.name).toBe("Đối tượng từ tab khác");
+  });
+
+  it("creates a valid one-part MultiPoint for a Multi-only layer", () => {
+    const id = "12345678-1234-4234-9234-123456789abc";
+    const diff = diffEditorFeatures(
+      [],
+      [
+        {
+          type: "Feature",
+          id,
+          geometry: { type: "Point", coordinates: [108.22, 16.06] },
+          properties: {
+            mode: "point",
+            name: "Cụm một điểm",
+            [editorParentIdProperty]: id,
+            [editorGeometryKindProperty]: "multipoint",
+            [editorPartIndexProperty]: 0,
+          },
+        },
+      ],
+      ["name"],
+    );
+    expect(diff.creates[0]).toMatchObject({
+      clientId: id,
+      dto: {
+        geometry: {
+          type: "MultiPoint",
+          coordinates: [[108.22, 16.06]],
+        },
+        geometryKind: "multipoint",
+        properties: { name: "Cụm một điểm" },
+      },
+    });
   });
 });

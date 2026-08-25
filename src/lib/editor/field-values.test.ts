@@ -26,6 +26,17 @@ describe("schema-driven field values", () => {
     expect(
       coerceFieldValue(field({ type: "multi_enum" }), ["ward", 3]),
     ).toEqual(["ward"]);
+    expect(coerceFieldValue(field(), "")).toBeUndefined();
+    expect(validateFieldValue(field(), coerceFieldValue(field(), ""))).toContain(
+      "Dân số là trường bắt buộc.",
+    );
+  });
+
+  it("converts datetime-local input to an unambiguous ISO instant", () => {
+    const input = "2026-08-25T14:30:15.123";
+    expect(coerceFieldValue(field({ type: "datetime" }), input)).toBe(
+      new Date(input).toISOString(),
+    );
   });
 
   it("applies required, range, format and enum validation", () => {

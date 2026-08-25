@@ -54,4 +54,27 @@ describe("FeaturePropertiesEditor", () => {
     );
     expect(screen.getByText(/Chọn một đối tượng/u)).toBeInTheDocument();
   });
+
+  it("does not rewrite an unchanged UTC datetime on blur", () => {
+    const onPatch = vi.fn();
+    render(
+      <FeaturePropertiesEditor
+        featureId="feature-time"
+        properties={{ observed_at: "2026-08-25T07:30:15.123Z" }}
+        fields={[
+          {
+            key: "observed_at",
+            label: "Thời điểm",
+            type: "datetime",
+            required: true,
+            sensitive: false,
+            offlineCache: true,
+          },
+        ]}
+        onPatch={onPatch}
+      />,
+    );
+    fireEvent.blur(screen.getByLabelText(/Thời điểm/u));
+    expect(onPatch).not.toHaveBeenCalled();
+  });
 });

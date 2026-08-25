@@ -81,7 +81,10 @@ import {
   adminFeatureToTerraParts,
   decodeTerraFeature,
   diffEditorFeatures,
+  editorGeometryKindProperty,
   editorLogicalFeatureId,
+  editorParentIdProperty,
+  editorPartIndexProperty,
   rebaseEditorSnapshot,
   snapshotLogicalFeatures,
 } from "@/lib/editor/editor-sync";
@@ -466,14 +469,42 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
                 (canonical) =>
                   canonical.id === editorLogicalFeatureId(feature),
               );
-            return feature
-              ? {
-                  ...feature,
-                  properties: isNew
-                    ? applyFieldDefaults(bundle.fields, feature.properties)
-                    : feature.properties,
-                }
-              : value;
+            if (!feature) return value;
+            if (!isNew) return feature;
+            const properties = applyFieldDefaults(
+              bundle.fields,
+              feature.properties,
+            );
+            const simpleKind =
+              feature.properties.mode === "circle"
+                ? "circle"
+                : feature.geometry.type === "Point"
+                  ? "point"
+                  : feature.geometry.type === "LineString"
+                    ? "line"
+                    : "polygon";
+            const multiKind =
+              simpleKind === "point"
+                ? "multipoint"
+                : simpleKind === "line"
+                  ? "multiline"
+                  : simpleKind === "polygon"
+                    ? "multipolygon"
+                    : "circle";
+            const geometryKind = bundle.revision.allowedGeometryKinds.includes(
+              simpleKind,
+            )
+              ? simpleKind
+              : multiKind;
+            return {
+              ...feature,
+              properties: {
+                ...properties,
+                [editorParentIdProperty]: String(feature.id),
+                [editorGeometryKindProperty]: geometryKind,
+                [editorPartIndexProperty]: 0,
+              },
+            };
           })
         : next;
       setFeatures(normalized);

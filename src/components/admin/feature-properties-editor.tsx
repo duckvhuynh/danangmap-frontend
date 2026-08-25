@@ -68,8 +68,14 @@ function inputValue(field: AdminField, value: unknown) {
       ? value.filter((item): item is string => typeof item === "string")
       : [];
   if (value === undefined || value === null) return "";
-  if (field.type === "datetime" && typeof value === "string")
-    return value.slice(0, 16);
+  if (field.type === "datetime" && typeof value === "string") {
+    const date = new Date(value);
+    if (!Number.isNaN(date.valueOf())) {
+      const pad = (part: number, length = 2) =>
+        String(part).padStart(length, "0");
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}.${pad(date.getMilliseconds(), 3)}`;
+    }
+  }
   return String(value);
 }
 
@@ -114,6 +120,7 @@ export function FeaturePropertiesEditor({
   const commit = (field: AdminField, input: unknown) => {
     const value = coerceFieldValue(field, input);
     setDraft((current) => ({ ...current, [field.key]: inputValue(field, value) }));
+    if (JSON.stringify(value) === JSON.stringify(properties[field.key])) return;
     onPatch({ [field.key]: value });
   };
 
@@ -241,7 +248,13 @@ export function FeaturePropertiesEditor({
                                 ? "tel"
                                 : "text"
                   }
-                  step={field.type === "integer" ? 1 : undefined}
+                  step={
+                    field.type === "datetime"
+                      ? 0.001
+                      : field.type === "integer"
+                        ? 1
+                        : undefined
+                  }
                   min={field.validation?.minimum}
                   max={field.validation?.maximum}
                   minLength={field.validation?.minLength}
