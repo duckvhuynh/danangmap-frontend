@@ -337,14 +337,13 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
                 rebased,
                 fresh.fields.map((field) => field.key),
               );
-              if (
+              const remainingCount =
                 remaining.creates.length +
-                  remaining.updates.length +
-                  remaining.deletes.length ===
-                0
-              )
-                applyBundleAndSnapshot(fresh, rebased);
-              else setRemoteChanges((count) => Math.max(1, count));
+                remaining.updates.length +
+                remaining.deletes.length;
+              applyBundleAndSnapshot(fresh, rebased);
+              if (remainingCount > 0)
+                setRemoteChanges((count) => Math.max(1, count));
             }
             return refreshSyncState(syncWorkspaceId, false);
           })
