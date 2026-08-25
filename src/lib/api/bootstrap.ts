@@ -211,7 +211,24 @@ export async function bootstrapSystemAdmin(
         body: input,
       },
     );
-    return decodeResult(resultData(result));
+    try {
+      return decodeResult(resultData(result));
+    } catch (decodeError) {
+      if (
+        decodeError instanceof BootstrapApiError &&
+        result.response.ok
+      ) {
+        throw new BootstrapApiError(
+          decodeError.status,
+          decodeError.code,
+          decodeError.message,
+          decodeError.requestId,
+          decodeError.retryAfterSeconds,
+          true,
+        );
+      }
+      throw decodeError;
+    }
   } catch (error) {
     throw networkError(error, !(error instanceof BootstrapApiError));
   }

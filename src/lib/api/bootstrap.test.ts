@@ -178,4 +178,31 @@ describe("first-admin bootstrap generated-client boundary", () => {
       ambiguous: false,
     });
   });
+
+  it("marks a 201 success with contract decode failure as ambiguous", async () => {
+    let calls = 0;
+    const client = createDanangMapClient(async () => {
+      calls += 1;
+      if (calls === 1) {
+        return new Response(envelope({ csrfToken: "csrf" }), {
+          status: 200,
+          headers: jsonHeaders,
+        });
+      }
+      return new Response(
+        envelope({
+          status: "mfa_required",
+          mfaEnrollmentRequired: false,
+          challengeExpiresAt: "2026-08-25T15:00:00.000Z",
+        }),
+        { status: 201, headers: jsonHeaders },
+      );
+    });
+    await expect(
+      bootstrapSystemAdmin(input, "W".repeat(43), client),
+    ).rejects.toMatchObject({
+      code: "CONTRACT_INVALID",
+      ambiguous: true,
+    });
+  });
 });
