@@ -1,27 +1,7 @@
 import { apiClient, createDanangMapClient } from "@/lib/api/generated/client";
+import type { operations } from "@/lib/api/generated/schema";
 
 type ApiClient = ReturnType<typeof createDanangMapClient>;
-
-// Keep the bootstrap-only contract isolated until the backend OpenAPI snapshot is pinned.
-// These declarations are replaced by generated operation types during contract sync.
-interface BootstrapEndpointClient {
-  GET(
-    path: "/api/v1/auth/bootstrap/status",
-    options?: { cache: "no-store"; signal?: AbortSignal },
-  ): Promise<ApiResult>;
-  POST(
-    path: "/api/v1/auth/bootstrap/system-admin",
-    options: {
-      params: {
-        header: {
-          "X-CSRF-Token": string;
-          "X-Initial-Admin-Bootstrap-Token": string;
-        };
-      };
-      body: BootstrapSystemAdminInput;
-    },
-  ): Promise<ApiResult>;
-}
 
 interface ApiResult {
   data?: unknown;
@@ -33,13 +13,8 @@ export interface BootstrapStatus {
   available: boolean;
 }
 
-export interface BootstrapSystemAdminInput {
-  email: string;
-  username: string;
-  displayName: string;
-  password: string;
-  passwordConfirmation: string;
-}
+export type BootstrapSystemAdminInput =
+  operations["bootstrapSystemAdmin"]["requestBody"]["content"]["application/json"];
 
 export interface BootstrapSystemAdminResult {
   status: "mfa_required";
@@ -206,8 +181,7 @@ export async function getBootstrapStatus(
   client: ApiClient = apiClient,
 ): Promise<BootstrapStatus> {
   try {
-    const endpointClient = client as unknown as BootstrapEndpointClient;
-    const result = await endpointClient.GET("/api/v1/auth/bootstrap/status", {
+    const result = await client.GET("/api/v1/auth/bootstrap/status", {
       ...options,
       cache: "no-store",
     });
@@ -225,8 +199,7 @@ export async function bootstrapSystemAdmin(
 ): Promise<BootstrapSystemAdminResult> {
   const csrfToken = await acquireCsrfToken(client);
   try {
-    const endpointClient = client as unknown as BootstrapEndpointClient;
-    const result = await endpointClient.POST(
+    const result = await client.POST(
       "/api/v1/auth/bootstrap/system-admin",
       {
         params: {
