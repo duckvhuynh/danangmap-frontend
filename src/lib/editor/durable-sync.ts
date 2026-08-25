@@ -11,7 +11,12 @@ import {
   type EditorSyncWorkspace,
   type FeatureMutationLedgerEntry,
 } from "@/lib/editor/draft-db";
-import { diffEditorFeatures } from "@/lib/editor/editor-sync";
+import {
+  decodeTerraFeature,
+  diffEditorFeatures,
+  editorLogicalFeatureId,
+  remapEditorFeatureId,
+} from "@/lib/editor/editor-sync";
 
 const BATCH_SIZE = 100;
 const terminalStatuses = new Set(["acknowledged", "discarded"]);
@@ -464,9 +469,9 @@ export function remapSnapshotFeatureIds(
   mappings: Record<string, string>,
 ) {
   return snapshot.map((value) => {
-    if (!value || typeof value !== "object" || !("id" in value)) return value;
-    const feature = value as { id?: unknown };
-    const canonicalId = mappings[String(feature.id)];
-    return canonicalId ? { ...feature, id: canonicalId } : value;
+    const feature = decodeTerraFeature(value);
+    if (!feature) return value;
+    const canonicalId = mappings[editorLogicalFeatureId(feature)];
+    return canonicalId ? remapEditorFeatureId(feature, canonicalId) : value;
   });
 }

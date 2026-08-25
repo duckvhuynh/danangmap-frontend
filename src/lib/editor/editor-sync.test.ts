@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   adminFeatureToTerra,
+  adminFeatureToTerraParts,
   diffEditorFeatures,
+  editorGeometryKindProperty,
+  editorGeometryKindForNewFeature,
+  editorParentIdProperty,
+  editorPartIndexProperty,
   rebaseEditorSnapshot,
   terraFeatureToMutation,
 } from "./editor-sync";
@@ -37,7 +42,7 @@ describe("Terra Draw server synchronization", () => {
     expect(mutation).toMatchObject({
       geometryKind: "circle",
       radiusM: 250,
-      geometry: { type: "Point" },
+      geometry: { type: "Point", coordinates: [108.22, 16.06] },
       properties: { name: "Trụ sở" },
     });
     expect((mutation.geometry.coordinates as number[])[0]).toBeCloseTo(
@@ -55,7 +60,7 @@ describe("Terra Draw server synchronization", () => {
     const created = {
       ...retained,
       id: "terra-new",
-      properties: { ...retained.properties, name: "Điểm mới" },
+      properties: { name: "Điểm mới", mode: "point" },
     };
     const deleted: AdminFeature = { ...point, id: "delete-1" };
     const diff = diffEditorFeatures(
@@ -77,6 +82,97 @@ describe("Terra Draw server synchronization", () => {
     ]);
     expect(diff.deletes).toEqual([{ featureId: "delete-1" }]);
   });
+
+  it.each([
+    {
+      id: "multipoint-1",
+      geometry: {
+        type: "MultiPoint" as const,
+        coordinates: [
+          [108.2, 16.05],
+          [108.3, 16.1],
+        ],
+      },
+      geometryKind: "multipoint",
+      partType: "Point",
+    },
+    {
+      id: "multiline-1",
+      geometry: {
+        type: "MultiLineString" as const,
+        coordinates: [
+          [
+            [108.2, 16.05],
+            [108.21, 16.06],
+          ],
+          [
+            [108.3, 16.1],
+            [108.31, 16.11],
+          ],
+        ],
+      },
+      geometryKind: "multiline",
+      partType: "LineString",
+    },
+    {
+      id: "multipolygon-1",
+      geometry: {
+        type: "MultiPolygon" as const,
+        coordinates: [
+          [
+            [
+              [108.2, 16.05],
+              [108.21, 16.05],
+              [108.21, 16.06],
+              [108.2, 16.05],
+            ],
+          ],
+          [
+            [
+              [108.3, 16.1],
+              [108.31, 16.1],
+              [108.31, 16.11],
+              [108.3, 16.1],
+            ],
+          ],
+        ],
+      },
+      geometryKind: "multipolygon",
+      partType: "Polygon",
+    },
+  ])(
+    "round-trips $geometry.type as one logical mutation without shape loss",
+    ({ id, geometry, geometryKind, partType }) => {
+      const multi: AdminFeature = {
+        ...point,
+        id,
+        geometry,
+        meta: { ...point.meta, geometryKind },
+      };
+      const parts = adminFeatureToTerraParts(multi);
+      expect(parts).toHaveLength(2);
+      expect(parts.every((part) => part.geometry.type === partType)).toBe(true);
+      expect(diffEditorFeatures([multi], parts, ["name"])).toEqual({
+        creates: [],
+        updates: [],
+        deletes: [],
+      });
+      const changed = structuredClone(parts);
+      changed[0].properties.name = "Đã sửa";
+      changed[1].properties.name = "Đã sửa";
+      const diff = diffEditorFeatures([multi], changed, ["name"]);
+      expect(diff.updates).toEqual([
+        expect.objectContaining({
+          featureId: id,
+          dto: expect.objectContaining({
+            geometry,
+            geometryKind,
+            properties: { name: "Đã sửa" },
+          }),
+        }),
+      ]);
+    },
+  );
 
   it("rebases only local edits over fresh remote additions", () => {
     const local = {
@@ -103,4 +199,88 @@ describe("Terra Draw server synchronization", () => {
     expect(rebased[0]?.properties.name).toBe("Tên cục bộ");
     expect(rebased[1]?.properties.name).toBe("Đối tượng từ tab khác");
   });
+
+  it("creates a valid one-part MultiPoint for a Multi-only layer", () => {
+    const id = "12345678-1234-4234-9234-123456789abc";
+    const diff = diffEditorFeatures(
+      [],
+      [
+        {
+          type: "Feature",
+          id,
+          geometry: { type: "Point", coordinates: [108.22, 16.06] },
+          properties: {
+            mode: "point",
+            name: "Cụm một điểm",
+            [editorParentIdProperty]: id,
+            [editorGeometryKindProperty]: "multipoint",
+            [editorPartIndexProperty]: 0,
+          },
+        },
+      ],
+      ["name"],
+    );
+    expect(diff.creates[0]).toMatchObject({
+      clientId: id,
+      dto: {
+        geometry: {
+          type: "MultiPoint",
+          coordinates: [[108.22, 16.06]],
+        },
+        geometryKind: "multipoint",
+        properties: { name: "Cụm một điểm" },
+      },
+    });
+  });
+
+  it.each([
+    ["Point", "point", "multipoint"],
+    ["LineString", "line", "multiline"],
+    ["Polygon", "polygon", "multipolygon"],
+  ] as const)(
+    "chooses the allowed Multi kind for a newly drawn %s",
+    (geometryType, simpleKind, multiKind) => {
+      const geometry =
+        geometryType === "Point"
+          ? { type: "Point" as const, coordinates: [108.22, 16.06] }
+          : geometryType === "LineString"
+            ? {
+                type: "LineString" as const,
+                coordinates: [
+                  [108.22, 16.06],
+                  [108.23, 16.07],
+                ],
+              }
+            : {
+                type: "Polygon" as const,
+                coordinates: [
+                  [
+                    [108.22, 16.06],
+                    [108.23, 16.06],
+                    [108.22, 16.06],
+                    [108.22, 16.06],
+                  ],
+                ],
+              };
+      const feature = {
+        type: "Feature" as const,
+        id: "12345678-1234-4234-9234-123456789abc",
+        geometry,
+        properties: {
+          mode:
+            geometryType === "Point"
+              ? "point"
+              : geometryType === "LineString"
+                ? "linestring"
+                : "polygon",
+        },
+      };
+      expect(editorGeometryKindForNewFeature(feature, [multiKind])).toBe(
+        multiKind,
+      );
+      expect(
+        editorGeometryKindForNewFeature(feature, [simpleKind, multiKind]),
+      ).toBe(simpleKind);
+    },
+  );
 });

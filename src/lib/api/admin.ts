@@ -62,7 +62,22 @@ export type AdminRevision = Pick<
 export type AdminField = Pick<
   FieldContract,
   "key" | "label" | "type" | "required" | "sensitive" | "offlineCache"
->;
+> &
+  Partial<
+    Pick<
+      FieldContract,
+      | "description"
+      | "icon"
+      | "public"
+      | "searchable"
+      | "filterable"
+      | "sortable"
+      | "defaultValue"
+      | "validation"
+      | "options"
+      | "displayOrder"
+    >
+  >;
 export type AdminWorkspace = WorkspaceContract;
 export type AdminFeature = Pick<
   FeatureContract,
@@ -597,9 +612,52 @@ function decodeRevision(value: unknown): {
               key: field.key,
               label: field.label,
               type: field.type,
+              description:
+                typeof field.description === "string"
+                  ? field.description
+                  : undefined,
+              icon: typeof field.icon === "string" ? field.icon : undefined,
               required: field.required === true,
+              public: field.public !== false,
+              searchable: field.searchable === true,
+              filterable: field.filterable === true,
+              sortable: field.sortable === true,
               sensitive: field.sensitive === true,
               offlineCache: field.offlineCache !== false,
+              defaultValue:
+                field.defaultValue === null ||
+                typeof field.defaultValue === "string" ||
+                typeof field.defaultValue === "number" ||
+                typeof field.defaultValue === "boolean" ||
+                Array.isArray(field.defaultValue) ||
+                isRecord(field.defaultValue)
+                  ? field.defaultValue
+                  : undefined,
+              validation: isRecord(field.validation)
+                ? {
+                    ...(typeof field.validation.minLength === "number"
+                      ? { minLength: field.validation.minLength }
+                      : {}),
+                    ...(typeof field.validation.maxLength === "number"
+                      ? { maxLength: field.validation.maxLength }
+                      : {}),
+                    ...(typeof field.validation.minimum === "number"
+                      ? { minimum: field.validation.minimum }
+                      : {}),
+                    ...(typeof field.validation.maximum === "number"
+                      ? { maximum: field.validation.maximum }
+                      : {}),
+                  }
+                : {},
+              options: Array.isArray(field.options)
+                ? field.options.filter(
+                    (option): option is string => typeof option === "string",
+                  )
+                : [],
+              displayOrder:
+                typeof field.displayOrder === "number"
+                  ? field.displayOrder
+                  : 0,
             },
           ]
         : [],

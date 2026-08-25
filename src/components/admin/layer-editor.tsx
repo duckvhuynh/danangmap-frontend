@@ -12,8 +12,11 @@ import {
 } from "react";
 import {
   IconArrowLeft,
+  IconArrowBackUp,
+  IconArrowForwardUp,
   IconCircle,
   IconCloudUpload,
+  IconCopy,
   IconDeviceFloppy,
   IconFileImport,
   IconInfoCircle,
@@ -31,6 +34,7 @@ import {
   useAdminSession,
 } from "@/components/admin/admin-session";
 import { FeatureAttachmentPanel } from "@/components/admin/feature-attachment-panel";
+import { FeaturePropertiesEditor } from "@/components/admin/feature-properties-editor";
 import {
   EditorSyncStatus,
   type EditorSyncPhase,
@@ -46,6 +50,11 @@ import {
   type RevisionBundle,
 } from "@/lib/api/admin";
 import { canAuthorContent } from "@/lib/admin/role-capabilities";
+import {
+  getDesktopAuthoringCapability,
+  getServerDesktopAuthoringCapability,
+  subscribeDesktopAuthoringCapability,
+} from "@/lib/admin/authoring-capability";
 import {
   draftDb,
   draftKey,
@@ -69,10 +78,25 @@ import {
 } from "@/lib/editor/durable-sync";
 import {
   adminFeatureToTerra,
+  adminFeatureToTerraParts,
   decodeTerraFeature,
   diffEditorFeatures,
+  editorGeometryKindProperty,
+  editorGeometryKindForNewFeature,
+  editorLogicalFeatureId,
+  editorParentIdProperty,
+  editorPartIndexProperty,
   rebaseEditorSnapshot,
+  snapshotLogicalFeatures,
 } from "@/lib/editor/editor-sync";
+import type {
+  EditorCommand,
+  EditorHistoryState,
+} from "@/lib/editor/editor-commands";
+import {
+  applyFieldDefaults,
+  validateFeatureProperties,
+} from "@/lib/editor/field-values";
 import {
   editorSyncOwnerId,
   subscribeSyncActivity,
@@ -87,27 +111,39 @@ const EditorMapCanvas = dynamic(
     loading: () => <div className="h-full animate-pulse bg-surface-subtle" />,
   },
 );
-const tools: Array<{ id: DrawTool; label: string; icon: typeof IconPointer }> =
+const tools: Array<{
+  id: DrawTool;
+  label: string;
+  icon: typeof IconPointer;
+  geometryKinds?: string[];
+}> =
   [
     { id: "select", label: "Chọn và sửa", icon: IconPointer },
-    { id: "point", label: "Vẽ điểm", icon: IconMapPin },
-    { id: "linestring", label: "Vẽ đường", icon: IconLine },
-    { id: "polygon", label: "Vẽ vùng", icon: IconPolygon },
-    { id: "circle", label: "Vẽ đường tròn", icon: IconCircle },
+    {
+      id: "point",
+      label: "Vẽ điểm",
+      icon: IconMapPin,
+      geometryKinds: ["point", "multipoint"],
+    },
+    {
+      id: "linestring",
+      label: "Vẽ đường",
+      icon: IconLine,
+      geometryKinds: ["line", "multiline"],
+    },
+    {
+      id: "polygon",
+      label: "Vẽ vùng",
+      icon: IconPolygon,
+      geometryKinds: ["polygon", "multipolygon"],
+    },
+    {
+      id: "circle",
+      label: "Vẽ đường tròn",
+      icon: IconCircle,
+      geometryKinds: ["circle"],
+    },
   ];
-const authoringQuery =
-  "(min-width: 1024px) and (hover: hover) and (pointer: fine)";
-function subscribeAuthoringCapability(callback: () => void) {
-  const media = window.matchMedia(authoringQuery);
-  media.addEventListener("change", callback);
-  return () => media.removeEventListener("change", callback);
-}
-function getAuthoringCapability() {
-  return window.matchMedia(authoringQuery).matches;
-}
-function getServerAuthoringCapability() {
-  return false;
-}
 
 function MobileCapabilityGate({ revisionId }: { revisionId: string }) {
   return (
@@ -143,9 +179,9 @@ function MobileCapabilityGate({ revisionId }: { revisionId: string }) {
 
 export function LayerEditor({ revisionId }: { revisionId: string }) {
   const canAuthor = useSyncExternalStore(
-    subscribeAuthoringCapability,
-    getAuthoringCapability,
-    getServerAuthoringCapability,
+    subscribeDesktopAuthoringCapability,
+    getDesktopAuthoringCapability,
+    getServerDesktopAuthoringCapability,
   );
   const { principal, csrfToken } = useAdminSession();
   const [bundle, setBundle] = useState<RevisionBundle | null>(null);
@@ -180,6 +216,14 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
   >([]);
   const [pendingSyncCount, setPendingSyncCount] = useState(0);
   const [remoteChanges, setRemoteChanges] = useState(0);
+  const [editorCommand, setEditorCommand] = useState<EditorCommand>({
+    version: 0,
+    type: "undo",
+  });
+  const [history, setHistory] = useState<EditorHistoryState>({
+    canUndo: false,
+    canRedo: false,
+  });
 
   useEffect(() => {
     featuresRef.current = features;
@@ -215,10 +259,7 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
         if (loadGenerationRef.current !== generation) return;
         bundleRef.current = next;
         setBundle(next);
-        const drawable = next.features.flatMap((feature) => {
-          const converted = adminFeatureToTerra(feature);
-          return converted ? [converted] : [];
-        });
+        const drawable = next.features.flatMap(adminFeatureToTerraParts);
         setFeatures(drawable);
         setRestore((current) => ({
           version: current.version + 1,
@@ -320,10 +361,7 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
             if (!dirtyRef.current || !currentBundle) {
               applyBundleAndSnapshot(
                 fresh,
-                fresh.features.flatMap((feature) => {
-                  const converted = adminFeatureToTerra(feature);
-                  return converted ? [converted] : [];
-                }),
+                fresh.features.flatMap(adminFeatureToTerraParts),
               );
             } else {
               const rebased = rebaseEditorSnapshot(
@@ -423,11 +461,43 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
 
   const handleSnapshot = useCallback(
     (next: unknown[]) => {
-      setFeatures(next);
+      const normalized = bundle
+        ? next.map((value) => {
+            const feature = decodeTerraFeature(value);
+            const isNew =
+              feature &&
+              !bundle.features.some(
+                (canonical) =>
+                  canonical.id === editorLogicalFeatureId(feature),
+              );
+            if (!feature) return value;
+            if (!isNew) return feature;
+            const properties = applyFieldDefaults(
+              bundle.fields,
+              feature.properties,
+            );
+            const geometryKind = editorGeometryKindForNewFeature(
+              feature,
+              bundle.revision.allowedGeometryKinds,
+            );
+            if (!geometryKind) return feature;
+            return {
+              ...feature,
+              properties: {
+                ...properties,
+                [editorParentIdProperty]: String(feature.id),
+                [editorGeometryKindProperty]: geometryKind,
+                [editorPartIndexProperty]: 0,
+              },
+            };
+          })
+        : next;
+      setFeatures(normalized);
+      featuresRef.current = normalized;
       if (!bundle || recoveredDraft) return;
       const diff = diffEditorFeatures(
         bundle.features,
-        next,
+        normalized,
         bundle.fields.map((field) => field.key),
       );
       const changed =
@@ -478,6 +548,23 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
       bundle.features.some((feature) => !adminFeatureToTerra(feature))
     )
       return;
+    const validationErrors = snapshotLogicalFeatures(
+      featuresRef.current,
+    ).flatMap((feature) =>
+      validateFeatureProperties(bundle.fields, feature.properties),
+    );
+    if (validationErrors.length > 0) {
+      setError(
+        new AdminApiError(
+          422,
+          "SCHEMA_VIOLATION",
+          validationErrors.slice(0, 3).join(" "),
+          undefined,
+          { errors: validationErrors },
+        ),
+      );
+      return;
+    }
     setBusy("save");
     setError(null);
     setSuccess(null);
@@ -534,10 +621,7 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
             fresh.features,
             baseBundle.fields.map((field) => field.key),
           )
-        : fresh.features.flatMap((feature) => {
-            const converted = adminFeatureToTerra(feature);
-            return converted ? [converted] : [];
-          });
+        : fresh.features.flatMap(adminFeatureToTerraParts);
       applyBundleAndSnapshot(fresh, remappedSnapshot);
       const issues = await activeWorkspaceIssues(workspaceId);
       setSyncIssues(issues);
@@ -590,18 +674,18 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
     const serverFeature = canonicalId
       ? bundle.features.find((feature) => feature.id === canonicalId)
       : undefined;
-    const serverTerra = serverFeature
-      ? adminFeatureToTerra(serverFeature)
-      : null;
+    const serverParts = serverFeature
+      ? adminFeatureToTerraParts(serverFeature)
+      : [];
     const next = featuresRef.current.filter((value) => {
       const feature = decodeTerraFeature(value);
       return (
         feature &&
-        String(feature.id) !== issue.localFeatureId &&
-        String(feature.id) !== canonicalId
+        editorLogicalFeatureId(feature) !== issue.localFeatureId &&
+        editorLogicalFeatureId(feature) !== canonicalId
       );
     });
-    if (serverTerra) next.push(serverTerra);
+    next.push(...serverParts);
     applyBundleAndSnapshot(bundle, next);
     await refreshSyncState(syncWorkspaceId);
     setSuccess("Đã giữ phiên bản máy chủ cho đối tượng này.");
@@ -658,10 +742,7 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
       etag: result.etag,
       workspace: { ...bundle.workspace, serverCursor: result.serverCursor },
     };
-    const drawable = nextFeatures.flatMap((feature) => {
-      const converted = adminFeatureToTerra(feature);
-      return converted ? [converted] : [];
-    });
+    const drawable = nextFeatures.flatMap(adminFeatureToTerraParts);
     bundleRef.current = nextBundle;
     setBundle(nextBundle);
     setFeatures(drawable);
@@ -728,18 +809,28 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
       </main>
     );
   const unsupported =
-    bundle.features.length -
-    bundle.features.flatMap((feature) =>
-      adminFeatureToTerra(feature) ? [feature] : [],
+    bundle.features.filter(
+      (feature) => adminFeatureToTerraParts(feature).length === 0,
     ).length;
-  const featureRows = features.flatMap((feature) => {
-    const decoded = decodeTerraFeature(feature);
-    return decoded ? [decoded] : [];
-  });
+  const featureRows = snapshotLogicalFeatures(features);
+  const selectedLogicalFeature =
+    featureRows.find((feature) => feature.id === String(selectedId)) ?? null;
+  const fieldValidationErrors = featureRows.flatMap((feature) =>
+    validateFeatureProperties(bundle.fields, feature.properties).map(
+      (message) => `${feature.id}: ${message}`,
+    ),
+  );
   const selectedFeature =
     bundle.features.find(
       (feature) => String(feature.id) === String(selectedId),
     ) ?? null;
+  const availableTools = tools.filter(
+    (item) =>
+      !item.geometryKinds ||
+      item.geometryKinds.some((kind) =>
+        bundle.revision.allowedGeometryKinds.includes(kind),
+      ),
+  );
   const canSubmit =
     bundle.revision.status === "draft" &&
     !dirty &&
@@ -790,6 +881,7 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
             busy !== null ||
             bundle.truncated ||
             unsupported > 0 ||
+            fieldValidationErrors.length > 0 ||
             syncIssues.length > 0
           }
           onClick={saveServer}
@@ -812,7 +904,7 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
           {busy === "submit" ? "Đang gửi..." : "Gửi duyệt"}
         </Button>
       </header>
-      <div className="relative grid min-h-0 grid-cols-[260px_52px_minmax(360px,1fr)_300px] grid-rows-[minmax(0,1fr)_220px]">
+      <div className="relative grid min-h-0 grid-cols-[260px_52px_minmax(360px,1fr)_320px] grid-rows-[minmax(0,1fr)_220px]">
         <aside className="row-span-2 overflow-y-auto border-r bg-surface">
           <div className="border-b p-4">
             <div className="flex items-center justify-between">
@@ -850,7 +942,7 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
           className="row-span-2 flex flex-col items-center gap-1 border-r bg-surface p-1.5"
           aria-label="Công cụ vẽ"
         >
-          {tools.map(({ id, label, icon: Icon }) => (
+          {availableTools.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               type="button"
@@ -867,6 +959,50 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
             </button>
           ))}
           <span className="my-1 h-px w-8 bg-border" />
+          <button
+            disabled={!history.canUndo}
+            onClick={() =>
+              setEditorCommand((current) => ({
+                version: current.version + 1,
+                type: "undo",
+              }))
+            }
+            title="Hoàn tác (Ctrl/Cmd+Z)"
+            className="grid size-10 place-items-center rounded-map-control text-muted-foreground hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-40"
+            aria-label="Hoàn tác"
+          >
+            <IconArrowBackUp size={20} stroke={1.75} />
+          </button>
+          <button
+            disabled={!history.canRedo}
+            onClick={() =>
+              setEditorCommand((current) => ({
+                version: current.version + 1,
+                type: "redo",
+              }))
+            }
+            title="Làm lại (Ctrl/Cmd+Shift+Z)"
+            className="grid size-10 place-items-center rounded-map-control text-muted-foreground hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-40"
+            aria-label="Làm lại"
+          >
+            <IconArrowForwardUp size={20} stroke={1.75} />
+          </button>
+          <button
+            disabled={selectedId === null}
+            onClick={() => {
+              if (selectedId === null) return;
+              setEditorCommand((current) => ({
+                version: current.version + 1,
+                type: "duplicate",
+                featureId: String(selectedId),
+              }));
+            }}
+            title="Nhân bản đối tượng đã chọn"
+            className="grid size-10 place-items-center rounded-map-control text-muted-foreground hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-40"
+            aria-label="Nhân bản đối tượng đã chọn"
+          >
+            <IconCopy size={20} stroke={1.75} />
+          </button>
           <button
             disabled={selectedId === null}
             onClick={() => setDeleteRequest((value) => value + 1)}
@@ -886,8 +1022,10 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
             activeTool={tool}
             restore={restore}
             deleteRequest={deleteRequest}
+            command={editorCommand}
             onSelectionChange={setSelectedId}
             onSnapshot={handleSnapshot}
+            onHistoryChange={setHistory}
             onError={setMapError}
           />
           {mapError && (
@@ -938,10 +1076,36 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
                   ? "Workspace lớn hơn trang feature API hiện tại; không lưu cho đến khi pagination contract sẵn sàng. "
                   : ""}
                 {unsupported > 0
-                  ? `${unsupported} geometry Multi* chỉ xem, chưa thể sửa bằng Terra Draw.`
+                  ? `${unsupported} geometry không thuộc các kiểu editor hỗ trợ.`
                   : ""}
               </p>
             )}
+            {fieldValidationErrors.length > 0 && (
+              <div className="rounded-control bg-red-50 p-3 text-xs leading-5 text-destructive">
+                <p className="font-medium">Metadata cần được sửa trước khi đồng bộ</p>
+                <ul className="mt-1 list-disc pl-4">
+                  {fieldValidationErrors.slice(0, 3).map((message) => (
+                    <li key={message}>{message}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <FeaturePropertiesEditor
+              key={`${selectedLogicalFeature?.id ?? "none"}:${JSON.stringify(selectedLogicalFeature?.properties ?? {})}`}
+              featureId={selectedLogicalFeature?.id ?? null}
+              properties={selectedLogicalFeature?.properties ?? null}
+              fields={bundle.fields}
+              onPatch={(properties) => {
+                if (!selectedLogicalFeature) return;
+                setEditorCommand((current) => ({
+                  version: current.version + 1,
+                  type: "properties",
+                  featureId: selectedLogicalFeature.id,
+                  properties,
+                }));
+              }}
+            />
+            <div className="border-t" />
             <div>
               <p className="text-xs font-medium">Tên lớp</p>
               <p className="mt-1 text-sm">{bundle.revision.title}</p>
@@ -1053,9 +1217,7 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
                           : "Chưa có"}
                       </td>
                       <td className="px-3 py-2">
-                        {feature.properties.mode === "circle"
-                          ? "Circle"
-                          : feature.geometry.type}
+                        {feature.kind}
                       </td>
                     </tr>
                   ))}

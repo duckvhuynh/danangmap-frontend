@@ -1,9 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { isKeyboardAuthoringDevice, wideReviewLayoutQuery } from "./authoring-capability";
+import {
+  desktopAuthoringQuery,
+  isKeyboardAuthoringDevice,
+  wideReviewLayoutQuery,
+} from "./authoring-capability";
 
 describe("desktop authoring capability", () => {
   it("tracks the Tailwind md breakpoint in rem units", () => {
     expect(wideReviewLayoutQuery).toBe("(min-width: 48rem)");
+  });
+
+  it("uses input capability rather than viewport width for authoring", () => {
+    expect(desktopAuthoringQuery).toBe("(hover: hover) and (pointer: fine)");
+    expect(desktopAuthoringQuery).not.toContain("width");
   });
 
   it("accepts a keyboard-oriented desktop device class", () => {

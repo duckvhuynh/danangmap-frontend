@@ -19,6 +19,14 @@ describe("metre-accurate circle rendering", () => {
     expect(polygon.coordinates[0]).toHaveLength(65);
     expect(polygon.coordinates[0][0]).toEqual(polygon.coordinates[0][64]);
     expect(distanceM(center, polygon.coordinates[0][16])).toBeCloseTo(100, 3);
+    expect(
+      polygon.coordinates[0].every((position) =>
+        position.every(
+          (coordinate) =>
+            (String(coordinate).split(".")[1]?.length ?? 0) <= 9,
+        ),
+      ),
+    ).toBe(true);
 
     const canonical = { type: "Feature", id: "circle-1", geometry: { type: "Point", coordinates: center }, properties: { id: "circle-1", layerId: "circles", name: "Vùng 100 m", kind: "Vùng", geometryKind: "circle", radiusM: 100, metadata: {} } } as PublicFeature;
     expect(renderableFeatureCollection([canonical]).features[0].geometry.type).toBe("Polygon");
