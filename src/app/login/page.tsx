@@ -2,6 +2,7 @@ import Link from "next/link";
 import { IconArrowLeft, IconLock, IconShieldCheck } from "@tabler/icons-react";
 import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
+import { BootstrapSetupLink } from "@/components/auth/bootstrap-setup-link";
 import { LoginForm } from "@/components/auth/login-form";
 
 export const metadata = { title: "Đăng nhập quản trị" };
@@ -21,6 +22,7 @@ export default function LoginPage() {
           <h1 className="mt-5 text-2xl font-semibold tracking-[-0.02em]">Đăng nhập quản trị</h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">Sử dụng tài khoản nội bộ do quản trị hệ thống cấp.</p>
           <LoginForm />
+          <BootstrapSetupLink />
           <p className="mt-6 rounded-control border bg-surface-subtle p-3 text-xs leading-5 text-muted-foreground">Nếu đăng nhập lần đầu, hệ thống sẽ yêu cầu thiết lập xác thực đa yếu tố.</p>
           <Button asChild variant="ghost" className="mt-8 -ml-3"><Link href="/"><IconArrowLeft stroke={1.75} />Quay lại bản đồ</Link></Button>
         </div>
