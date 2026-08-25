@@ -1,5 +1,20 @@
 # Real-stack acceptance
 
+The first-admin gate is `first-admin-bootstrap.spec.ts`. It must run against a freshly created database with no users and a backend configured with the same one-time `INITIAL_ADMIN_BOOTSTRAP_TOKEN`. The browser sends the token only in the dedicated header, creates the first System Admin, completes the real MFA enrollment and recovery-code acknowledgement, then proves `/setup` is unavailable. Trace, screenshot and video capture are disabled so the setup token, password, MFA secret and recovery codes cannot enter Playwright artifacts.
+
+```powershell
+$env:DANANGMAP_REAL_STACK = "true"
+$env:PLAYWRIGHT_BASE_URL = "https://gateway"
+$env:DANANGMAP_INITIAL_ADMIN_BOOTSTRAP_TOKEN = "<same value configured on the backend>"
+$env:DANANGMAP_BOOTSTRAP_ADMIN_EMAIL = "<fresh internal email>"
+$env:DANANGMAP_BOOTSTRAP_ADMIN_USERNAME = "<fresh lowercase username>"
+$env:DANANGMAP_BOOTSTRAP_ADMIN_DISPLAY_NAME = "<display name>"
+$env:DANANGMAP_BOOTSTRAP_ADMIN_PASSWORD = "<14+ character strong password>"
+npm run test:e2e:real:bootstrap
+```
+
+The password must contain lowercase, uppercase, digit and symbol characters and must not contain the username or the email local part. Do not commit any of these values.
+
 The publication suites run only against the external Docker stack. They never intercept or mock an API route. During the backward-compatible rollout the frontend accepts both valid `202` modes: the documented default-off legacy terminal (`status=completed`, snapshot, generation and optional matching `publicationId`, without durable `Location`/`Retry-After` or a strong job ETag; a generic weak Express ETag is allowed) and explicit durable acceptance (`queued/queued`, with `Location`, strong `ETag` and `Retry-After`). The exact local production activation pair backend `2d4675ec2385abf55fa23ad26914e037456f14cd` and frontend `6e6fe83f7dbf6d5a01c710bb35e670e08b63e1b8` completed two fresh-volume 18/18 runs and received independent GO. The backend default remains `false`, so durable async publication requires explicit opt-in. Remote cross-repository activation is now green: backend cross-stack run `32561792134`, frontend main run `32560236288` and backend main run `32562513173` passed after the repository-scoped read token was configured. No token value is stored in this repository or its test artifacts.
 
 Run it with:
