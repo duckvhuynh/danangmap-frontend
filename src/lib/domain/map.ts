@@ -7,6 +7,9 @@ export interface MetadataField {
   name: string;
   type: string;
   icon?: string;
+  searchable?: boolean;
+  filterable?: boolean;
+  options?: string[];
 }
 
 export type PublicSourceKind = "geojson" | "mvt" | "hybrid";
@@ -37,6 +40,24 @@ export interface PublicLayer {
   cluster: boolean;
   style: Record<string, unknown>;
   popupConfig: PopupConfig;
+  group?: {
+    id: string;
+    slug: string;
+    title: string;
+    displayOrder: number;
+  } | null;
+  displayOrder?: number;
+  defaultVisible?: boolean;
+  allowedGeometryKinds?: string[];
+  bounds?: number[] | null;
+  filterCapabilities?: {
+    fieldKeys: string[];
+    maxFilters: number;
+  };
+  searchCapabilities?: {
+    enabled: boolean;
+    fieldKeys: string[];
+  };
 }
 
 export interface PublicAttachment {
@@ -57,7 +78,7 @@ export type PublicFeature = Feature<Geometry, {
   kind: string;
   geometryKind?: string;
   radiusM?: number | null;
-  metadata: Record<string, string | number | null>;
+  metadata: Record<string, string | number | boolean | null>;
 }> & {
   attachments?: PublicAttachment[];
 };
@@ -67,6 +88,19 @@ export interface PublicMapData {
   features: PublicFeature[];
   source: "api" | "sample";
   issues: PublicMapIssue[];
+  viewport?: PublicViewportState;
+}
+
+export interface PublicLayerViewportState {
+  layerId: string;
+  returned: number;
+  truncated: boolean;
+  nextCursor: string | null;
+}
+
+export interface PublicViewportState {
+  bbox: string;
+  layers: PublicLayerViewportState[];
 }
 
 export interface PublicMapIssue {

@@ -293,6 +293,15 @@ Quy tắc render:
 - Layer IDs của Mapbox phải deterministic để cleanup, style switch và hot reload không tạo source/layer trùng.
 - Khi đổi Street/Light, renderer chờ style load rồi attach lại custom sources/layers theo thứ tự ổn định.
 
+Viewport query policy đã triển khai:
+
+- Catalog/schema tải độc lập; dữ liệu danh sách tải theo bbox sau `moveend` với debounce 250 ms. Request cũ bị abort và response quá hạn không được ghi đè state mới.
+- Chỉ lớp đang bật được query. Mỗi kết quả viewport thay thế snapshot trước đó và được de-duplicate theo `layerId + featureId`.
+- GeoJSON render trực tiếp; MVT/hybrid tiếp tục render bằng tile. Cả ba source kind đều lấy GeoJSON bbox giới hạn cho `AccessibleFeatureList`, nên MVT/hybrid không bị render trùng.
+- Public filter hiện dùng một exact-match filter hợp lệ `fieldKey:eq:value` tại một thời điểm; cùng filter được áp vào MVT render layer và accessible feed.
+- Mỗi lớp giới hạn 1.000 bản ghi/viewport. Contract hiện trả `nextCursor` nhưng chưa nhận cursor ở request, vì vậy UI không giả lập pagination: khi `truncated=true`, UI yêu cầu zoom hoặc lọc thêm.
+- Lỗi schema hoặc feature của một lớp chỉ tạo cảnh báo cục bộ; lớp còn lại, search và bản đồ nền tiếp tục hoạt động. Khi Mapbox không khả dụng, bbox Đà Nẵng mặc định vẫn cấp dữ liệu cho danh sách.
+
 ## 8. Accessibility của public map
 
 - Cung cấp link “Bỏ qua bản đồ, đến danh sách dữ liệu” là phần tử focus đầu tiên.
@@ -621,15 +630,15 @@ Tất cả breakpoint phải test với zoom trình duyệt 200%. Viewport width
 
 ### 16.1 Public map
 
-- [ ] `/` mở trực tiếp full map, không có landing page trung gian.
-- [ ] Street và Light hoạt động; không có Satellite trong UI.
-- [ ] Bật/tắt point, line, polygon, circle và mixed layer không tạo source/layer trùng.
-- [ ] MultiPoint, MultiLineString và MultiPolygon render, select và hiển thị metadata đúng; MultiPoint chỉ dùng trong point layer.
-- [ ] Search trả kết quả hợp nhất từ published internal data và Geo Service; partial failure vẫn sử dụng được.
-- [ ] Public map không ghi layer, feature hoặc viewport vào URL.
-- [ ] List view đồng bộ filter/viewport, dùng được chỉ bằng bàn phím và không phụ thuộc WebGL.
-- [ ] Mobile chỉ có một bottom sheet active; selected feature không bị che hoàn toàn.
-- [ ] Map failure có degraded list/search flow hoạt động.
+- [x] `/` mở trực tiếp full map, không có landing page trung gian.
+- [x] Street và Light hoạt động; không có Satellite trong UI.
+- [x] Bật/tắt point, line, polygon, circle và mixed layer không tạo source/layer trùng.
+- [x] MultiPoint, MultiLineString và MultiPolygon render, select và hiển thị metadata đúng; MultiPoint chỉ dùng trong point layer.
+- [x] Search trả kết quả hợp nhất từ published internal data và Geo Service; partial failure vẫn sử dụng được.
+- [x] Public map không ghi layer, feature hoặc viewport vào URL.
+- [x] List view đồng bộ filter/viewport, dùng được chỉ bằng bàn phím và không phụ thuộc WebGL.
+- [x] Mobile chỉ có một bottom sheet active; selected feature không bị che hoàn toàn.
+- [x] Map failure có degraded list/search flow hoạt động.
 - [ ] Public non-map flow không có axe violation mức critical/serious; focus order và contrast được kiểm tra thủ công.
 
 ### 16.2 Admin editor

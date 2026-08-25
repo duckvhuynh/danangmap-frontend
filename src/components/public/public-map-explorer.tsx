@@ -9,6 +9,7 @@ import {
   IconBuildingCommunity,
   IconChevronRight,
   IconDownload,
+  IconFilter,
   IconInfoCircle,
   IconLayersIntersect,
   IconList,
@@ -22,7 +23,13 @@ import {
 import { BrandMark } from "@/components/brand-mark";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { decodePublicFeatureDetail, getPublicMapData } from "@/lib/api/public-map";
+import {
+  DANANG_PUBLIC_BBOX,
+  decodePublicFeatureDetail,
+  getPublicCatalogData,
+  getPublicViewportData,
+  type PublicFeatureFilter,
+} from "@/lib/api/public-map";
 import { createDemoPublicSearch, getExternalPlace, getPublicFeature, searchPublicMap, type ExternalPlace, type PublicSearchResult } from "@/lib/api/public-search";
 import { sampleMapData } from "@/lib/data/sample-map";
 import type { PublicFeature, PublicLayer, PublicMapData } from "@/lib/domain/map";
@@ -43,21 +50,108 @@ function layerIcon(layer: PublicLayer) {
   return IconLayersIntersect;
 }
 
+export function groupPublicLayers(layers: PublicLayer[]) {
+  const groups = new Map<string, { key: string; title: string; displayOrder: number; layers: PublicLayer[] }>();
+  for (const layer of layers) {
+    const key = layer.group?.id ?? "ungrouped";
+    const group = groups.get(key) ?? {
+      key,
+      title: layer.group?.title ?? "Lớp khác",
+      displayOrder: layer.group?.displayOrder ?? Number.MAX_SAFE_INTEGER,
+      layers: [],
+    };
+    group.layers.push(layer);
+    groups.set(key, group);
+  }
+  return [...groups.values()]
+    .sort((left, right) => left.displayOrder - right.displayOrder || left.title.localeCompare(right.title, "vi"))
+    .map((group) => ({
+      ...group,
+      layers: group.layers.sort((left, right) => (left.displayOrder ?? 0) - (right.displayOrder ?? 0) || left.name.localeCompare(right.name, "vi")),
+    }));
+}
+
+export function defaultHiddenLayerIds(layers: PublicLayer[]) {
+  return new Set(layers.filter((layer) => layer.defaultVisible === false).map((layer) => layer.id));
+}
+
 function LayerList({ layers, hidden, onToggle }: { layers: PublicLayer[]; hidden: Set<string>; onToggle: (id: string) => void }) {
   return (
-    <div className="space-y-1" aria-label="Danh sách lớp dữ liệu">
-      {layers.map((layer) => {
-        const Icon = layerIcon(layer);
-        const active = !hidden.has(layer.id);
-        return (
-          <button key={layer.id} type="button" onClick={() => onToggle(layer.id)} aria-pressed={active} className={cn("flex w-full items-center gap-3 rounded-control p-2.5 text-left hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", active && "bg-accent-subtle") }>
-            <span className="grid size-9 shrink-0 place-items-center rounded-control border bg-surface" style={{ color: layer.color }}><Icon stroke={1.75} size={20} /></span>
-            <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{layer.name}</span><span className="block text-xs text-muted-foreground">{layer.featureCount} đối tượng</span></span>
-            <span className={cn("size-4 rounded-full border-2", active ? "border-primary bg-primary" : "border-border bg-surface")} aria-hidden="true" />
-          </button>
-        );
-      })}
+    <div className="space-y-4" aria-label="Danh sách lớp dữ liệu">
+      {groupPublicLayers(layers).map((group) => <section key={group.key} aria-labelledby={`layer-group-${group.key}`}>
+        <h3 id={`layer-group-${group.key}`} className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{group.title}</h3>
+        <div className="space-y-1">{group.layers.map((layer) => {
+          const Icon = layerIcon(layer);
+          const active = !hidden.has(layer.id);
+          return (
+            <button key={layer.id} type="button" onClick={() => onToggle(layer.id)} aria-pressed={active} className={cn("flex w-full items-center gap-3 rounded-control p-2.5 text-left hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", active && "bg-accent-subtle") }>
+              <span className="grid size-9 shrink-0 place-items-center rounded-control border bg-surface" style={{ color: layer.color }}><Icon stroke={1.75} size={20} /></span>
+              <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{layer.name}</span><span className="block text-xs text-muted-foreground">{layer.featureCount.toLocaleString("vi-VN")} đối tượng</span></span>
+              <span className={cn("size-4 rounded-full border-2", active ? "border-primary bg-primary" : "border-border bg-surface")} aria-hidden="true" />
+            </button>
+          );
+        })}</div>
+      </section>)}
     </div>
+  );
+}
+
+interface FilterChoice {
+  id: string;
+  layerId: string;
+  fieldKey: string;
+  label: string;
+  options: string[];
+}
+
+function PublicFilters({ id, layers, features, hidden, activeFilter, onApply }: { id: string; layers: PublicLayer[]; features: PublicFeature[]; hidden: Set<string>; activeFilter: PublicFeatureFilter | null; onApply: (filter: PublicFeatureFilter | null) => void }) {
+  const choices = useMemo<FilterChoice[]>(() => layers.flatMap((layer) => {
+    if (hidden.has(layer.id)) return [];
+    const allowed = new Set(layer.filterCapabilities?.fieldKeys ?? []);
+    return layer.fields.flatMap((field) => {
+      if (!field.filterable && !allowed.has(field.key)) return [];
+      const observed = features
+        .filter((feature) => feature.properties.layerId === layer.id)
+        .map((feature) => feature.properties.metadata[field.key])
+        .filter((value): value is string | number | boolean => typeof value === "string" || typeof value === "number" || typeof value === "boolean")
+        .map(String);
+      return [{
+        id: `${layer.id}:${field.key}`,
+        layerId: layer.id,
+        fieldKey: field.key,
+        label: `${layer.name} · ${field.name}`,
+        options: [...new Set([...(field.options ?? []), ...observed])].sort((left, right) => left.localeCompare(right, "vi")).slice(0, 100),
+      }];
+    });
+  }), [features, hidden, layers]);
+  const activeChoice = choices.find((choice) => choice.layerId === activeFilter?.layerId && choice.fieldKey === activeFilter.fieldKey);
+  const [choiceId, setChoiceId] = useState(activeChoice?.id ?? choices[0]?.id ?? "");
+  const [value, setValue] = useState(activeFilter?.value ?? "");
+  const choice = choices.find((item) => item.id === choiceId) ?? choices[0];
+  const effectiveValue = choice?.id === choiceId ? value : "";
+
+  if (!choices.length) return null;
+  return (
+    <section className="border-t p-3" aria-label="Bộ lọc dữ liệu công khai">
+      <div className="mb-2 flex items-center gap-2 text-xs font-semibold"><IconFilter size={16} stroke={1.75} />Lọc lớp đang bật</div>
+      <label className="sr-only" htmlFor={`${id}-field`}>Trường lọc</label>
+      <select id={`${id}-field`} value={choice?.id ?? ""} onChange={(event) => { setChoiceId(event.target.value); setValue(""); }} className="h-9 w-full rounded-control border bg-surface px-2 text-xs outline-none focus:ring-2 focus:ring-ring">
+        {choices.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+      </select>
+      <label className="sr-only" htmlFor={`${id}-value`}>Giá trị lọc</label>
+      {choice?.options.length ? (
+        <select id={`${id}-value`} value={effectiveValue} onChange={(event) => setValue(event.target.value)} className="mt-2 h-9 w-full rounded-control border bg-surface px-2 text-xs outline-none focus:ring-2 focus:ring-ring">
+          <option value="">Chọn giá trị</option>
+          {choice.options.map((option) => <option key={option} value={option}>{option}</option>)}
+        </select>
+      ) : (
+        <input id={`${id}-value`} value={effectiveValue} onChange={(event) => setValue(event.target.value)} placeholder="Nhập giá trị chính xác" className="mt-2 h-9 w-full rounded-control border bg-surface px-2 text-xs outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
+      )}
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <Button size="sm" variant="outline" onClick={() => { setValue(""); onApply(null); }} disabled={!activeFilter}>Xóa lọc</Button>
+        <Button size="sm" onClick={() => choice && effectiveValue.trim() && onApply({ layerId: choice.layerId, fieldKey: choice.fieldKey, value: effectiveValue.trim() })} disabled={!choice || !effectiveValue.trim()}>Áp dụng</Button>
+      </div>
+    </section>
   );
 }
 
@@ -140,6 +234,9 @@ export function PublicMapExplorer() {
   const publicSearchE2eMode = process.env.NEXT_PUBLIC_DANANGMAP_PUBLIC_SEARCH_E2E_MODE === "true";
   const [data, setData] = useState<PublicMapData>(() => demoMode ? sampleMapData : { source: "api", layers: [], features: [], issues: [] });
   const [dataState, setDataState] = useState<"loading" | "ready" | "partial" | "error">("loading");
+  const [viewportLoading, setViewportLoading] = useState(false);
+  const [viewportBbox, setViewportBbox] = useState(DANANG_PUBLIC_BBOX);
+  const [activeFilter, setActiveFilter] = useState<PublicFeatureFilter | null>(null);
   const [retryId, setRetryId] = useState(0);
   const [hiddenLayers, setHiddenLayers] = useState<Set<string>>(new Set());
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -154,16 +251,52 @@ export function PublicMapExplorer() {
   const [mapMessage, setMapMessage] = useState<string | null>(null);
   const focusSequenceRef = useRef(0);
   const placeRequestRef = useRef<AbortController | null>(null);
+  const viewportRequestRef = useRef(0);
+  const catalogIssuesRef = useRef(data.issues);
+  const visibilityInitializedRef = useRef(false);
+  const catalogUnavailable = dataState === "error";
 
   useEffect(() => {
     const controller = new AbortController();
-    getPublicMapData(controller.signal).then((next) => { setData(next); setDataState(next.issues.length ? "partial" : "ready"); }).catch((error: unknown) => {
+    getPublicCatalogData(controller.signal).then((next) => {
+      catalogIssuesRef.current = next.issues;
+      setData({ source: next.source, layers: next.layers, features: [], issues: next.issues });
+      if (!visibilityInitializedRef.current) {
+        setHiddenLayers(defaultHiddenLayerIds(next.layers));
+        visibilityInitializedRef.current = true;
+      }
+      setDataState(next.issues.length ? "partial" : "ready");
+    }).catch((error: unknown) => {
       if (error instanceof DOMException && error.name === "AbortError") return;
       setData({ source: "api", layers: [], features: [], issues: [] });
       setDataState("error");
     });
     return () => controller.abort();
   }, [retryId]);
+
+  useEffect(() => {
+    if (!data.layers.length || catalogUnavailable) return;
+    const visibleLayers = data.layers.filter((layer) => !hiddenLayers.has(layer.id));
+    const controller = new AbortController();
+    const requestId = ++viewportRequestRef.current;
+    queueMicrotask(() => {
+      if (!controller.signal.aborted && requestId === viewportRequestRef.current) setViewportLoading(true);
+    });
+    getPublicViewportData(visibleLayers, viewportBbox, controller.signal, activeFilter).then((next) => {
+      if (controller.signal.aborted || requestId !== viewportRequestRef.current) return;
+      const issues = [...catalogIssuesRef.current, ...next.issues];
+      setData((current) => ({ ...current, features: next.features, issues, viewport: next.viewport }));
+      setDataState(issues.length ? "partial" : "ready");
+    }).catch((error: unknown) => {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      if (requestId !== viewportRequestRef.current) return;
+      setData((current) => ({ ...current, features: [], issues: [...catalogIssuesRef.current, { layerId: "viewport", layerName: "Vùng bản đồ", code: "FEATURES_UNAVAILABLE", message: "Không tải được dữ liệu trong vùng xem." }] }));
+      setDataState("partial");
+    }).finally(() => {
+      if (!controller.signal.aborted && requestId === viewportRequestRef.current) setViewportLoading(false);
+    });
+    return () => controller.abort();
+  }, [activeFilter, catalogUnavailable, data.layers, hiddenLayers, viewportBbox]);
 
   useEffect(() => () => placeRequestRef.current?.abort(), []);
 
@@ -179,6 +312,10 @@ export function PublicMapExplorer() {
     () => demoMode && !publicSearchE2eMode ? createDemoPublicSearch(data) : searchPublicMap,
     [data, demoMode, publicSearchE2eMode],
   );
+  const truncatedLayers = useMemo(() => {
+    const visibleIds = new Set(data.layers.filter((layer) => !hiddenLayers.has(layer.id)).map((layer) => layer.id));
+    return data.viewport?.layers.filter((state) => state.truncated && visibleIds.has(state.layerId)) ?? [];
+  }, [data.layers, data.viewport, hiddenLayers]);
 
   function toggleLayer(id: string) {
     setHiddenLayers((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next; });
@@ -281,10 +418,18 @@ export function PublicMapExplorer() {
     setSheet(null);
   }
 
+  function skipToFeatureList(event: { preventDefault(): void }) {
+    event.preventDefault();
+    if (window.matchMedia("(min-width: 768px)").matches) setListOpen(true);
+    else setSheet("list");
+    requestAnimationFrame(() => document.getElementById("public-feature-list")?.focus());
+  }
+
   return (
     <main className="relative h-[100dvh] min-h-[560px] overflow-hidden bg-surface-subtle">
+      <a href="#public-feature-list" onClick={skipToFeatureList} className="absolute left-3 top-3 z-50 -translate-y-24 rounded-control bg-surface px-4 py-3 text-sm font-semibold text-primary map-control-shadow transition-transform focus:translate-y-0">Bỏ qua bản đồ, đến danh sách dữ liệu</a>
       <h1 className="sr-only">Bản đồ số Đà Nẵng</h1>
-      <div className="absolute inset-0"><PublicMapCanvas features={mapFeatures} layers={data.layers} hiddenLayerIds={hiddenLayers} layerColors={layerColors} basemap={basemap} command={command} focusTarget={focusTarget} onFeatureSelect={selectFeature} onError={setMapMessage} /></div>
+      <div className="absolute inset-0"><PublicMapCanvas features={mapFeatures} layers={data.layers} hiddenLayerIds={hiddenLayers} layerColors={layerColors} basemap={basemap} command={command} focusTarget={focusTarget} filter={activeFilter} onViewportChange={setViewportBbox} onFeatureSelect={selectFeature} onError={setMapMessage} /></div>
 
       <header className="pointer-events-none absolute inset-x-0 top-0 z-20 flex flex-col items-start gap-3 border-b bg-surface p-3 md:flex-row md:border-0 md:bg-transparent md:p-4">
         <Link href="/" className="pointer-events-auto md:hidden"><BrandMark /></Link>
@@ -296,14 +441,16 @@ export function PublicMapExplorer() {
       {demoMode && dataState === "ready" && <div className="absolute left-1/2 top-[124px] z-30 -translate-x-1/2 rounded-control border border-warning/30 bg-surface px-3 py-2 text-xs font-medium text-warning map-control-shadow md:top-[72px]" role="status">Chế độ demo · Không phải dữ liệu công bố</div>}
       {dataState === "error" && <div className="absolute left-1/2 top-[124px] z-30 flex max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-3 rounded-control border border-warning/30 bg-surface px-3 py-2 text-sm map-control-shadow md:top-[72px]" role="alert"><IconInfoCircle className="shrink-0 text-warning" size={20} stroke={1.75} /><span>Không tải được dữ liệu công bố. Bản đồ nền vẫn có thể sử dụng.</span><Button size="sm" variant="outline" onClick={() => { setDataState("loading"); setRetryId((value) => value + 1); }}>Thử lại</Button></div>}
       {dataState === "partial" && <div className="absolute left-1/2 top-[124px] z-30 flex max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-3 rounded-control border border-warning/30 bg-surface px-3 py-2 text-sm map-control-shadow md:top-[72px]" role="status"><IconInfoCircle className="shrink-0 text-warning" size={20} stroke={1.75} /><span>Một phần dữ liệu chưa tải được ({data.issues.length} cảnh báo). Các lớp còn lại vẫn sử dụng được.</span><Button size="sm" variant="outline" onClick={() => { setDataState("loading"); setRetryId((value) => value + 1); }}>Tải lại</Button></div>}
+      <div className="sr-only" aria-live="polite">{viewportLoading ? "Đang cập nhật các đối tượng trong vùng bản đồ" : `Đã hiển thị ${visibleFeatures.length} đối tượng trong vùng bản đồ`}</div>
 
       <aside className="absolute bottom-5 left-4 top-24 z-10 hidden w-[300px] flex-col overflow-hidden rounded-panel border bg-surface map-panel-shadow md:flex" aria-label="Lớp dữ liệu">
-        <div className="border-b p-4"><div className="flex items-center justify-between"><h2 className="font-semibold">Lớp dữ liệu</h2><Badge>{data.layers.length} lớp</Badge></div><p className="mt-1 text-xs text-muted-foreground">Bật hoặc tắt lớp trên bản đồ</p></div>
-        <div className="flex-1 overflow-y-auto p-2">{dataState === "loading" ? <p className="p-4 text-sm text-muted-foreground" role="status">Đang tải lớp dữ liệu...</p> : dataState === "error" ? <p className="p-4 text-sm leading-6 text-muted-foreground">Danh sách chưa khả dụng. Hãy thử lại sau.</p> : data.layers.length === 0 ? <p className="p-4 text-sm leading-6 text-muted-foreground">Chưa có lớp dữ liệu được công bố.</p> : <LayerList layers={data.layers} hidden={hiddenLayers} onToggle={toggleLayer} />}</div>
+        <div className="border-b p-4"><div className="flex items-center justify-between"><h2 className="font-semibold">Lớp dữ liệu</h2><Badge>{data.layers.length} lớp</Badge></div><p className="mt-1 text-xs text-muted-foreground">Bật/tắt lớp và xem chú giải màu</p></div>
+        <div className="flex-1 overflow-y-auto p-2">{dataState === "loading" && data.layers.length === 0 ? <p className="p-4 text-sm text-muted-foreground" role="status">Đang tải lớp dữ liệu...</p> : dataState === "error" ? <p className="p-4 text-sm leading-6 text-muted-foreground">Danh sách chưa khả dụng. Hãy thử lại sau.</p> : data.layers.length === 0 ? <p className="p-4 text-sm leading-6 text-muted-foreground">Chưa có lớp dữ liệu được công bố.</p> : <LayerList layers={data.layers} hidden={hiddenLayers} onToggle={toggleLayer} />}</div>
+        <PublicFilters id="public-filter-desktop" layers={data.layers} features={visibleFeatures} hidden={hiddenLayers} activeFilter={activeFilter} onApply={setActiveFilter} />
         <div className="border-t p-3"><Button variant="outline" className="w-full" onClick={() => setListOpen((value) => !value)}><IconList stroke={1.75} />{listOpen ? "Ẩn danh sách" : "Xem danh sách"}</Button></div>
       </aside>
 
-      {listOpen && <section className="absolute bottom-5 left-[332px] top-24 z-10 hidden w-[340px] overflow-hidden rounded-panel border bg-surface map-panel-shadow md:block"><div className="border-b p-4"><h2 className="font-semibold">Đối tượng trong vùng xem</h2><p className="mt-1 text-xs text-muted-foreground">{visibleFeatures.length} kết quả</p></div><div className="max-h-[calc(100%-70px)] overflow-y-auto p-2"><FeatureRows features={visibleFeatures} onSelect={selectFeature} /></div></section>}
+      {listOpen && <section id="public-feature-list" tabIndex={-1} className="absolute bottom-5 left-[332px] top-24 z-10 hidden w-[340px] overflow-hidden rounded-panel border bg-surface map-panel-shadow focus:outline-none md:block"><div className="border-b p-4"><div className="flex items-center justify-between gap-3"><h2 className="font-semibold">Đối tượng trong vùng xem</h2>{viewportLoading && <span className="text-xs text-primary" role="status">Đang cập nhật…</span>}</div><p className="mt-1 text-xs text-muted-foreground">{visibleFeatures.length.toLocaleString("vi-VN")} kết quả · thay đổi theo vùng bản đồ</p>{truncatedLayers.length > 0 && <p className="mt-2 rounded-control bg-accent-subtle px-2.5 py-2 text-xs leading-5 text-primary">Danh sách đã đạt giới hạn 1.000 đối tượng/lớp. Hãy phóng to hoặc dùng bộ lọc để xem chính xác hơn.</p>}</div><div className="max-h-[calc(100%-96px)] overflow-y-auto p-2"><FeatureRows features={visibleFeatures} onSelect={selectFeature} /></div></section>}
 
       {(selected || externalPlace || detailLoading) && <aside aria-label="Thông tin kết quả" className="absolute right-20 top-24 z-10 hidden max-h-[calc(100dvh-8rem)] w-[340px] overflow-y-auto rounded-panel border bg-surface p-5 map-panel-shadow md:block">{selected ? <FeatureDetail feature={selected} layer={selectedLayer} loading={detailLoading} onClose={closeDetail} /> : externalPlace ? <ExternalPlaceDetail place={externalPlace} onClose={closeDetail} /> : <p className="text-sm text-muted-foreground" role="status">Đang tải chi tiết kết quả...</p>}</aside>}
 
@@ -321,11 +468,11 @@ export function PublicMapExplorer() {
         <Button variant="outline" className="h-12 border-0 bg-surface map-control-shadow" onClick={() => run("reset")}><IconRefresh stroke={1.75} />Đặt lại</Button>
       </nav>
 
-      {sheet && <section className="safe-bottom absolute inset-x-0 bottom-[68px] z-20 max-h-[58dvh] overflow-y-auto rounded-t-[18px] border-t bg-surface p-4 map-panel-shadow md:hidden" aria-label={sheet === "layers" ? "Lớp dữ liệu" : sheet === "list" ? "Danh sách kết quả" : "Thông tin đối tượng"}>
+      {sheet && <section id={sheet === "list" ? "public-feature-list" : undefined} tabIndex={sheet === "list" ? -1 : undefined} className="safe-bottom absolute inset-x-0 bottom-[68px] z-20 max-h-[58dvh] overflow-y-auto rounded-t-[18px] border-t bg-surface p-4 map-panel-shadow focus:outline-none md:hidden" aria-label={sheet === "layers" ? "Lớp dữ liệu" : sheet === "list" ? "Danh sách kết quả" : "Thông tin đối tượng"}>
         <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-border" aria-hidden="true" />
         <div className="mb-3 flex items-center justify-between"><h2 className="font-semibold">{sheet === "layers" ? "Lớp dữ liệu" : sheet === "list" ? `${visibleFeatures.length} kết quả` : "Thông tin đối tượng"}</h2><Button variant="ghost" size="icon-sm" onClick={() => setSheet(null)} aria-label="Đóng bảng"><IconX stroke={1.75} /></Button></div>
-        {sheet === "layers" && <LayerList layers={data.layers} hidden={hiddenLayers} onToggle={toggleLayer} />}
-        {sheet === "list" && <FeatureRows features={visibleFeatures} onSelect={selectFeature} />}
+        {sheet === "layers" && <><LayerList layers={data.layers} hidden={hiddenLayers} onToggle={toggleLayer} /><div className="-mx-4 mt-4"><PublicFilters id="public-filter-mobile" layers={data.layers} features={visibleFeatures} hidden={hiddenLayers} activeFilter={activeFilter} onApply={setActiveFilter} /></div></>}
+        {sheet === "list" && <>{viewportLoading && <p className="mb-2 text-xs text-primary" role="status">Đang cập nhật theo vùng bản đồ…</p>}{truncatedLayers.length > 0 && <p className="mb-3 rounded-control bg-accent-subtle p-2.5 text-xs leading-5 text-primary">Đã đạt giới hạn 1.000 đối tượng/lớp. Hãy phóng to hoặc lọc thêm.</p>}<FeatureRows features={visibleFeatures} onSelect={selectFeature} /></>}
         {sheet === "detail" && (selected ? <FeatureDetail feature={selected} layer={selectedLayer} loading={detailLoading} showClose={false} onClose={closeDetail} /> : externalPlace ? <ExternalPlaceDetail place={externalPlace} showClose={false} onClose={closeDetail} /> : detailLoading ? <p className="py-5 text-sm text-muted-foreground" role="status">Đang tải chi tiết kết quả...</p> : null)}
       </section>}
 
