@@ -502,6 +502,12 @@ test("real editor ledger survives reload, retries identically, reports partial c
         (feature) => feature.properties.name === tabName,
       ).length,
     ).toBe(1);
+    await expect(
+      secondPage.getByText("Đã đồng bộ", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      secondPage.getByRole("button", { name: "Đồng bộ" }),
+    ).toBeDisabled();
     expect(batchRequests).toBe(1);
     await secondPage.close();
   } finally {

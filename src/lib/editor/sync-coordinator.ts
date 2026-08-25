@@ -17,7 +17,7 @@ type LockManagerLike = {
   ): Promise<T>;
 };
 
-const ownerId = crypto.randomUUID();
+export const editorSyncOwnerId = crypto.randomUUID();
 const channelName = "danangmap-editor-sync";
 
 function publish(activity: SyncActivity) {
@@ -55,7 +55,7 @@ export async function withEditorSyncOwnership<T>(
       if (!lock) return { acquired: false } as const;
       publish({
         workspaceId,
-        ownerId,
+        ownerId: editorSyncOwnerId,
         state: "started",
         at: new Date().toISOString(),
       });
@@ -64,7 +64,7 @@ export async function withEditorSyncOwnership<T>(
       } finally {
         publish({
           workspaceId,
-          ownerId,
+          ownerId: editorSyncOwnerId,
           state: "finished",
           at: new Date().toISOString(),
         });
