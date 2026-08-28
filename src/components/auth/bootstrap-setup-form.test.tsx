@@ -100,7 +100,9 @@ describe("first System Admin setup privacy and continuation", () => {
       await screen.findByText("Không thể khởi tạo tài khoản đầu tiên"),
     ).toBeInTheDocument();
     expect(document.body).not.toHaveTextContent("admin@demo");
-    expect(screen.queryByLabelText("Mã khởi tạo một lần")).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Mã khởi tạo một lần"),
+    ).not.toBeInTheDocument();
     view.unmount();
   });
 
@@ -118,7 +120,9 @@ describe("first System Admin setup privacy and continuation", () => {
       }),
     );
     const storageSpy = vi.spyOn(Storage.prototype, "setItem");
-    const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const consoleSpy = vi
+      .spyOn(console, "log")
+      .mockImplementation(() => undefined);
     const databasesBefore = await indexedDB.databases();
     await renderAvailable(true);
     fillAccount();
@@ -141,7 +145,9 @@ describe("first System Admin setup privacy and continuation", () => {
         challengeExpiresAt: "2026-08-25T15:00:00.000Z",
       }),
     );
-    expect(await screen.findByText("System Admin đã được tạo")).toBeInTheDocument();
+    expect(
+      await screen.findByText("System Admin đã được tạo"),
+    ).toBeInTheDocument();
     expect(screen.queryByDisplayValue(password)).not.toBeInTheDocument();
     expect(screen.queryByDisplayValue(bootstrapToken)).not.toBeInTheDocument();
     expect(document.body).not.toHaveTextContent(bootstrapToken);
@@ -153,6 +159,33 @@ describe("first System Admin setup privacy and continuation", () => {
         "/login/mfa?enrollment=required",
       ),
     );
+  });
+
+  it("continues directly to admin when bootstrap returns an authenticated session", async () => {
+    vi.mocked(bootstrapSystemAdmin).mockResolvedValue({
+      status: "authenticated",
+      mfaEnrollmentRequired: false,
+      principal: {
+        id: "11111111-1111-4111-8111-111111111111",
+        email: account.email,
+        username: account.username,
+        displayName: account.displayName,
+        role: "system_admin",
+        status: "active",
+        mfaEnabled: false,
+        mustChangePassword: false,
+      },
+    });
+    await renderAvailable();
+    fillAccount();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Tạo System Admin và tiếp tục" }),
+    );
+
+    expect(
+      await screen.findByText("Đang chuyển tới trang quản trị."),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/admin"));
   });
 
   it("never retries an ambiguous create and removes all form values", async () => {
@@ -176,14 +209,16 @@ describe("first System Admin setup privacy and continuation", () => {
       await screen.findByText("Trạng thái khởi tạo chưa xác định"),
     ).toBeInTheDocument();
     expect(screen.queryByLabelText("Mật khẩu")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Mã khởi tạo một lần")).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Mã khởi tạo một lần"),
+    ).not.toBeInTheDocument();
     expect(document.body).not.toHaveTextContent(bootstrapToken);
     expect(vi.mocked(bootstrapSystemAdmin)).toHaveBeenCalledTimes(1);
     expect(
       screen.queryByRole("button", { name: "Tạo System Admin và tiếp tục" }),
     ).not.toBeInTheDocument();
-    await screen.getByRole("button", { name: "Tiếp tục kiểm tra MFA" }).click();
-    expect(router.replace).toHaveBeenCalledWith("/login/mfa?enrollment=required");
+    await screen.getByRole("button", { name: "Đi đến đăng nhập" }).click();
+    expect(router.replace).toHaveBeenCalledWith("/login");
   });
 });
 
@@ -191,18 +226,39 @@ describe("first System Admin setup validation and operational states", () => {
   it.each([
     ["displayName", { displayName: "Q" }, "Tên hiển thị", "2 đến 200"],
     ["email", { email: "invalid" }, "Email nội bộ", "chưa đúng định dạng"],
-    ["username", { username: "Admin Account" }, "Tên đăng nhập", "ký tự thường"],
-    ["password", { password: "not-strong-enough", passwordConfirmation: "not-strong-enough" }, "Mật khẩu", "chữ hoa"],
-    ["passwordConfirmation", { passwordConfirmation: `${password}x` }, "Nhập lại mật khẩu", "chưa trùng khớp"],
-  ])("focuses the first invalid %s field before calling the API", async (_case, overrides, label, message) => {
-    await renderAvailable();
-    fillAccount(overrides);
-    fireEvent.submit(screen.getByLabelText("Tên hiển thị").closest("form")!);
-    const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent(message);
-    expect(screen.getByLabelText(label)).toHaveFocus();
-    expect(vi.mocked(bootstrapSystemAdmin)).not.toHaveBeenCalled();
-  });
+    [
+      "username",
+      { username: "Admin Account" },
+      "Tên đăng nhập",
+      "ký tự thường",
+    ],
+    [
+      "password",
+      {
+        password: "not-strong-enough",
+        passwordConfirmation: "not-strong-enough",
+      },
+      "Mật khẩu",
+      "chữ hoa",
+    ],
+    [
+      "passwordConfirmation",
+      { passwordConfirmation: `${password}x` },
+      "Nhập lại mật khẩu",
+      "chưa trùng khớp",
+    ],
+  ])(
+    "focuses the first invalid %s field before calling the API",
+    async (_case, overrides, label, message) => {
+      await renderAvailable();
+      fillAccount(overrides);
+      fireEvent.submit(screen.getByLabelText("Tên hiển thị").closest("form")!);
+      const alert = await screen.findByRole("alert");
+      expect(alert).toHaveTextContent(message);
+      expect(screen.getByLabelText(label)).toHaveFocus();
+      expect(vi.mocked(bootstrapSystemAdmin)).not.toHaveBeenCalled();
+    },
+  );
 
   it("clears and focuses only an invalid one-time token", async () => {
     vi.mocked(bootstrapSystemAdmin).mockRejectedValue(
@@ -223,47 +279,57 @@ describe("first System Admin setup validation and operational states", () => {
   it.each([
     [429, "RATE_LIMITED", "25 giây"],
     [403, "CSRF_INVALID", "Phiên bảo mật không hợp lệ"],
-  ])("keeps a keyboard retry path for a %i response", async (status, code, message) => {
-    vi.mocked(bootstrapSystemAdmin).mockRejectedValue(
-      new BootstrapApiError(
-        status,
-        code,
-        "backend detail",
-        undefined,
-        status === 429 ? 25 : undefined,
-      ),
-    );
-    await renderAvailable();
-    fillAccount();
-    fireEvent.click(
-      screen.getByRole("button", { name: "Tạo System Admin và tiếp tục" }),
-    );
-    const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent(message);
-    expect(alert).toHaveFocus();
-    const retry = screen.getByRole("button", {
-      name: "Tạo System Admin và tiếp tục",
-    });
-    expect(retry).toBeEnabled();
-    retry.focus();
-    expect(retry).toHaveFocus();
-  });
+  ])(
+    "keeps a keyboard retry path for a %i response",
+    async (status, code, message) => {
+      vi.mocked(bootstrapSystemAdmin).mockRejectedValue(
+        new BootstrapApiError(
+          status,
+          code,
+          "backend detail",
+          undefined,
+          status === 429 ? 25 : undefined,
+        ),
+      );
+      await renderAvailable();
+      fillAccount();
+      fireEvent.click(
+        screen.getByRole("button", { name: "Tạo System Admin và tiếp tục" }),
+      );
+      const alert = await screen.findByRole("alert");
+      expect(alert).toHaveTextContent(message);
+      expect(alert).toHaveFocus();
+      const retry = screen.getByRole("button", {
+        name: "Tạo System Admin và tiếp tục",
+      });
+      expect(retry).toBeEnabled();
+      retry.focus();
+      expect(retry).toHaveFocus();
+    },
+  );
 
   it.each([
     [409, "BOOTSTRAP_ALREADY_COMPLETED", "đã có tài khoản quản trị"],
     [503, "BOOTSTRAP_UNAVAILABLE", "chưa được bật"],
-  ])("removes the form after terminal %i availability state", async (status, code, message) => {
-    vi.mocked(bootstrapSystemAdmin).mockRejectedValue(
-      new BootstrapApiError(status, code, "backend detail"),
-    );
-    await renderAvailable();
-    fillAccount();
-    fireEvent.click(
-      screen.getByRole("button", { name: "Tạo System Admin và tiếp tục" }),
-    );
-    expect(await screen.findByText(message, { exact: false })).toBeInTheDocument();
-    expect(screen.queryByLabelText("Mã khởi tạo một lần")).not.toBeInTheDocument();
-  });
+  ])(
+    "removes the form after terminal %i availability state",
+    async (status, code, message) => {
+      vi.mocked(bootstrapSystemAdmin).mockRejectedValue(
+        new BootstrapApiError(status, code, "backend detail"),
+      );
+      await renderAvailable();
+      fillAccount();
+      fireEvent.click(
+        screen.getByRole("button", { name: "Tạo System Admin và tiếp tục" }),
+      );
+      expect(
+        await screen.findByText(message, { exact: false }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Mã khởi tạo một lần"),
+      ).not.toBeInTheDocument();
+    },
+  );
 
   it("offers a bounded retry after status network failure", async () => {
     vi.mocked(getBootstrapStatus)

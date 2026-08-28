@@ -1,5 +1,6 @@
 import { apiClient, createDanangMapClient } from "@/lib/api/generated/client";
 import type { operations } from "@/lib/api/generated/schema";
+import { decodeAuthPrincipal } from "@/lib/api/auth";
 
 type ApiClient = ReturnType<typeof createDanangMapClient>;
 type InspectContract = operations["inspectInvite"]["responses"][200]["content"]["application/json"]["data"];
@@ -109,35 +110,33 @@ function decodeInspection(value: unknown): InviteInspection {
     throw new InviteApiError(502, "CONTRACT_INVALID", "Vai trò trong lời mời không hợp lệ.");
   }
   const expiresAt = requiredString(data.expiresAt, "expiresAt");
-  if (!Number.isFinite(Date.parse(expiresAt)) || data.requiresMfaEnrollment !== true) {
+  if (!Number.isFinite(Date.parse(expiresAt)) || typeof data.requiresMfaEnrollment !== "boolean") {
     throw new InviteApiError(502, "CONTRACT_INVALID", "Thông tin lời mời không đúng hợp đồng.");
   }
   return {
     maskedEmail: requiredString(data.maskedEmail, "maskedEmail"),
     role,
     expiresAt,
-    requiresMfaEnrollment: true,
+    requiresMfaEnrollment: data.requiresMfaEnrollment,
   };
 }
 
 function decodeAcceptance(value: unknown): InviteAcceptance {
   const data = unwrapEnvelope(value);
-  if (
-    !isRecord(data) ||
-    data.status !== "mfa_required" ||
-    data.mfaEnrollmentRequired !== true
-  ) {
+  if (!isRecord(data)) {
+    throw new InviteApiError(502, "CONTRACT_INVALID", "Phản hồi chấp nhận lời mời không đúng hợp đồng.");
+  }
+  if (data.status === "authenticated" && data.mfaEnrollmentRequired === false) {
+    return { status: data.status, mfaEnrollmentRequired: false, principal: decodeAuthPrincipal(data.principal) };
+  }
+  if (data.status !== "mfa_required" || typeof data.mfaEnrollmentRequired !== "boolean") {
     throw new InviteApiError(502, "CONTRACT_INVALID", "Phản hồi chấp nhận lời mời không đúng hợp đồng.");
   }
   const challengeExpiresAt = requiredString(data.challengeExpiresAt, "challengeExpiresAt");
   if (!Number.isFinite(Date.parse(challengeExpiresAt))) {
     throw new InviteApiError(502, "CONTRACT_INVALID", "Thời hạn thử thách MFA không hợp lệ.");
   }
-  return {
-    status: data.status,
-    mfaEnrollmentRequired: true,
-    challengeExpiresAt,
-  };
+  return { status: data.status, mfaEnrollmentRequired: data.mfaEnrollmentRequired, challengeExpiresAt };
 }
 
 async function acquireCsrfToken(client: ApiClient) {

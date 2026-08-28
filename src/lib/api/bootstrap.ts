@@ -1,5 +1,6 @@
 import { apiClient, createDanangMapClient } from "@/lib/api/generated/client";
 import type { operations } from "@/lib/api/generated/schema";
+import { decodeAuthPrincipal } from "@/lib/api/auth";
 
 type ApiClient = ReturnType<typeof createDanangMapClient>;
 
@@ -16,11 +17,7 @@ export interface BootstrapStatus {
 export type BootstrapSystemAdminInput =
   operations["bootstrapSystemAdmin"]["requestBody"]["content"]["application/json"];
 
-export interface BootstrapSystemAdminResult {
-  status: "mfa_required";
-  mfaEnrollmentRequired: true;
-  challengeExpiresAt: string;
-}
+export type BootstrapSystemAdminResult = operations["bootstrapSystemAdmin"]["responses"][201]["content"]["application/json"]["data"];
 
 export class BootstrapApiError extends Error {
   constructor(
@@ -130,33 +127,20 @@ function decodeStatus(value: unknown): BootstrapStatus {
 
 function decodeResult(value: unknown): BootstrapSystemAdminResult {
   const data = unwrapEnvelope(value);
-  if (
-    !isRecord(data) ||
-    data.status !== "mfa_required" ||
-    data.mfaEnrollmentRequired !== true
-  ) {
-    throw new BootstrapApiError(
-      502,
-      "CONTRACT_INVALID",
-      "Phản hồi khởi tạo không đúng hợp đồng.",
-    );
+  if (!isRecord(data)) {
+    throw new BootstrapApiError(502, "CONTRACT_INVALID", "Phản hồi khởi tạo không đúng hợp đồng.");
   }
-  const challengeExpiresAt = requiredString(
-    data.challengeExpiresAt,
-    "challengeExpiresAt",
-  );
+  if (data.status === "authenticated" && data.mfaEnrollmentRequired === false) {
+    return { status: data.status, mfaEnrollmentRequired: false, principal: decodeAuthPrincipal(data.principal) };
+  }
+  if (data.status !== "mfa_required" || typeof data.mfaEnrollmentRequired !== "boolean") {
+    throw new BootstrapApiError(502, "CONTRACT_INVALID", "Phản hồi khởi tạo không đúng hợp đồng.");
+  }
+  const challengeExpiresAt = requiredString(data.challengeExpiresAt, "challengeExpiresAt");
   if (!Number.isFinite(Date.parse(challengeExpiresAt))) {
-    throw new BootstrapApiError(
-      502,
-      "CONTRACT_INVALID",
-      "Thời hạn thử thách MFA không hợp lệ.",
-    );
+    throw new BootstrapApiError(502, "CONTRACT_INVALID", "Thời hạn thử thách MFA không hợp lệ.");
   }
-  return {
-    status: "mfa_required",
-    mfaEnrollmentRequired: true,
-    challengeExpiresAt,
-  };
+  return { status: "mfa_required", mfaEnrollmentRequired: data.mfaEnrollmentRequired, challengeExpiresAt };
 }
 
 async function acquireCsrfToken(client: ApiClient) {

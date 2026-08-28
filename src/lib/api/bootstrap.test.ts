@@ -30,9 +30,9 @@ describe("first-admin bootstrap generated-client boundary", () => {
       });
     });
 
-    await expect(
-      getBootstrapStatus({}, client),
-    ).resolves.toEqual({ available: true });
+    await expect(getBootstrapStatus({}, client)).resolves.toEqual({
+      available: true,
+    });
     expect(requests).toHaveLength(1);
     expect(requests[0].url).toBe(
       "http://localhost:4000/api/v1/auth/bootstrap/status",
@@ -74,7 +74,9 @@ describe("first-admin bootstrap generated-client boundary", () => {
       "/api/v1/auth/csrf",
       "/api/v1/auth/bootstrap/system-admin",
     ]);
-    expect(requests.every((request) => request.credentials === "include")).toBe(true);
+    expect(requests.every((request) => request.credentials === "include")).toBe(
+      true,
+    );
     expect(requests[1].headers.get("x-csrf-token")).toBe("csrf-bootstrap");
     expect(requests[1].headers.get("x-initial-admin-bootstrap-token")).toBe(
       "T".repeat(43),
@@ -85,12 +87,51 @@ describe("first-admin bootstrap generated-client boundary", () => {
     );
   });
 
+  it("accepts a direct authenticated bootstrap result when MFA is disabled", async () => {
+    let calls = 0;
+    const principal = {
+      id: "11111111-1111-4111-8111-111111111111",
+      email: input.email,
+      username: input.username,
+      displayName: input.displayName,
+      role: "system_admin" as const,
+      status: "active" as const,
+      mfaEnabled: false,
+      mustChangePassword: false,
+    };
+    const client = createDanangMapClient(async () => {
+      calls += 1;
+      return calls === 1
+        ? new Response(envelope({ csrfToken: "csrf" }), {
+            status: 200,
+            headers: jsonHeaders,
+          })
+        : new Response(
+            envelope({
+              status: "authenticated",
+              mfaEnrollmentRequired: false,
+              principal,
+            }),
+            { status: 201, headers: jsonHeaders },
+          );
+    });
+
+    await expect(
+      bootstrapSystemAdmin(input, "W".repeat(43), client),
+    ).resolves.toEqual({
+      status: "authenticated",
+      mfaEnrollmentRequired: false,
+      principal,
+    });
+  });
+
   it("rejects expanded or malformed success envelopes", async () => {
-    const invalidStatus = createDanangMapClient(async () =>
-      new Response(envelope({ available: "yes", userCount: 0 }), {
-        status: 200,
-        headers: jsonHeaders,
-      }),
+    const invalidStatus = createDanangMapClient(
+      async () =>
+        new Response(envelope({ available: "yes", userCount: 0 }), {
+          status: 200,
+          headers: jsonHeaders,
+        }),
     );
     await expect(getBootstrapStatus({}, invalidStatus)).rejects.toMatchObject({
       code: "CONTRACT_INVALID",

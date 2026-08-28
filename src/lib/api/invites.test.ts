@@ -23,12 +23,19 @@ describe("public invite generated-client boundary", () => {
     const client = createDanangMapClient(async (input, init) => {
       const request = new Request(input, init);
       requests.push(request);
-      return new Response(envelope(inspection), { status: 200, headers: jsonHeaders });
+      return new Response(envelope(inspection), {
+        status: 200,
+        headers: jsonHeaders,
+      });
     });
 
-    await expect(inspectInvite("a".repeat(43), client)).resolves.toEqual(inspection);
+    await expect(inspectInvite("a".repeat(43), client)).resolves.toEqual(
+      inspection,
+    );
     expect(requests).toHaveLength(1);
-    expect(requests[0].url).toBe("http://localhost:4000/api/v1/auth/invites:inspect");
+    expect(requests[0].url).toBe(
+      "http://localhost:4000/api/v1/auth/invites:inspect",
+    );
     expect(requests[0].method).toBe("POST");
     expect(requests[0].credentials).toBe("include");
     expect(requests[0].headers.get("x-csrf-token")).toBeNull();
@@ -65,13 +72,18 @@ describe("public invite generated-client boundary", () => {
         },
         client,
       ),
-    ).resolves.toMatchObject({ status: "mfa_required", mfaEnrollmentRequired: true });
+    ).resolves.toMatchObject({
+      status: "mfa_required",
+      mfaEnrollmentRequired: true,
+    });
 
     expect(requests.map((request) => new URL(request.url).pathname)).toEqual([
       "/api/v1/auth/csrf",
       "/api/v1/auth/invites:accept",
     ]);
-    expect(requests.every((request) => request.credentials === "include")).toBe(true);
+    expect(requests.every((request) => request.credentials === "include")).toBe(
+      true,
+    );
     expect(requests[1].headers.get("x-csrf-token")).toBe("csrf-invite");
     expect(await requests[1].clone().json()).toEqual({
       token: "b".repeat(43),
@@ -81,13 +93,16 @@ describe("public invite generated-client boundary", () => {
   });
 
   it("validates inspect and accept success envelopes at runtime", async () => {
-    const invalidInspection = createDanangMapClient(async () =>
-      new Response(envelope({ ...inspection, role: "owner" }), {
-        status: 200,
-        headers: jsonHeaders,
-      }),
+    const invalidInspection = createDanangMapClient(
+      async () =>
+        new Response(envelope({ ...inspection, role: "owner" }), {
+          status: 200,
+          headers: jsonHeaders,
+        }),
     );
-    await expect(inspectInvite("c".repeat(43), invalidInspection)).rejects.toMatchObject({
+    await expect(
+      inspectInvite("c".repeat(43), invalidInspection),
+    ).rejects.toMatchObject({
       code: "CONTRACT_INVALID",
     });
 
@@ -95,12 +110,15 @@ describe("public invite generated-client boundary", () => {
     const invalidAcceptance = createDanangMapClient(async () => {
       calls += 1;
       return calls === 1
-        ? new Response(envelope({ csrfToken: "csrf" }), { status: 200, headers: jsonHeaders })
+        ? new Response(envelope({ csrfToken: "csrf" }), {
+            status: 200,
+            headers: jsonHeaders,
+          })
         : new Response(
             envelope({
               status: "mfa_required",
               mfaEnrollmentRequired: false,
-              challengeExpiresAt: "2026-08-21T15:00:00.000Z",
+              challengeExpiresAt: "not-a-date",
             }),
             { status: 200, headers: jsonHeaders },
           );
@@ -117,10 +135,72 @@ describe("public invite generated-client boundary", () => {
     ).rejects.toMatchObject({ code: "CONTRACT_INVALID" });
   });
 
+  it("accepts disabled-MFA inspection and direct authenticated acceptance", async () => {
+    const disabledInspection = { ...inspection, requiresMfaEnrollment: false };
+    await expect(
+      inspectInvite(
+        "g".repeat(43),
+        createDanangMapClient(
+          async () =>
+            new Response(envelope(disabledInspection), {
+              status: 200,
+              headers: jsonHeaders,
+            }),
+        ),
+      ),
+    ).resolves.toEqual(disabledInspection);
+
+    let calls = 0;
+    const principal = {
+      id: "11111111-1111-4111-8111-111111111111",
+      email: "editor@danang.gov.vn",
+      username: "editor",
+      displayName: "Editor",
+      role: "editor" as const,
+      status: "active" as const,
+      mfaEnabled: false,
+      mustChangePassword: false,
+    };
+    const client = createDanangMapClient(async () => {
+      calls += 1;
+      return calls === 1
+        ? new Response(envelope({ csrfToken: "csrf" }), {
+            status: 200,
+            headers: jsonHeaders,
+          })
+        : new Response(
+            envelope({
+              status: "authenticated",
+              mfaEnrollmentRequired: false,
+              principal,
+            }),
+            { status: 200, headers: jsonHeaders },
+          );
+    });
+    await expect(
+      acceptInvite(
+        {
+          token: "h".repeat(43),
+          password: "New-password-2026!",
+          passwordConfirmation: "New-password-2026!",
+        },
+        client,
+      ),
+    ).resolves.toEqual({
+      status: "authenticated",
+      mfaEnrollmentRequired: false,
+      principal,
+    });
+  });
+
   it("keeps invalid invite states generic and exposes explicit operational states", () => {
     const invalidMessages = [400, 404, 410].map((status) =>
       inviteErrorMessage(
-        new InviteApiError(status, "INVITE_INVALID_OR_EXPIRED", "backend detail"),
+        new InviteApiError(
+          status,
+          "INVITE_INVALID_OR_EXPIRED",
+          "backend detail",
+        ),
         "inspect",
       ),
     );
@@ -133,10 +213,16 @@ describe("public invite generated-client boundary", () => {
       ),
     ).toContain("45 giây");
     expect(
-      inviteErrorMessage(new InviteApiError(503, "SERVICE_UNAVAILABLE", "down"), "inspect"),
+      inviteErrorMessage(
+        new InviteApiError(503, "SERVICE_UNAVAILABLE", "down"),
+        "inspect",
+      ),
     ).toContain("tạm gián đoạn");
     expect(
-      inviteErrorMessage(new InviteApiError(409, "INVITE_ACCEPTANCE_CONFLICT", "conflict"), "accept"),
+      inviteErrorMessage(
+        new InviteApiError(409, "INVITE_ACCEPTANCE_CONFLICT", "conflict"),
+        "accept",
+      ),
     ).toContain("xung đột");
   });
 
@@ -160,12 +246,17 @@ describe("public invite generated-client boundary", () => {
       },
       acceptClient,
     ).catch((error) => error);
-    expect(caught).toMatchObject({ code: "NETWORK_AMBIGUOUS", ambiguous: true });
+    expect(caught).toMatchObject({
+      code: "NETWORK_AMBIGUOUS",
+      ambiguous: true,
+    });
 
     const inspectClient = createDanangMapClient(async () => {
       throw new TypeError("offline");
     });
-    await expect(inspectInvite("f".repeat(43), inspectClient)).rejects.toMatchObject({
+    await expect(
+      inspectInvite("f".repeat(43), inspectClient),
+    ).rejects.toMatchObject({
       code: "NETWORK_ERROR",
       ambiguous: false,
     });

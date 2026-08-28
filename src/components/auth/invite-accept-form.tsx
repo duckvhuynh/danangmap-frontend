@@ -40,7 +40,7 @@ const roleLabels: Record<InviteInspection["role"], string> = {
 type InviteStage =
   | { name: "entry" }
   | { name: "details"; token: string; inspection: InviteInspection }
-  | { name: "accepted" }
+  | { name: "accepted"; mfaRequired: boolean }
   | { name: "uncertain"; message: string };
 
 function formatExpiry(value: string) {
@@ -165,13 +165,12 @@ export function InviteAcceptForm() {
     setError(null);
     setErrorField(null);
     try {
-      await acceptInvite({ token: stage.token, password, passwordConfirmation });
+      const result = await acceptInvite({ token: stage.token, password, passwordConfirmation });
       formElement.reset();
-      setStage({ name: "accepted" });
-      globalThis.setTimeout(
-        () => router.replace("/login/mfa?enrollment=required"),
-        0,
-      );
+      setStage({ name: "accepted", mfaRequired: result.status === "mfa_required" });
+      globalThis.setTimeout(() => {
+        router.replace(result.status === "authenticated" ? "/admin" : "/login/mfa?enrollment=required");
+      }, 0);
     } catch (caught) {
       const message = inviteErrorMessage(caught, "accept");
       if (caught instanceof InviteApiError && caught.ambiguous) {
@@ -194,7 +193,9 @@ export function InviteAcceptForm() {
         <IconCheck size={18} stroke={1.75} />
         <AlertTitle>Tài khoản đã được tạo</AlertTitle>
         <AlertDescription>
-          Đang chuyển tới bước thiết lập xác thực hai lớp bắt buộc.
+          {stage.mfaRequired
+            ? "Đang chuyển tới bước thiết lập xác thực hai lớp."
+            : "Đang chuyển tới trang quản trị."}
         </AlertDescription>
       </Alert>
     );
@@ -207,18 +208,12 @@ export function InviteAcceptForm() {
           <IconAlertCircle size={18} stroke={1.75} />
           <AlertTitle>Trạng thái kích hoạt chưa xác định</AlertTitle>
           <AlertDescription>
-            {stage.message} Nếu máy chủ đã xử lý, phiên hiện tại có thể tiếp tục thiết lập MFA.
+            {stage.message} Hãy đăng nhập lại để hệ thống áp dụng đúng chính sách xác thực hiện tại.
           </AlertDescription>
         </Alert>
-        <Button
-          onClick={() => router.replace("/login/mfa?enrollment=required")}
-          type="button"
-        >
-          Tiếp tục kiểm tra MFA
+        <Button onClick={() => router.replace("/login")} type="button">
+          Đi đến đăng nhập
           <IconArrowRight data-icon="inline-end" stroke={1.75} />
-        </Button>
-        <Button onClick={() => router.replace("/login")} type="button" variant="outline">
-          Quay lại đăng nhập
         </Button>
       </div>
     );
@@ -299,9 +294,11 @@ export function InviteAcceptForm() {
 
       <Alert className="border-primary/20 bg-accent-subtle text-foreground" role="note">
         <IconShieldCheck className="text-primary" size={18} stroke={1.75} />
-        <AlertTitle>Bắt buộc thiết lập MFA</AlertTitle>
+        <AlertTitle>{stage.inspection.requiresMfaEnrollment ? "Thiết lập MFA" : "Xác thực bằng mật khẩu"}</AlertTitle>
         <AlertDescription>
-          Sau khi tạo mật khẩu, bạn sẽ được chuyển thẳng tới bước đăng ký ứng dụng xác thực.
+          {stage.inspection.requiresMfaEnrollment
+            ? "Sau khi tạo mật khẩu, bạn sẽ được chuyển tới bước đăng ký ứng dụng xác thực."
+            : "Sau khi tạo mật khẩu, bạn sẽ được đăng nhập theo chính sách xác thực hiện tại."}
         </AlertDescription>
       </Alert>
 
