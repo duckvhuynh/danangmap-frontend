@@ -142,11 +142,11 @@ function SecurityActionDialog({
   );
 }
 
-function SecuritySummary({ user }: { user: AdminUserDetail }) {
+function SecuritySummary({ user, mfaPolicyEnabled }: { user: AdminUserDetail; mfaPolicyEnabled: boolean }) {
   const activeSessions = user.sessions.filter((session) => session.status === "active").length;
   return (
     <div className="grid gap-3 sm:grid-cols-3">
-      <div className="rounded-control border bg-surface-subtle p-3"><p className="text-xs text-muted-foreground">MFA</p><p className="mt-1 font-medium">{user.mfa.enabled ? "Đã xác minh" : "Chưa đăng ký"}</p><p className="mt-1 text-xs text-muted-foreground">{user.mfa.recoveryCodesRemaining} mã khôi phục còn lại</p></div>
+      <div className="rounded-control border bg-surface-subtle p-3"><p className="text-xs text-muted-foreground">MFA</p><p className="mt-1 font-medium">{mfaPolicyEnabled ? (user.mfa.enabled ? "Đã xác minh" : "Chưa đăng ký") : "Chính sách đang tắt"}</p><p className="mt-1 text-xs text-muted-foreground">{mfaPolicyEnabled ? `${user.mfa.recoveryCodesRemaining} mã khôi phục còn lại` : "Dữ liệu đăng ký hiện có vẫn được giữ lại"}</p></div>
       <div className="rounded-control border bg-surface-subtle p-3"><p className="text-xs text-muted-foreground">Phiên hoạt động</p><p className="mt-1 font-medium">{activeSessions}</p><p className="mt-1 text-xs text-muted-foreground">Tổng {user.sessions.length} phiên trong lịch sử gần đây</p></div>
       <div className="rounded-control border bg-surface-subtle p-3"><p className="text-xs text-muted-foreground">Mail bảo mật</p><p className="mt-1 font-medium">{user.passwordResets.some((item) => item.status === "pending") ? "Đang chờ gửi" : "Không có yêu cầu chờ"}</p><p className="mt-1 text-xs text-muted-foreground">Không hiển thị mã hoặc credential</p></div>
     </div>
@@ -281,7 +281,7 @@ export function UserSecurityDetail({
                 <div className="text-right text-xs leading-5 text-muted-foreground"><p>Phiên bản {user.lockVersion}</p><p>Cập nhật {formatDate(user.updatedAt)}</p></div>
               </section>
 
-              <SecuritySummary user={user} />
+              <SecuritySummary user={user} mfaPolicyEnabled={principal.mfaEnabled} />
 
               {!canMutate ? <Alert className="border-primary/20 bg-accent-subtle"><IconDeviceDesktop stroke={1.75} /><AlertTitle>Chi tiết chỉ xem</AlertTitle><AlertDescription>Chỉnh sửa tài khoản và thao tác bảo mật chỉ mở trên desktop có bàn phím cùng thiết bị trỏ chính xác.</AlertDescription></Alert> : null}
 
@@ -303,7 +303,7 @@ export function UserSecurityDetail({
               <section className="rounded-panel border bg-surface p-4" aria-labelledby="security-actions-title">
                 <div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-control bg-accent-subtle text-primary"><IconShieldLock stroke={1.75} /></span><div><h3 id="security-actions-title" className="font-medium">Bảo mật tài khoản</h3><p className="mt-1 text-xs text-muted-foreground">Mọi thao tác đều dùng CSRF, ETag và idempotency key.</p></div></div>
                 {isSelf ? <Alert className="mt-4"><IconLockAccess stroke={1.75} /><AlertTitle>Dùng luồng tự phục vụ cho tài khoản của bạn</AlertTitle><AlertDescription>Backend chặn admin security mutation tự nhắm actor. Đổi mật khẩu hoặc thu hồi phiên của chính bạn trong <Link className="font-medium text-primary underline-offset-4 hover:underline" href="/admin/settings">Cài đặt bảo mật</Link>.</AlertDescription></Alert> : null}
-                {!isSelf && canMutate ? <div className="mt-4 grid gap-2 sm:grid-cols-3"><Button type="button" variant="outline" onClick={() => setSecurityAction({ kind: "password-reset" })}><IconMailForward stroke={1.75} />Gửi reset mật khẩu</Button><Button type="button" variant="outline" disabled={!user.mfa.enabled} onClick={() => setSecurityAction({ kind: "reset-mfa" })}><IconKey stroke={1.75} />Đặt lại MFA</Button><Button type="button" variant="outline" disabled={!activeSessions.length} onClick={() => setSecurityAction({ kind: "revoke-all" })}><IconLockAccess stroke={1.75} />Thu hồi mọi phiên</Button></div> : null}
+                {!isSelf && canMutate ? <div className="mt-4 grid gap-2 sm:grid-cols-3"><Button type="button" variant="outline" onClick={() => setSecurityAction({ kind: "password-reset" })}><IconMailForward stroke={1.75} />Gửi reset mật khẩu</Button>{principal.mfaEnabled ? <Button type="button" variant="outline" disabled={!user.mfa.enabled} onClick={() => setSecurityAction({ kind: "reset-mfa" })}><IconKey stroke={1.75} />Đặt lại MFA</Button> : null}<Button type="button" variant="outline" disabled={!activeSessions.length} onClick={() => setSecurityAction({ kind: "revoke-all" })}><IconLockAccess stroke={1.75} />Thu hồi mọi phiên</Button></div> : null}
                 <div className="mt-5 divide-y rounded-control border">
                   {user.sessions.length ? user.sessions.map((session) => <div key={session.id} className="flex flex-wrap items-center gap-3 p-3"><IconDeviceDesktop className="text-muted-foreground" stroke={1.75} /><div className="min-w-0 flex-1"><p className="text-sm font-medium">{session.kind === "authenticated" ? "Phiên đã xác thực" : "Phiên chờ MFA"} · {session.status}</p><p className="mt-1 truncate text-xs text-muted-foreground">{session.userAgent ?? "Không có user agent"} · tạo {formatDate(session.createdAt)}</p></div>{!isSelf && canMutate && session.status === "active" ? <Button type="button" variant="ghost" size="sm" onClick={() => setSecurityAction({ kind: "revoke-session", sessionId: session.id })}>Thu hồi</Button> : null}</div>) : <p className="p-4 text-sm text-muted-foreground">Chưa có phiên đăng nhập trong read model.</p>}
                 </div>

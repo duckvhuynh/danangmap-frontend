@@ -77,13 +77,19 @@ function networkError(error: unknown, ambiguous = false) {
 
 function decodeLogin(value: unknown): LoginResult {
   const data = unwrapEnvelope(value);
-  if (!isRecord(data) || data.status !== "mfa_required" || typeof data.mfaEnrollmentRequired !== "boolean") {
+  if (!isRecord(data)) {
+    throw new AuthApiError(502, "CONTRACT_INVALID", "Phản hồi đăng nhập không đúng hợp đồng.");
+  }
+  if (data.status === "authenticated" && data.mfaEnrollmentRequired === false) {
+    return { status: data.status, mfaEnrollmentRequired: false, principal: decodeAuthPrincipal(data.principal) };
+  }
+  if (data.status !== "mfa_required" || typeof data.mfaEnrollmentRequired !== "boolean") {
     throw new AuthApiError(502, "CONTRACT_INVALID", "Phản hồi đăng nhập không đúng hợp đồng.");
   }
   return { status: data.status, mfaEnrollmentRequired: data.mfaEnrollmentRequired, challengeExpiresAt: requiredString(data.challengeExpiresAt, "challengeExpiresAt") };
 }
 
-function decodePrincipal(value: unknown): AuthPrincipal {
+export function decodeAuthPrincipal(value: unknown): AuthPrincipal {
   if (!isRecord(value)) throw new AuthApiError(502, "CONTRACT_INVALID", "Principal không đúng định dạng.");
   const role = value.role;
   const status = value.status;
@@ -115,7 +121,7 @@ async function csrfToken(client: ApiClient) {
 
 export async function login(loginValue: string, password: string, client: ApiClient = apiClient): Promise<LoginResult> {
   if (demoMode()) {
-    return { status: "mfa_required", mfaEnrollmentRequired: false, challengeExpiresAt: new Date(Date.now() + 5 * 60_000).toISOString() };
+    return { status: "authenticated", mfaEnrollmentRequired: false, principal: { id: "demo-admin", email: "admin@demo.danangmap.local", username: "demo-admin", displayName: "Demo Admin", role: "system_admin", status: "active", mfaEnabled: false, mustChangePassword: false } };
   }
   const token = await csrfToken(client);
   try {
@@ -139,7 +145,7 @@ export async function verifyMfa(method: MfaMethod, code: string, client: ApiClie
       params: { header: { "X-CSRF-Token": token } },
       body: { method, code },
     });
-    return decodePrincipal(unwrapEnvelope(resultData(result)));
+    return decodeAuthPrincipal(unwrapEnvelope(resultData(result)));
   } catch (error) {
     throw networkError(error, !(error instanceof AuthApiError));
   }
@@ -177,7 +183,7 @@ export async function confirmMfaEnrollment(code: string, client: ApiClient = api
     if (!isRecord(data) || !Array.isArray(data.recoveryCodes) || data.recoveryCodes.length !== 10 || data.recoveryCodes.some((item) => typeof item !== "string" || item.length === 0)) {
       throw new AuthApiError(502, "CONTRACT_INVALID", "Phản hồi xác nhận MFA không có đúng 10 mã khôi phục.");
     }
-    return { principal: decodePrincipal(data.principal), recoveryCodes: data.recoveryCodes };
+    return { principal: decodeAuthPrincipal(data.principal), recoveryCodes: data.recoveryCodes };
   } catch (error) {
     throw networkError(error, !(error instanceof AuthApiError));
   }

@@ -1,6 +1,6 @@
 // This file is generated. Do not edit it by hand.
 // Source: openapi/openapi.json
-// Source SHA-256: b0bf4e8d59203b955a651ac707050a83a3fda54cb28f0436d55cbd5671103891
+// Source SHA-256: d4a38eb3c98d637605c4d0d1144453e3d033759306664392579fc46e77463080
 export interface paths {
     "/api/v1/auth/bootstrap/status": {
         parameters: {
@@ -28,7 +28,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Creates the only first System Admin and returns an MFA-enrollment pre-auth challenge. The bootstrap token is never returned or persisted. */
+        /** @description Creates the only first System Admin. Returns an authenticated session when MFA is disabled, otherwise an MFA-enrollment pre-auth challenge. The bootstrap token is never returned or persisted. */
         post: operations["bootstrapSystemAdmin"];
         delete?: never;
         options?: never;
@@ -1861,6 +1861,25 @@ export interface operations {
                             mfaEnrollmentRequired: boolean;
                             /** Format: date-time */
                             challengeExpiresAt: string;
+                        } | {
+                            /** @enum {string} */
+                            status: "authenticated";
+                            /** @enum {boolean} */
+                            mfaEnrollmentRequired: false;
+                            principal: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: email */
+                                email: string;
+                                username: string;
+                                displayName: string;
+                                /** @enum {string} */
+                                role: "editor" | "reviewer" | "publisher" | "system_admin";
+                                /** @enum {string} */
+                                status: "active" | "inactive" | "disabled" | "invited";
+                                mfaEnabled: boolean;
+                                mustChangePassword: boolean;
+                            };
                         };
                         meta: {
                             requestId: string;
@@ -2035,6 +2054,25 @@ export interface operations {
                             mfaEnrollmentRequired: boolean;
                             /** Format: date-time */
                             challengeExpiresAt: string;
+                        } | {
+                            /** @enum {string} */
+                            status: "authenticated";
+                            /** @enum {boolean} */
+                            mfaEnrollmentRequired: false;
+                            principal: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: email */
+                                email: string;
+                                username: string;
+                                displayName: string;
+                                /** @enum {string} */
+                                role: "editor" | "reviewer" | "publisher" | "system_admin";
+                                /** @enum {string} */
+                                status: "active" | "inactive" | "disabled" | "invited";
+                                mfaEnabled: boolean;
+                                mustChangePassword: boolean;
+                            };
                         };
                         meta: {
                             requestId: string;
@@ -2069,8 +2107,7 @@ export interface operations {
                             role: "editor" | "reviewer" | "publisher" | "system_admin";
                             /** Format: date-time */
                             expiresAt: string;
-                            /** @enum {boolean} */
-                            requiresMfaEnrollment: true;
+                            requiresMfaEnrollment: boolean;
                         };
                         meta: {
                             requestId: string;
@@ -2107,6 +2144,25 @@ export interface operations {
                             mfaEnrollmentRequired: boolean;
                             /** Format: date-time */
                             challengeExpiresAt: string;
+                        } | {
+                            /** @enum {string} */
+                            status: "authenticated";
+                            /** @enum {boolean} */
+                            mfaEnrollmentRequired: false;
+                            principal: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: email */
+                                email: string;
+                                username: string;
+                                displayName: string;
+                                /** @enum {string} */
+                                role: "editor" | "reviewer" | "publisher" | "system_admin";
+                                /** @enum {string} */
+                                status: "active" | "inactive" | "disabled" | "invited";
+                                mfaEnabled: boolean;
+                                mustChangePassword: boolean;
+                            };
                         };
                         meta: {
                             requestId: string;
@@ -2157,6 +2213,29 @@ export interface operations {
                     };
                 };
             };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** Format: uri */
+                        type: string;
+                        title: string;
+                        /** @enum {integer} */
+                        status: 409;
+                        /** @enum {string} */
+                        code: "MFA_DISABLED";
+                        message: string;
+                        details: {
+                            [key: string]: unknown;
+                        };
+                        requestId: string;
+                        /** Format: date-time */
+                        timestamp: string;
+                    };
+                };
+            };
         };
     };
     startMfaEnrollment: {
@@ -2184,6 +2263,29 @@ export interface operations {
                         meta: {
                             requestId: string;
                         };
+                    };
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** Format: uri */
+                        type: string;
+                        title: string;
+                        /** @enum {integer} */
+                        status: 409;
+                        /** @enum {string} */
+                        code: "MFA_DISABLED";
+                        message: string;
+                        details: {
+                            [key: string]: unknown;
+                        };
+                        requestId: string;
+                        /** Format: date-time */
+                        timestamp: string;
                     };
                 };
             };
@@ -2233,6 +2335,29 @@ export interface operations {
                     };
                 };
             };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** Format: uri */
+                        type: string;
+                        title: string;
+                        /** @enum {integer} */
+                        status: 409;
+                        /** @enum {string} */
+                        code: "MFA_DISABLED";
+                        message: string;
+                        details: {
+                            [key: string]: unknown;
+                        };
+                        requestId: string;
+                        /** Format: date-time */
+                        timestamp: string;
+                    };
+                };
+            };
         };
     };
     regenerateRecoveryCodes: {
@@ -2265,6 +2390,29 @@ export interface operations {
                         meta: {
                             requestId: string;
                         };
+                    };
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** Format: uri */
+                        type: string;
+                        title: string;
+                        /** @enum {integer} */
+                        status: 409;
+                        /** @enum {string} */
+                        code: "MFA_DISABLED";
+                        message: string;
+                        details: {
+                            [key: string]: unknown;
+                        };
+                        requestId: string;
+                        /** Format: date-time */
+                        timestamp: string;
                     };
                 };
             };
@@ -3196,6 +3344,29 @@ export interface operations {
                         meta: {
                             requestId: string;
                         };
+                    };
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** Format: uri */
+                        type: string;
+                        title: string;
+                        /** @enum {integer} */
+                        status: 409;
+                        /** @enum {string} */
+                        code: "MFA_DISABLED";
+                        message: string;
+                        details: {
+                            [key: string]: unknown;
+                        };
+                        requestId: string;
+                        /** Format: date-time */
+                        timestamp: string;
                     };
                 };
             };

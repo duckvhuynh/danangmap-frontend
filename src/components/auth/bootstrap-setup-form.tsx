@@ -33,7 +33,7 @@ type SetupStage =
   | { name: "available" }
   | { name: "unavailable"; message: string }
   | { name: "status-error"; message: string }
-  | { name: "created" }
+  | { name: "created"; mfaRequired: boolean }
   | { name: "uncertain"; message: string };
 
 type SetupField =
@@ -179,16 +179,15 @@ export function BootstrapSetupForm() {
     setError(null);
     setErrorField(null);
     try {
-      await bootstrapSystemAdmin(
+      const result = await bootstrapSystemAdmin(
         { displayName, email, username, password, passwordConfirmation },
         bootstrapToken,
       );
       formElement.reset();
-      setStage({ name: "created" });
-      globalThis.setTimeout(
-        () => router.replace("/login/mfa?enrollment=required"),
-        0,
-      );
+      setStage({ name: "created", mfaRequired: result.status === "mfa_required" });
+      globalThis.setTimeout(() => {
+        router.replace(result.status === "authenticated" ? "/admin" : "/login/mfa?enrollment=required");
+      }, 0);
     } catch (caught) {
       const message = bootstrapErrorMessage(caught, "create");
       if (caught instanceof BootstrapApiError && caught.ambiguous) {
@@ -261,7 +260,9 @@ export function BootstrapSetupForm() {
         <IconCheck stroke={1.75} />
         <AlertTitle>System Admin đã được tạo</AlertTitle>
         <AlertDescription>
-          Đang chuyển tới bước thiết lập ứng dụng xác thực và mã khôi phục.
+          {stage.mfaRequired
+            ? "Đang chuyển tới bước thiết lập ứng dụng xác thực và mã khôi phục."
+            : "Đang chuyển tới trang quản trị."}
         </AlertDescription>
       </Alert>
     );
@@ -274,18 +275,12 @@ export function BootstrapSetupForm() {
           <IconAlertCircle stroke={1.75} />
           <AlertTitle>Trạng thái khởi tạo chưa xác định</AlertTitle>
           <AlertDescription>
-            {stage.message} Nếu máy chủ đã xử lý, phiên hiện tại có thể tiếp tục thiết lập MFA.
+            {stage.message} Hãy quay lại đăng nhập để hệ thống áp dụng đúng chính sách xác thực hiện tại.
           </AlertDescription>
         </Alert>
-        <Button
-          onClick={() => router.replace("/login/mfa?enrollment=required")}
-          type="button"
-        >
-          Tiếp tục kiểm tra MFA
+        <Button onClick={() => router.replace("/login")} type="button">
+          Đi đến đăng nhập
           <IconArrowRight data-icon="inline-end" stroke={1.75} />
-        </Button>
-        <Button onClick={() => router.replace("/login")} type="button" variant="outline">
-          Quay lại đăng nhập
         </Button>
       </div>
     );
@@ -297,7 +292,7 @@ export function BootstrapSetupForm() {
         <IconShieldCheck className="text-primary" stroke={1.75} />
         <AlertTitle>Một lần duy nhất</AlertTitle>
         <AlertDescription>
-          Tài khoản này có toàn quyền System Admin. Sau khi tạo, bạn phải thiết lập MFA trước khi vào trang quản trị.
+          Tài khoản này có toàn quyền System Admin. Sau khi tạo, hệ thống sẽ áp dụng chính sách xác thực được cấu hình trên máy chủ.
         </AlertDescription>
       </Alert>
 
