@@ -93,18 +93,18 @@ async function configureMixedLayer(page: Page, slug: string, title: string) {
   await page.getByLabel("Mô tả").fill("Cấu hình CMS-1 chạy qua trình duyệt và API thật.");
   await page.getByLabel("Nhóm lớp").click();
   await page.getByRole("option", { name: "Hành chính" }).click();
-  await page.getByLabel("Thứ tự catalog").fill("73");
+  await page.getByLabel("Thứ tự hiển thị").fill("73");
   await page.getByLabel("Bật lớp mặc định khi mở bản đồ").click();
 
-  await page.getByRole("tab", { name: "Geometry" }).click();
-  await page.getByRole("radio", { name: /Mixed/u }).check();
-  await page.getByRole("checkbox", { name: "LineString", exact: true }).click();
-  await page.getByRole("checkbox", { name: /Circle, tâm Point/u }).click();
+  await page.getByRole("tab", { name: "Loại đối tượng" }).click();
+  await page.getByRole("radio", { name: /Kết hợp/u }).check();
+  await page.getByRole("checkbox", { name: "Đường", exact: true }).click();
+  await page.getByRole("checkbox", { name: "Hình tròn", exact: true }).click();
 
-  await page.getByRole("tab", { name: "Schema" }).click();
+  await page.getByRole("tab", { name: "Trường dữ liệu" }).click();
   await page.getByRole("button", { name: "Thêm trường" }).click();
-  await page.getByLabel("Key", { exact: true }).nth(1).fill("internal_note");
-  await page.getByLabel("Nhãn tiếng Việt").nth(1).fill("Ghi chú nội bộ");
+  await page.getByLabel("Mã trường", { exact: true }).nth(1).fill("internal_note");
+  await page.getByLabel("Tên hiển thị").nth(1).fill("Ghi chú nội bộ");
   await page.getByLabel("Công khai").nth(1).click();
 
   await page.getByRole("tab", { name: "Hiển thị" }).click();
@@ -129,7 +129,7 @@ async function deniedRoleContext(browser: Browser, actor: Exclude<Actor, "EDITOR
   const page = await context.newPage();
   await loginActor(page, actor);
   await page.goto("/admin/layers/new");
-  await expect(page.getByRole("heading", { name: "Không có quyền tạo layer" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Không có quyền tạo lớp" })).toBeVisible();
   await expect(page.getByLabel("Mã lớp")).not.toBeAttached();
   return context;
 }
@@ -149,7 +149,7 @@ test("CMS-1 creates and reloads a private draft while every non-authoring capabi
     await configureMixedLayer(editorPage, slug, title);
 
     const createResponsePromise = editorPage.waitForResponse((response) => response.url().endsWith("/api/v1/admin/layers") && response.request().method() === "POST");
-    await editorPage.getByRole("button", { name: "Tạo layer" }).click();
+    await editorPage.getByRole("button", { name: "Tạo lớp" }).click();
     const createResponse = await createResponsePromise;
     expect(createResponse.status()).toBe(201);
     expect(createResponse.headers().etag).toBeTruthy();
@@ -183,8 +183,8 @@ test("CMS-1 creates and reloads a private draft while every non-authoring capabi
     await expect(editorPage).toHaveURL(new RegExp(`/admin/layers/${layerId}$`, "u"));
     await editorPage.reload();
     await expect(editorPage.getByRole("heading", { name: title })).toBeVisible();
-    await editorPage.getByRole("tab", { name: "Schema" }).click();
-    await expect(editorPage.getByLabel("Key", { exact: true }).nth(1)).toHaveValue("internal_note");
+    await editorPage.getByRole("tab", { name: "Trường dữ liệu" }).click();
+    await expect(editorPage.getByLabel("Mã trường", { exact: true }).nth(1)).toHaveValue("internal_note");
 
     const persistedResponse = await browserGet(editorPage, `/api/v1/admin/revisions/${revisionId}`);
     expect(persistedResponse.status).toBe(200);
@@ -205,7 +205,7 @@ test("CMS-1 creates and reloads a private draft while every non-authoring capabi
     ]));
 
     await editorPage.goto("/admin/layers");
-    const draftRow = editorPage.getByRole("row").filter({ hasText: `danang:${slug}` });
+    const draftRow = editorPage.getByRole("row").filter({ has: editorPage.locator(`a[href="/admin/layers/${layerId}"]`) });
     await expect(draftRow).toContainText(title);
     await expect(draftRow).toContainText("Bản nháp");
     const adminCatalogResponse = await browserGet(editorPage, "/api/v1/admin/layers");
@@ -222,14 +222,17 @@ test("CMS-1 creates and reloads a private draft while every non-authoring capabi
 
     await configureMixedLayer(editorPage, slug, `${title} duplicate`);
     const duplicateResponsePromise = editorPage.waitForResponse((response) => response.url().endsWith("/api/v1/admin/layers") && response.request().method() === "POST");
-    await editorPage.getByRole("button", { name: "Tạo layer" }).click();
+    await editorPage.getByRole("button", { name: "Tạo lớp" }).click();
     const duplicateResponse = await duplicateResponsePromise;
     expect(duplicateResponse.status()).toBe(409);
     const duplicateProblem = record(await duplicateResponse.json());
     expect(duplicateProblem).toMatchObject({ status: 409, code: "SLUG_CONFLICT" });
     expect(typeof duplicateProblem.requestId === "string" && duplicateProblem.requestId.length > 0).toBe(true);
     const duplicateAlert = editorPage.getByRole("alert").filter({ hasText: "Mã lớp đã tồn tại" });
-    await expect(duplicateAlert).toContainText(String(duplicateProblem.requestId));
+    const supportCode = duplicateAlert.getByText(`Mã hỗ trợ: ${String(duplicateProblem.requestId)}`);
+    await expect(supportCode).toBeHidden();
+    await duplicateAlert.getByText("Thông tin hỗ trợ kỹ thuật", { exact: true }).click();
+    await expect(supportCode).toBeVisible();
 
     const invalidBody: CreateLayerBody = {
       ...submitted,
@@ -253,7 +256,7 @@ test("CMS-1 creates and reloads a private draft while every non-authoring capabi
     await loginActor(systemAdminPage, "SYSTEM_ADMIN");
     await systemAdminPage.goto("/admin/layers/new");
     await expect(systemAdminPage.getByRole("heading", { name: "Tạo lớp dữ liệu" })).toBeVisible();
-    await expect(systemAdminPage.getByRole("button", { name: "Tạo layer" })).toBeVisible();
+    await expect(systemAdminPage.getByRole("button", { name: "Tạo lớp" })).toBeVisible();
 
     const mobileContext = await browser.newContext({
       ...devices["Pixel 7"],
@@ -264,7 +267,7 @@ test("CMS-1 creates and reloads a private draft while every non-authoring capabi
     deniedContexts.push(mobileContext);
     const mobilePage = await mobileContext.newPage();
     await mobilePage.goto("/admin/layers/new");
-    await expect(mobilePage.getByRole("heading", { name: "Tạo layer cần máy tính" })).toBeVisible();
+    await expect(mobilePage.getByRole("heading", { name: "Tạo lớp cần máy tính" })).toBeVisible();
     await expect(mobilePage.getByLabel("Mã lớp")).not.toBeAttached();
   } finally {
     await editorContext.close();

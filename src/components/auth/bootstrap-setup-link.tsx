@@ -28,7 +28,7 @@ export function BootstrapSetupLink() {
           className="rounded-control font-medium text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
           href="/setup"
         >
-          Tạo System Admin
+          Tạo tài khoản quản trị đầu tiên
         </Link>
       </AlertDescription>
     </Alert>

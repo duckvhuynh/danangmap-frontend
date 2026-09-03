@@ -36,7 +36,7 @@ export function SecurityPageShell({
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <IconShieldCheck className="text-success" stroke={1.75} />
-          Cookie bảo mật · Không lưu mật khẩu trên trình duyệt
+          Không chia sẻ mật khẩu hoặc mã xác thực cho người khác
         </div>
       </section>
       <section className="flex items-center justify-center bg-surface p-5 sm:p-10">

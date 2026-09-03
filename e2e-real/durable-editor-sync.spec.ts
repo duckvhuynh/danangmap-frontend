@@ -75,7 +75,7 @@ async function createLayer(page: Page, stamp: string) {
       response.url().endsWith("/api/v1/admin/layers") &&
       response.request().method() === "POST",
   );
-  await page.getByRole("button", { name: "Tạo layer" }).click();
+  await page.getByRole("button", { name: "Tạo lớp" }).click();
   const response = await responsePromise;
   expect(response.status()).toBe(201);
   const created = record(data(await response.json()));
@@ -308,7 +308,7 @@ test("real editor ledger survives reload, retries identically, reports partial c
     const stamp = `${Date.now().toString(36)}${process.pid.toString(36)}`;
     const created = await createLayer(page, stamp);
     await page.goto(`/admin/layers/${created.revisionId}/edit`);
-    await expect(page.getByText("Đã đồng bộ", { exact: true })).toBeVisible();
+    await expect(page.getByText("Đã lưu lên hệ thống", { exact: true })).toBeVisible();
     const actorId = await principalId(page);
 
     const initial = await revisionState(page, created.revisionId);
@@ -341,14 +341,14 @@ test("real editor ledger survives reload, retries identically, reports partial c
       },
       { times: 1 },
     );
-    await page.getByRole("button", { name: "Đồng bộ" }).click();
+    await page.getByRole("button", { name: "Lưu lên hệ thống" }).click();
     await expect(page.getByText("Đang chờ kết nối")).toBeVisible();
 
     await recoverDraft(page);
     const replayRequest = page.waitForRequest("**/changes:batch");
-    await page.getByRole("button", { name: "Đồng bộ" }).click();
+    await page.getByRole("button", { name: "Lưu lên hệ thống" }).click();
     expect((await replayRequest).postDataJSON()).toEqual(ambiguousBody);
-    await expect(page.getByText("Đã đồng bộ", { exact: true })).toBeVisible();
+    await expect(page.getByText("Đã lưu lên hệ thống", { exact: true })).toBeVisible();
     await expect.poll(async () =>
       (await revisionState(page, created.revisionId)).features.filter(
         (feature) => feature.properties.name === offlineName,
@@ -419,9 +419,11 @@ test("real editor ledger survives reload, retries identically, reports partial c
       entries: partialEntries,
     });
     await recoverDraft(page);
-    await page.getByRole("button", { name: "Đồng bộ" }).click();
+    await page.getByRole("button", { name: "Lưu lên hệ thống" }).click();
     await expect(page.getByText("1 thay đổi cần xử lý")).toBeVisible();
-    await expect(page.getByText(/Mã yêu cầu:/u)).toBeVisible();
+    await expect(page.getByText(/Mã hỗ trợ:/u)).toBeHidden();
+    await page.getByText("Thông tin hỗ trợ kỹ thuật", { exact: true }).click();
+    await expect(page.getByText(/Mã hỗ trợ:/u)).toBeVisible();
     const afterPartial = await revisionState(page, created.revisionId);
     expect(
       afterPartial.features.some(
@@ -437,8 +439,8 @@ test("real editor ledger survives reload, retries identically, reports partial c
       afterPartial.features.find((feature) => feature.id === retained.id)
         ?.properties.name,
     ).toBe(offlineName);
-    await page.getByRole("button", { name: "Giữ bản máy chủ" }).click();
-    await expect(page.getByText("Đã đồng bộ", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Giữ bản đã lưu" }).click();
+    await expect(page.getByText("Đã lưu lên hệ thống", { exact: true })).toBeVisible();
 
     const beforeTabs = await revisionState(page, created.revisionId);
     const tabLocalId = randomUUID();
@@ -489,9 +491,9 @@ test("real editor ledger survives reload, retries identically, reports partial c
       await batchRelease;
       await route.continue();
     });
-    const firstSync = page.getByRole("button", { name: "Đồng bộ" }).click();
+    const firstSync = page.getByRole("button", { name: "Lưu lên hệ thống" }).click();
     await batchStarted;
-    await secondPage.getByRole("button", { name: "Đồng bộ" }).click();
+    await secondPage.getByRole("button", { name: "Lưu lên hệ thống" }).click();
     await expect(
       secondPage.getByText("Tab khác đang đồng bộ", { exact: true }),
     ).toBeVisible();
@@ -503,10 +505,10 @@ test("real editor ledger survives reload, retries identically, reports partial c
       ).length,
     ).toBe(1);
     await expect(
-      secondPage.getByText("Đã đồng bộ", { exact: true }),
+      secondPage.getByText("Đã lưu lên hệ thống", { exact: true }),
     ).toBeVisible();
     await expect(
-      secondPage.getByRole("button", { name: "Đồng bộ" }),
+      secondPage.getByRole("button", { name: "Lưu lên hệ thống" }),
     ).toBeDisabled();
     expect(batchRequests).toBe(1);
     await secondPage.close();

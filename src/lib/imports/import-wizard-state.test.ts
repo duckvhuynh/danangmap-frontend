@@ -18,25 +18,25 @@ const mapping = (overrides: Partial<ImportMappingDraft> = {}): ImportMappingDraf
 describe("import wizard policy", () => {
   it.each([["data.csv", "csv"], ["data.xlsx", "xlsx"], ["data.geojson", "geojson"], ["data.JSON", "geojson"], ["data.kml", "kml"]])("infers %s", (name, format) => expect(inferImportFormat(name)).toBe(format));
 
-  it("enforces the exact 25 MiB upload boundary", () => {
+  it("enforces the exact 25 MB upload boundary", () => {
     expect(validateImportFile({ name: "data.csv", size: MAX_IMPORT_BYTES })).toBeNull();
-    expect(validateImportFile({ name: "data.csv", size: MAX_IMPORT_BYTES + 1 })).toContain("25 MiB");
+    expect(validateImportFile({ name: "data.csv", size: MAX_IMPORT_BYTES + 1 })).toContain("25 MB");
     expect(validateImportFile({ name: "data.zip", size: 12 })).toContain("Chỉ hỗ trợ");
   });
 
   it("matches geometry mapping to the file format without fake geometry columns", () => {
     expect(validateImportMapping(mapping({ geometryKind: "geojson", geometryColumn: "" }), "append", "geojson")).toEqual([]);
     expect(validateImportMapping(mapping({ geometryKind: "kml_geometry", geometryColumn: "" }), "append", "kml")).toEqual([]);
-    expect(validateImportMapping(mapping({ geometryKind: "wkt", geometryColumn: "" }), "append", "csv")).toContain("Chọn cột chứa geometry WKT.");
-    expect(validateImportMapping(mapping({ geometryKind: "geojson" }), "append", "csv")).toContain("Kiểu geometry không phù hợp với định dạng file.");
-    expect(validateImportMapping(mapping({ sheet: "", geometryKind: "wkt" }), "append", "xlsx")).toContain("Chọn đúng một sheet XLSX.");
+    expect(validateImportMapping(mapping({ geometryKind: "wkt", geometryColumn: "" }), "append", "csv")).toContain("Nhập tên cột chứa hình dạng theo định dạng WKT.");
+    expect(validateImportMapping(mapping({ geometryKind: "geojson" }), "append", "csv")).toContain("Cách đọc vị trí không phù hợp với định dạng tệp.");
+    expect(validateImportMapping(mapping({ sheet: "", geometryKind: "wkt" }), "append", "xlsx")).toContain("Chọn một trang tính trong tệp Excel.");
   });
 
   it("validates both supported upsert identities and duplicate targets", () => {
-    expect(validateImportMapping(mapping({ matchBy: "feature_id" }), "upsert", "csv")).toContain("Upsert theo feature_id cần map cột nguồn vào feature_id.");
+    expect(validateImportMapping(mapping({ matchBy: "feature_id" }), "upsert", "csv")).toContain("Để cập nhật theo mã đối tượng, hãy ghép một cột với trường Mã đối tượng.");
     expect(validateImportMapping(mapping({ matchBy: "feature_id", fields: [{ id: "1", source: "id", target: "feature_id" }] }), "upsert", "csv")).toEqual([]);
     expect(validateImportMapping(mapping({ fields: [{ id: "1", source: "source", target: "external_source" }, { id: "2", source: "id", target: "external_id" }] }), "upsert", "csv")).toEqual([]);
-    expect(validateImportMapping(mapping({ fields: [{ id: "1", source: "a", target: "name" }, { id: "2", source: "b", target: "name" }] }), "append", "csv")).toContain("Một trường đích không thể được map từ nhiều cột nguồn.");
+    expect(validateImportMapping(mapping({ fields: [{ id: "1", source: "a", target: "name" }, { id: "2", source: "b", target: "name" }] }), "append", "csv")).toContain("Mỗi trường chỉ được ghép với một cột trong tệp.");
   });
 
   it("guards skip-invalid, destructive replace and polling states", () => {

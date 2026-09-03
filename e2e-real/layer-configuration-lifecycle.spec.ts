@@ -54,7 +54,7 @@ async function createLayer(page: Page, slug: string, title: string) {
   await page.getByLabel("Mã lớp").fill(slug);
   await page.getByLabel("Tên lớp").fill(title);
   const responsePromise = page.waitForResponse((response) => response.url().endsWith("/api/v1/admin/layers") && response.request().method() === "POST");
-  await page.getByRole("button", { name: "Tạo layer" }).click();
+  await page.getByRole("button", { name: "Tạo lớp" }).click();
   const response = await responsePromise;
   expect(response.status()).toBe(201);
   const created = record(data(await response.json()));
@@ -83,16 +83,16 @@ async function addPointFeature(page: Page, revisionId: string, name: string) {
 
 async function approve(page: Page, revisionId: string) {
   await page.goto(`/admin/layers/${revisionId}/review`);
-  await page.getByLabel("Bình luận review").fill("Lifecycle reviewer xác nhận cấu hình và dữ liệu.");
+  await page.getByLabel("Ý kiến kiểm duyệt").fill("Lifecycle reviewer xác nhận cấu hình và dữ liệu.");
   await page.getByRole("button", { name: "Duyệt thay đổi" }).click();
-  await expect(page.getByText("approved", { exact: true })).toBeVisible();
+  await expect(page.getByText("Đã duyệt", { exact: true }).filter({ visible: true })).toBeVisible();
 }
 
 async function publish(page: Page, revisionId: string) {
   await page.goto(`/admin/layers/${revisionId}/review`);
   await page.getByLabel("Ghi chú công bố").fill("Công bố cho successor lifecycle acceptance.");
   const responsePromise = page.waitForResponse((response) => response.url().endsWith(`/api/v1/admin/revisions/${revisionId}:publish`) && response.request().method() === "POST");
-  await page.getByRole("button", { name: "Công bố revision" }).click();
+  await page.getByRole("button", { name: "Công bố dữ liệu" }).click();
   const response = await responsePromise;
   expect(response.status()).toBe(202);
   const accepted = record(data(await response.json()));
@@ -111,7 +111,7 @@ async function publish(page: Page, revisionId: string) {
     expect(response.headers().location).toBeUndefined();
     expect(response.headers()["retry-after"]).toBeUndefined();
   }
-  await expect(page.getByText("published", { exact: true })).toBeVisible({ timeout: 150_000 });
+  await expect(page.getByText("Đã công bố", { exact: true }).filter({ visible: true })).toBeVisible({ timeout: 150_000 });
 }
 
 test("layer configuration lifecycle keeps version domains isolated and recovers conflicts by refetch", async ({ browser }) => {
@@ -139,23 +139,24 @@ test("layer configuration lifecycle keeps version domains isolated and recovers 
     await editorPage.reload();
     const revisionBeforeConfig = await browserGet(editorPage, `/api/v1/admin/revisions/${revisionId}`);
     expect(revisionBeforeConfig.etag).toBeTruthy();
-    await editorPage.getByRole("tab", { name: "Geometry" }).click();
-    await editorPage.getByRole("radio", { name: /^Polygon\b/u }).check();
+    await editorPage.getByRole("tab", { name: "Loại đối tượng" }).click();
+    await editorPage.getByRole("radio", { name: /^Vùng\b/u }).check();
     const impactPromise = editorPage.waitForResponse((response) => response.url().endsWith(`/api/v1/admin/revisions/${revisionId}/config:impact`) && response.request().method() === "POST");
     await editorPage.getByRole("button", { name: "Lưu cấu hình" }).click();
     const blockedImpact = await impactPromise;
     expect(blockedImpact.status()).toBe(200);
     expect(blockedImpact.request().headers()["if-match"]).toBe(revisionBeforeConfig.etag);
     await expect(editorPage.getByText("Không thể áp dụng cấu hình")).toBeVisible();
-    await expect(editorPage.getByText(/Kiểu geometry đang được dữ liệu hiện có sử dụng/u)).toBeVisible();
+    await expect(editorPage.getByText(/Loại đối tượng này đang có dữ liệu/u)).toBeVisible();
 
-    await editorPage.getByRole("radio", { name: /^Point\b/u }).check();
+    await editorPage.getByRole("radio", { name: /^Điểm\b/u }).check();
     await editorPage.getByRole("tab", { name: "Thông tin" }).click();
     await editorPage.getByLabel("Tên lớp").fill(`${title} updated`);
     await editorPage.getByRole("tab", { name: "Hiển thị" }).click();
     await editorPage.getByLabel("Màu viền điểm").fill("#0B57D0");
     await expect(editorPage.getByLabel("Độ mờ đường")).not.toBeAttached();
-    await editorPage.getByLabel("Chính sách nguồn dữ liệu").click();
+    await editorPage.getByText("Tùy chọn tải dữ liệu nâng cao", { exact: true }).click();
+    await editorPage.getByLabel("Cách tải dữ liệu bản đồ").click();
     await editorPage.getByRole("option", { name: "Kết hợp" }).click();
     const allowedImpactPromise = editorPage.waitForResponse((response) => response.url().endsWith(`/api/v1/admin/revisions/${revisionId}/config:impact`) && response.request().method() === "POST");
     const replacePromise = editorPage.waitForResponse((response) => response.url().endsWith(`/api/v1/admin/revisions/${revisionId}/config`) && response.request().method() === "PUT");
@@ -177,7 +178,7 @@ test("layer configuration lifecycle keeps version domains isolated and recovers 
     expect(layerBeforeCatalog.etag).toBeTruthy();
     await editorPage.getByLabel("Bật lớp mặc định khi mở bản đồ").click();
     const catalogSavePromise = editorPage.waitForResponse((response) => response.url().endsWith(`/api/v1/admin/layers/${layerId}`) && response.request().method() === "PATCH");
-    await editorPage.getByRole("button", { name: "Lưu catalog" }).click();
+    await editorPage.getByRole("button", { name: "Lưu sắp xếp lớp" }).click();
     const catalogSave = await catalogSavePromise;
     expect(catalogSave.status()).toBe(200);
     expect(catalogSave.request().headers()["if-match"]).toBe(layerBeforeCatalog.etag);
@@ -189,26 +190,26 @@ test("layer configuration lifecycle keeps version domains isolated and recovers 
     expect(externalUpdate.status).toBe(200);
     await editorPage.getByLabel("Bật lớp mặc định khi mở bản đồ").click();
     const stalePromise = editorPage.waitForResponse((response) => response.url().endsWith(`/api/v1/admin/layers/${layerId}`) && response.request().method() === "PATCH");
-    await editorPage.getByRole("button", { name: "Lưu catalog" }).click();
+    await editorPage.getByRole("button", { name: "Lưu sắp xếp lớp" }).click();
     const stale = await stalePromise;
     expect(stale.status()).toBe(412);
     expect(stale.request().headers()["if-match"]).toBe(currentLayer.etag);
     await expect(editorPage.getByRole("button", { name: "Tải lại bản mới nhất" })).toBeVisible();
     await editorPage.getByRole("button", { name: "Tải lại bản mới nhất" }).click();
-    await expect(editorPage.getByLabel("Thứ tự catalog")).toHaveValue("91");
+    await expect(editorPage.getByLabel("Thứ tự hiển thị")).toHaveValue("91");
 
     await editorPage.getByLabel("Gõ “LƯU TRỮ” để xác nhận").fill("LƯU TRỮ");
     const archivePromise = editorPage.waitForResponse((response) => response.url().endsWith(`/api/v1/admin/layers/${layerId}:archive`));
-    await editorPage.getByRole("button", { name: "Lưu trữ layer" }).click();
+    await editorPage.getByRole("button", { name: "Lưu trữ lớp" }).click();
     expect((await archivePromise).status()).toBe(200);
     const unarchivePromise = editorPage.waitForResponse((response) => response.url().endsWith(`/api/v1/admin/layers/${layerId}:unarchive`));
-    await editorPage.getByRole("button", { name: "Khôi phục layer" }).click();
+    await editorPage.getByRole("button", { name: "Khôi phục lớp" }).click();
     expect((await unarchivePromise).status()).toBe(200);
 
     await editorPage.goto("/admin/layers");
-    const layerRow = editorPage.getByRole("row").filter({ hasText: `danang:${slug}` });
+    const layerRow = editorPage.getByRole("row").filter({ has: editorPage.locator(`a[href="/admin/layers/${layerId}"]`) });
     const layerReorderPromise = editorPage.waitForResponse((response) => response.url().endsWith("/api/v1/admin/layers:reorder"));
-    await layerRow.getByRole("button", { name: `Đưa layer ${title} updated lên` }).click();
+    await layerRow.getByRole("button", { name: `Đưa lớp ${title} updated lên` }).click();
     expect((await layerReorderPromise).status()).toBe(200);
 
     const groupAId = await createGroup(editorPage, `lifecycle-a-${stamp}`, groupATitle, 9000);
@@ -217,9 +218,10 @@ test("layer configuration lifecycle keeps version domains isolated and recovers 
     await editorPage.getByLabel("Nhóm lớp").click();
     await editorPage.getByRole("option", { name: groupATitle }).click();
     const assignGroupPromise = editorPage.waitForResponse((response) => response.url().endsWith(`/api/v1/admin/layers/${layerId}`) && response.request().method() === "PATCH");
-    await editorPage.getByRole("button", { name: "Lưu catalog" }).click();
+    await editorPage.getByRole("button", { name: "Lưu sắp xếp lớp" }).click();
     expect((await assignGroupPromise).status()).toBe(200);
     await editorPage.goto("/admin/layers");
+    await editorPage.getByText("Quản lý nhóm lớp", { exact: true }).click();
     const groupBCard = editorPage.locator("article").filter({ hasText: groupBTitle });
     const groupReorderPromise = editorPage.waitForResponse((response) => response.url().endsWith("/api/v1/admin/layer-groups:reorder"));
     await groupBCard.getByRole("button", { name: `Đưa nhóm ${groupBTitle} lên` }).click();
@@ -234,7 +236,7 @@ test("layer configuration lifecycle keeps version domains isolated and recovers 
 
     await editorPage.goto(`/admin/layers/${revisionId}/edit`);
     await editorPage.getByLabel("Tóm tắt thay đổi").fill("Lifecycle config, catalog và ETag isolation");
-    await editorPage.getByLabel("Ghi chú reviewer").fill("Kiểm tra successor sau publication.");
+    await editorPage.getByLabel("Ghi chú cho người duyệt").fill("Kiểm tra successor sau publication.");
     await editorPage.getByRole("button", { name: "Gửi duyệt" }).click();
     const reviewerPage = await reviewerContext.newPage();
     await login(reviewerPage, "REVIEWER");
@@ -244,23 +246,23 @@ test("layer configuration lifecycle keeps version domains isolated and recovers 
     await publish(publisherPage, revisionId);
 
     await editorPage.goto(`/admin/layers/${layerId}`);
-    await expect(editorPage.getByText("published", { exact: true })).toBeVisible();
+    await expect(editorPage.getByText("Đã công bố", { exact: true }).filter({ visible: true })).toBeVisible();
     const publishedRevision = await browserGet(editorPage, `/api/v1/admin/revisions/${revisionId}`);
     expect(publishedRevision.etag).toBeTruthy();
     const successorPromise = editorPage.waitForResponse((response) => response.url().endsWith(`/api/v1/admin/layers/${layerId}/drafts`) && response.request().method() === "POST");
-    await editorPage.getByRole("button", { name: "Tạo successor draft" }).click();
+    await editorPage.getByRole("button", { name: "Tạo bản nháp mới" }).click();
     const successor = await successorPromise;
     expect(successor.status()).toBe(201);
     expect(successor.request().headers()["if-match"]).toBe(publishedRevision.etag);
-    await expect(editorPage.getByText("draft", { exact: true })).toBeVisible();
-    await expect(editorPage.getByRole("button", { name: "Tạo successor draft" })).not.toBeAttached();
+    await expect(editorPage.getByText("Bản nháp", { exact: true })).toBeVisible();
+    await expect(editorPage.getByRole("button", { name: "Tạo bản nháp mới" })).not.toBeAttached();
     const deniedSecondSuccessor = await browserMutation(editorPage, { path: `/api/v1/admin/layers/${layerId}/drafts`, method: "POST", ifMatch: publishedRevision.etag!, operationKey: randomUUID() });
     expect(deniedSecondSuccessor.status).toBe(409);
     expect(record(deniedSecondSuccessor.body).code).toBe("DRAFT_ALREADY_EXISTS");
 
     await reviewerPage.goto(`/admin/layers/${layerId}`);
-    await expect(reviewerPage.getByText("Cấu hình chỉ đọc theo vai trò")).toBeVisible();
-    await expect(reviewerPage.getByRole("button", { name: "Lưu catalog" })).not.toBeAttached();
+    await expect(reviewerPage.getByText("Bạn có quyền xem cấu hình")).toBeVisible();
+    await expect(reviewerPage.getByRole("button", { name: "Lưu sắp xếp lớp" })).not.toBeAttached();
 
     const mobileContext = await browser.newContext({ ...devices["Pixel 7"], ...contextOptions, storageState: await editorContext.storageState() });
     extraContexts.push(mobileContext);

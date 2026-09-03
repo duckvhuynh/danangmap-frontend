@@ -38,8 +38,8 @@ describe("SecuritySettings", () => {
     session(false);
     render(<SecuritySettings />);
 
-    expect(screen.getByText("MFA đang tắt")).toBeInTheDocument();
-    expect(screen.getByText("MFA đang được tắt")).toBeInTheDocument();
+    expect(screen.getByText("Đang tắt")).toBeInTheDocument();
+    expect(screen.getByText("Hiện tại bạn chỉ cần mật khẩu để đăng nhập.")).toBeInTheDocument();
     expect(screen.queryByText("Mã khôi phục đang bật")).not.toBeInTheDocument();
     expect(screen.getByText("Bảo mật phiên")).toBeInTheDocument();
   });
@@ -48,7 +48,7 @@ describe("SecuritySettings", () => {
     session(true);
     render(<SecuritySettings />);
 
-    expect(screen.getByText("MFA đang bật")).toBeInTheDocument();
+    expect(screen.getByText("Đang bật")).toBeInTheDocument();
     expect(screen.getByText("Mã khôi phục đang bật")).toBeInTheDocument();
   });
 });

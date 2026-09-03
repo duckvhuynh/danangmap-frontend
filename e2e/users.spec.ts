@@ -99,15 +99,16 @@ test("System Admin invite uses the dedicated route and explains a 409 conflict",
 
   await page.goto("/admin/users");
   await expect(page.getByText(initialUser.displayName).first()).toBeVisible();
-  await page.getByRole("button", { name: "Mời" }).click();
+  await page.getByRole("button", { name: "Gửi lời mời" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Tên hiển thị").fill("Kiểm duyệt viên 01");
   await dialog.getByLabel("Tên đăng nhập").fill("reviewer01");
   await dialog.getByLabel("Email công vụ").fill("reviewer@danang.gov.vn");
   await dialog.getByRole("button", { name: "Gửi lời mời" }).click();
   const alert = dialog.getByRole("alert");
-  await expect(alert).toContainText("Email hoặc tên đăng nhập đã tồn tại");
-  await expect(alert).toContainText("e2e-conflict");
+  await expect(alert).toContainText("Email hoặc tên đăng nhập có thể đã được sử dụng");
+  await expect(alert).toContainText("Hãy kiểm tra danh sách tài khoản");
+  await expect(alert).not.toContainText("e2e-conflict");
   expect(operationKey).toMatch(/^[0-9a-f-]{36}$/i);
 });
 
@@ -121,8 +122,9 @@ test("mobile System Admin can inspect users but cannot author accounts", async (
   await page.goto("/admin/users");
   await expect(page.getByText("Chế độ chỉ xem")).toBeVisible();
   await expect(page.getByText(initialUser.displayName).last()).toBeVisible();
-  await expect(page.getByRole("button", { name: "Mời" })).toBeDisabled();
-  await expect(page.getByRole("button", { name: "Tạo tài khoản" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Gửi lời mời" })).not.toBeAttached();
+  await expect(page.getByRole("button", { name: "Tạo tài khoản" })).not.toBeAttached();
+  await expect(page.getByRole("link", { name: "Nhập từ tệp" })).not.toBeAttached();
 });
 
 test("a direct non-System Admin visit is denied without loading users", async ({ page }) => {

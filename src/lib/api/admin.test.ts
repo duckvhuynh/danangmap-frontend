@@ -436,7 +436,11 @@ describe("typed admin API adapter", () => {
       adminErrorMessage(
         new AdminApiError(412, "ETAG_MISMATCH", "stale", "request-1"),
       ),
-    ).toContain("Dữ liệu trên máy chủ mới hơn");
+    ).toContain("Dữ liệu đã có thay đổi mới");
+    const message = adminErrorMessage(new AdminApiError(500, "DATABASE_FAILURE", "SQLSTATE 123: internal failure", "request-internal"));
+    expect(message).not.toContain("SQLSTATE");
+    expect(message).not.toContain("request-internal");
+    expect(message).toContain("Thử lại");
   });
 
   it("chains server ETags through create, update and delete", async () => {

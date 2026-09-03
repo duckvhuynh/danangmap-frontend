@@ -50,6 +50,7 @@ import {
   type RevisionBundle,
 } from "@/lib/api/admin";
 import { canAuthorContent } from "@/lib/admin/role-capabilities";
+import { geometryLabel, revisionStatusLabel } from "@/lib/admin/labels";
 import {
   getDesktopAuthoringCapability,
   getServerDesktopAuthoringCapability,
@@ -160,11 +161,10 @@ function MobileCapabilityGate({ revisionId }: { revisionId: string }) {
             <IconInfoCircle stroke={1.75} />
           </span>
           <h1 className="mt-5 text-xl font-semibold">
-            Biên tập cần desktop có con trỏ chính xác
+            Biên tập cần máy tính
           </h1>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            Vẽ và sửa geometry yêu cầu viewport desktop, thiết bị trỏ chính xác
-            và khả năng hover.
+            Để vẽ và sửa bản đồ, hãy dùng máy tính có bàn phím, chuột hoặc bàn di chuột. Trên thiết bị này, bạn vẫn có thể xem và duyệt dữ liệu.
           </p>
           <Button asChild className="mt-6 w-full">
             <Link href={`/admin/layers/${revisionId}/review`}>
@@ -277,12 +277,13 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
       });
   }, [revisionId]);
   useEffect(() => {
+    if (!canAuthor || !canAuthorContent(principal.role)) return;
     const timer = window.setTimeout(load, 0);
     return () => {
       window.clearTimeout(timer);
       loadGenerationRef.current += 1;
     };
-  }, [load]);
+  }, [canAuthor, load, principal.role]);
 
   const draftId = useMemo(
     () =>
@@ -642,10 +643,10 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
         setSuccess(
           remainsDirty
             ? "Đã nhận phản hồi máy chủ. Còn thay đổi mới cần đồng bộ."
-            : `Đã đồng bộ ${summary.acknowledged} mutation lên máy chủ.`,
+            : `Đã lưu ${summary.acknowledged} thay đổi lên hệ thống.`,
         );
       } else {
-        setSuccess("Đã lưu các mutation hợp lệ. Hãy xử lý phần còn xung đột.");
+        setSuccess("Đã lưu các thay đổi hợp lệ. Một số đối tượng cần bạn kiểm tra lại.");
       }
     } catch (reason) {
       setError(reason);
@@ -699,8 +700,8 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
     await refreshSyncState(syncWorkspaceId);
     setSuccess(
       issue.status === "conflict"
-        ? "Bản cục bộ được giữ lại. Chọn Đồng bộ để tạo mutation mới trên phiên bản máy chủ hiện tại."
-        : "Hãy sửa dữ liệu chưa hợp lệ rồi chọn Đồng bộ lại.",
+        ? "Đã giữ thay đổi của bạn. Chọn Lưu lên hệ thống để thử lưu lại."
+        : "Hãy sửa dữ liệu chưa hợp lệ rồi chọn Lưu lên hệ thống.",
     );
   }
 
@@ -718,7 +719,7 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
         workflowKeyRef.current,
         { csrfToken },
       );
-      setSuccess("Đã gửi revision cho reviewer.");
+      setSuccess("Đã gửi nội dung để duyệt.");
       load();
     } catch (reason) {
       setError(reason);
@@ -764,11 +765,10 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
             Vai trò hiện tại không thể biên tập
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Chỉ tài khoản Editor hoặc System Admin được thay đổi geometry.
-            Reviewer và Publisher dùng chế độ xem / duyệt.
+            Bạn cần quyền biên tập hoặc quản trị hệ thống để sửa dữ liệu. Bạn vẫn có thể mở chế độ xem và duyệt.
           </p>
           <Button asChild className="mt-5">
-            <Link href={`/admin/layers/${revisionId}/review`}>Mở revision</Link>
+            <Link href={`/admin/layers/${revisionId}/review`}>Xem dữ liệu</Link>
           </Button>
         </section>
       </main>
@@ -782,32 +782,45 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
           </div>
         ) : (
           <p className="text-sm text-muted-foreground" role="status">
-            Đang tải workspace...
+            Đang tải dữ liệu biên tập...
           </p>
         )}
       </main>
     );
-  if (bundle.revision.status !== "draft")
+  if (bundle.revision.status !== "draft") {
+    const awaitingReview = bundle.revision.status === "in_review";
+    const changesRequested = bundle.revision.status === "changes_requested";
     return (
       <main className="grid min-h-[100dvh] place-items-center bg-surface-subtle p-6">
         <section className="max-w-lg rounded-panel border bg-surface p-6">
           <h1 className="text-xl font-semibold">
-            Revision này được giữ bất biến
+            {awaitingReview ? "Đã gửi duyệt" : changesRequested ? "Cần chỉnh sửa" : "Phiên bản này chỉ được xem"}
           </h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Chỉ successor revision ở trạng thái bản nháp mới có thể biên tập
-            hoặc nhập dữ liệu.
+            {awaitingReview
+              ? "Phiên bản đang chờ kiểm duyệt. Bạn có thể theo dõi kết quả và nhận xét trong chế độ xem / duyệt."
+              : changesRequested
+                ? "Nội dung cần chỉnh sửa. Mở lớp để tiếp tục trên bản nháp mới và xem các ý kiến kiểm duyệt."
+                : "Phiên bản này đã khóa chỉnh sửa. Mở chế độ xem / duyệt để xem nội dung và theo dõi trạng thái."}
           </p>
-          <Button asChild className="mt-5">
-            <Link
-              href={`/admin/layers/${bundle.revision.layerId}/revisions/${revisionId}/review`}
-            >
-              Mở chế độ xem / duyệt
-            </Link>
-          </Button>
+          <div className="mt-5 flex flex-wrap gap-2">
+            {changesRequested && (
+              <Button asChild>
+                <Link href={`/admin/layers/${bundle.revision.layerId}`}>Mở lớp để chỉnh sửa</Link>
+              </Button>
+            )}
+            <Button asChild variant={changesRequested ? "outline" : "default"}>
+              <Link
+                href={`/admin/layers/${bundle.revision.layerId}/revisions/${revisionId}/review`}
+              >
+                Mở chế độ xem / duyệt
+              </Link>
+            </Button>
+          </div>
         </section>
       </main>
     );
+  }
   const unsupported =
     bundle.features.filter(
       (feature) => adminFeatureToTerraParts(feature).length === 0,
@@ -817,7 +830,7 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
     featureRows.find((feature) => feature.id === String(selectedId)) ?? null;
   const fieldValidationErrors = featureRows.flatMap((feature) =>
     validateFeatureProperties(bundle.fields, feature.properties).map(
-      (message) => `${feature.id}: ${message}`,
+      (message) => `${typeof feature.properties.name === "string" && feature.properties.name.trim() ? feature.properties.name : "Đối tượng chưa đặt tên"}: ${message}`,
     ),
   );
   const selectedFeature =
@@ -859,19 +872,19 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
               {bundle.revision.title}
             </h1>
             <Badge>
-              {bundle.revision.status} · Rev {bundle.revision.revisionNo}
+              {revisionStatusLabel(bundle.revision.status)} · Phiên bản {bundle.revision.revisionNo}
             </Badge>
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground">
             {savedAt
               ? `Tự lưu thiết bị lúc ${new Date(savedAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}`
-              : `ETag ${bundle.etag}`}
+              : "Thay đổi được lưu nháp trên thiết bị trong khi biên tập"}
           </p>
         </div>
         <Button asChild variant="outline">
           <Link href={`/admin/layers/${revisionId}/import`}>
             <IconFileImport stroke={1.75} />
-            Nhập file
+            Nhập dữ liệu
           </Link>
         </Button>
         <Button
@@ -887,7 +900,7 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
           onClick={saveServer}
         >
           <IconDeviceFloppy stroke={1.75} />
-          {busy === "save" ? "Đang đồng bộ..." : "Đồng bộ"}
+          {busy === "save" ? "Đang lưu..." : "Lưu lên hệ thống"}
         </Button>
         <Button
           disabled={!canSubmit || busy !== null}
@@ -904,16 +917,17 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
           {busy === "submit" ? "Đang gửi..." : "Gửi duyệt"}
         </Button>
       </header>
-      <div className="relative grid min-h-0 grid-cols-[260px_52px_minmax(360px,1fr)_320px] grid-rows-[minmax(0,1fr)_220px]">
-        <aside className="row-span-2 overflow-y-auto border-r bg-surface">
+      <div className="relative grid min-h-0 min-w-0 grid-cols-[180px_52px_minmax(0,1fr)_260px] grid-rows-[minmax(0,1fr)_220px] xl:grid-cols-[260px_52px_minmax(0,1fr)_320px]">
+        <aside className="row-span-2 min-w-0 overflow-y-auto border-r bg-surface">
           <div className="border-b p-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold">Explorer</h2>
+              <h2 className="text-sm font-semibold">Danh sách đối tượng</h2>
               <Badge>{featureRows.length}</Badge>
             </div>
           </div>
           <div className="p-2">
-            {featureRows.map((feature) => (
+            {featureRows.length === 0 && <p className="p-3 text-sm leading-6 text-muted-foreground">Chưa có đối tượng. Chọn công cụ vẽ bên cạnh hoặc Nhập dữ liệu để bắt đầu.</p>}
+            {featureRows.map((feature, index) => (
               <button
                 type="button"
                 aria-pressed={String(selectedId) === String(feature.id)}
@@ -932,7 +946,7 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
                 <span className="truncate">
                   {typeof feature.properties.name === "string"
                     ? feature.properties.name
-                    : String(feature.id)}
+                    : `Đối tượng ${index + 1}`}
                 </span>
               </button>
             ))}
@@ -1008,16 +1022,16 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
             onClick={() => setDeleteRequest((value) => value + 1)}
             title={
               selectedId === null
-                ? "Chọn một geometry trước khi xóa"
-                : "Xóa geometry đã chọn"
+                ? "Chọn một đối tượng trước khi xóa"
+                : "Xóa đối tượng đã chọn"
             }
             className="grid size-10 place-items-center rounded-map-control text-destructive disabled:cursor-not-allowed disabled:opacity-40"
-            aria-label="Xóa geometry đã chọn"
+            aria-label="Xóa đối tượng đã chọn"
           >
             <IconTrash size={20} stroke={1.75} />
           </button>
         </nav>
-        <section className="relative min-h-0 bg-surface-subtle">
+        <section className="relative min-h-0 min-w-0 bg-surface-subtle">
           <EditorMapCanvas
             activeTool={tool}
             restore={restore}
@@ -1037,9 +1051,10 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
               {mapError}
             </div>
           )}
-          <div className="absolute right-3 top-3">
+          <div className="absolute left-3 right-3 top-3 flex justify-end">
             <EditorSyncStatus
               phase={syncIssues.length ? "issues" : syncPhase}
+              hasLocalChanges={dirty}
               pendingCount={pendingSyncCount}
               issues={syncIssues}
               remoteChanges={remoteChanges}
@@ -1048,14 +1063,14 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
             />
           </div>
           <div className="absolute bottom-3 left-3 rounded-control bg-surface px-2.5 py-1.5 text-xs text-muted-foreground map-control-shadow">
-            Đơn vị: mét · Light
+            Bán kính tính bằng mét
           </div>
         </section>
-        <aside className="row-span-2 overflow-y-auto border-l bg-surface">
+        <aside className="row-span-2 min-w-0 overflow-y-auto border-l bg-surface">
           <div className="border-b p-4">
-            <h2 className="text-sm font-semibold">Revision</h2>
+            <h2 className="text-sm font-semibold">Thông tin và gửi duyệt</h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              Schema và nội dung đã version hóa
+              Sửa thông tin đối tượng và chuẩn bị nội dung gửi duyệt
             </p>
           </div>
           <div className="space-y-4 p-4">
@@ -1064,25 +1079,25 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
             )}{" "}
             {success && (
               <p
-                className="rounded-control bg-emerald-50 p-3 text-sm text-success"
+                className="rounded-control bg-success/10 p-3 text-sm text-success"
                 role="status"
               >
                 {success}
               </p>
             )}
             {(bundle.truncated || unsupported > 0) && (
-              <p className="rounded-control bg-amber-50 p-3 text-xs leading-5 text-warning">
+              <p className="rounded-control bg-warning/10 p-3 text-xs leading-5 text-warning">
                 {bundle.truncated
-                  ? "Workspace lớn hơn trang feature API hiện tại; không lưu cho đến khi pagination contract sẵn sàng. "
+                  ? "Lớp có nhiều dữ liệu hơn mức trình biên tập hiện tải được. Bạn chỉ có thể xem; chức năng lưu đang tạm khóa để bảo vệ dữ liệu. "
                   : ""}
                 {unsupported > 0
-                  ? `${unsupported} geometry không thuộc các kiểu editor hỗ trợ.`
+                  ? `${unsupported} đối tượng chưa thể sửa bằng công cụ vẽ hiện tại.`
                   : ""}
               </p>
             )}
             {fieldValidationErrors.length > 0 && (
-              <div className="rounded-control bg-red-50 p-3 text-xs leading-5 text-destructive">
-                <p className="font-medium">Metadata cần được sửa trước khi đồng bộ</p>
+              <div className="rounded-control bg-destructive/10 p-3 text-xs leading-5 text-destructive">
+                <p className="font-medium">Cần sửa thông tin trước khi lưu</p>
                 <ul className="mt-1 list-disc pl-4">
                   {fieldValidationErrors.slice(0, 3).map((message) => (
                     <li key={message}>{message}</li>
@@ -1138,7 +1153,7 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
                 htmlFor="reviewer-note"
                 className="mb-2 block text-xs font-medium"
               >
-                Ghi chú reviewer
+                Ghi chú cho người duyệt
               </label>
               <textarea
                 id="reviewer-note"
@@ -1152,15 +1167,15 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
             </div>
             <div className="rounded-control bg-surface-subtle p-3 text-xs leading-5 text-muted-foreground">
               <strong className="text-foreground">
-                Revision #{bundle.revision.revisionNo}
+                Phiên bản {bundle.revision.revisionNo}
               </strong>
               <br />
-              {bundle.fields.length} trường metadata ·{" "}
+              {bundle.fields.length} trường dữ liệu ·{" "}
               {bundle.workspace.featureCount} đối tượng
             </div>
             {dirty && selectedFeature && (
-              <p className="rounded-control bg-amber-50 p-3 text-xs leading-5 text-warning">
-                Lưu thay đổi geometry trước khi cập nhật tệp đính kèm.
+              <p className="rounded-control bg-warning/10 p-3 text-xs leading-5 text-warning">
+                Lưu thay đổi trên bản đồ trước khi cập nhật tệp đính kèm.
               </p>
             )}
             <div className="border-t pt-4">
@@ -1192,7 +1207,7 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
               Bảng dữ liệu <Badge>{featureRows.length}</Badge>
             </button>
             <span className="text-xs text-muted-foreground">
-              WGS84, server canonical
+              Bấm vào đối tượng trong danh sách để chỉnh sửa
             </span>
           </div>
           {tableOpen && (
@@ -1200,16 +1215,16 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
               <table className="w-full min-w-[640px] text-left text-xs">
                 <thead className="bg-surface-subtle text-muted-foreground">
                   <tr>
-                    <th className="px-3 py-2 font-medium">ID</th>
+                    <th className="px-3 py-2 font-medium">STT</th>
                     <th className="px-3 py-2 font-medium">Tên</th>
-                    <th className="px-3 py-2 font-medium">Geometry</th>
+                    <th className="px-3 py-2 font-medium">Loại đối tượng</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {featureRows.map((feature) => (
+                  {featureRows.map((feature, index) => (
                     <tr key={String(feature.id)}>
                       <td className="px-3 py-2 font-mono text-muted-foreground">
-                        {String(feature.id).slice(0, 12)}
+                        {index + 1}
                       </td>
                       <td className="px-3 py-2 font-medium">
                         {typeof feature.properties.name === "string"
@@ -1217,7 +1232,7 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
                           : "Chưa có"}
                       </td>
                       <td className="px-3 py-2">
-                        {feature.kind}
+                        {geometryLabel(feature.kind)}
                       </td>
                     </tr>
                   ))}
@@ -1228,7 +1243,7 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
         </section>
         {recoveredDraft && (
           <div
-            className="absolute left-[328px] right-[316px] top-3 z-20 flex items-center gap-3 rounded-panel border border-primary/20 bg-surface p-3 map-panel-shadow"
+            className="absolute left-3 right-3 top-3 z-20 flex flex-wrap items-center gap-3 rounded-panel border border-primary/20 bg-surface p-3 map-panel-shadow xl:left-[328px] xl:right-[332px]"
             role="status"
           >
             <span className="grid size-9 shrink-0 place-items-center rounded-control bg-accent-subtle text-primary">
@@ -1243,7 +1258,7 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
               <p className="truncate text-xs text-muted-foreground">
                 {recoveryMatches || ledgerCanRecover
                   ? `Lưu trên thiết bị lúc ${new Date(recoveredDraft.updatedAt).toLocaleString("vi-VN")}`
-                  : "ETag hoặc server cursor đã thay đổi. Xuất bản nháp để đối chiếu hoặc bỏ bản nháp; không thể khôi phục trực tiếp."}
+                  : "Dữ liệu đã có thay đổi mới. Tải bản nháp về để đối chiếu trước khi bỏ; không thể khôi phục trực tiếp."}
               </p>
             </div>
             {!recoveryMatches && !ledgerCanRecover && (
@@ -1252,7 +1267,7 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
                 variant="outline"
                 onClick={exportRecoveredDraft}
               >
-                Xuất JSON
+                Tải bản nháp
               </Button>
             )}
             <Button
@@ -1261,7 +1276,7 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
               disabled={ledgerCanRecover}
               title={
                 ledgerCanRecover
-                  ? "Hoàn tất hoặc xử lý ledger trước khi bỏ bản nháp"
+                  ? "Lưu hoặc xử lý các thay đổi đang chờ trước khi bỏ bản nháp"
                   : undefined
               }
               onClick={discardDraft}

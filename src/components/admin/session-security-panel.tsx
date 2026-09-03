@@ -78,10 +78,10 @@ export function SessionSecurityPanel({
           <IconShieldLock stroke={1.75} />
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className="font-medium" id="session-security-title">Bảo mật phiên đăng nhập</h2>
+          <h2 className="font-medium" id="session-security-title">Đăng xuất trên mọi thiết bị</h2>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            Thu hồi mọi phiên đang hoạt động, gồm cả thiết bị này. Bản phục hồi cục bộ của tài khoản
-            trên trình duyệt hiện tại cũng sẽ bị xóa.
+            Dùng khi bạn quên đăng xuất hoặc nghi ngờ người khác đang sử dụng tài khoản.
+            Thao tác này cũng đăng xuất thiết bị hiện tại.
           </p>
         </div>
       </div>
@@ -92,9 +92,10 @@ export function SessionSecurityPanel({
         <div aria-labelledby="session-revoke-confirmation-title" className="mt-4 flex flex-col gap-3" role="group">
           <Alert className="border-warning/30 bg-surface-subtle text-warning" role="note">
             <IconAlertCircle size={18} stroke={1.75} />
-            <AlertTitle id="session-revoke-confirmation-title">Xác nhận thu hồi toàn bộ phiên</AlertTitle>
+            <AlertTitle id="session-revoke-confirmation-title">Đăng xuất khỏi tất cả thiết bị?</AlertTitle>
             <AlertDescription>
-              Bạn sẽ phải đăng nhập và xác thực MFA lại trên mọi thiết bị. Thao tác này không thể hoàn tác.
+              Bạn cần đăng nhập lại để tiếp tục làm việc. Bản nháp chỉ lưu trong trình duyệt này sẽ bị xóa.
+              Hãy lưu các thay đổi lên hệ thống trước khi tiếp tục.
             </AlertDescription>
           </Alert>
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -107,14 +108,14 @@ export function SessionSecurityPanel({
             </Button>
             <Button disabled={pending} onClick={() => void revoke()} ref={confirmButtonRef} type="button" variant="destructive">
               <IconLogout data-icon="inline-start" stroke={1.75} />
-              {pending ? "Đang thu hồi..." : "Xác nhận thu hồi"}
+              {pending ? "Đang đăng xuất..." : "Xác nhận đăng xuất"}
             </Button>
           </div>
         </div>
       ) : (
         <Button className="mt-4" onClick={() => setConfirming(true)} ref={triggerRef} type="button" variant="outline">
           <IconLogout data-icon="inline-start" stroke={1.75} />
-          Thu hồi toàn bộ phiên
+          Đăng xuất trên mọi thiết bị
         </Button>
       )}
     </section>

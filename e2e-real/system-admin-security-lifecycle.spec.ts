@@ -87,7 +87,7 @@ async function waitForMailCount(request: APIRequestContext, email: string, minim
 
 async function createInvite(page: Page, email: string, username: string, displayName: string) {
   await page.goto("/admin/users");
-  await page.getByRole("button", { name: "Mời" }).click();
+  await page.getByRole("button", { name: "Gửi lời mời" }).click();
   const dialog = page.getByRole("dialog", { name: "Gửi lời mời tài khoản" });
   await dialog.getByLabel("Tên hiển thị").fill(displayName);
   await dialog.getByLabel("Tên đăng nhập").fill(username);
@@ -99,7 +99,7 @@ async function createInvite(page: Page, email: string, username: string, display
 async function createManualUser(page: Page, email: string, username: string, displayName: string, password: string) {
   await page.goto("/admin/users");
   await page.getByRole("button", { name: "Tạo tài khoản" }).click();
-  const dialog = page.getByRole("dialog", { name: "Tạo tài khoản thủ công" });
+  const dialog = page.getByRole("dialog", { name: "Tạo tài khoản" });
   await dialog.getByLabel("Tên hiển thị").fill(displayName);
   await dialog.getByLabel("Tên đăng nhập").fill(username);
   await dialog.getByLabel("Email công vụ").fill(email);
@@ -114,7 +114,7 @@ async function enrollManualUser(page: Page, username: string, temporaryPassword:
   await page.getByLabel("Mật khẩu").fill(temporaryPassword);
   await page.getByRole("button", { name: "Đăng nhập" }).click();
   await expect(page).toHaveURL(/\/login\/mfa\?enrollment=required$/u);
-  await page.getByRole("button", { name: "Bắt đầu thiết lập MFA" }).click();
+  await page.getByRole("button", { name: "Thiết lập xác thực hai bước" }).click();
   const secret = (await page.getByTestId("manual-mfa-secret").textContent())?.trim();
   if (!secret) throw new Error("MFA enrollment did not expose a manual secret.");
   const confirmationCode = await freshTotp(page, secret, username);
@@ -169,7 +169,7 @@ test("System Admin resends and revokes a pending invite while Mailpit receives o
     const resend = page.getByRole("dialog", { name: "Gửi lại lời mời" });
     await resend.getByLabel("Lý do gửi lại").fill("Kiểm tra E2E gửi lại lời mời");
     await resend.getByRole("button", { name: "Gửi lời mời mới" }).click();
-    await expect(page.getByRole("status").filter({ hasText: "Đã thay lời mời cũ" })).toBeVisible();
+    await expect(page.getByRole("status").filter({ hasText: "Đã tạo lời mời mới" })).toBeVisible();
     await waitForMailCount(request, email, 2);
 
     await page.getByRole("button", { name: "Thu hồi" }).click();
@@ -200,27 +200,27 @@ test("System Admin manages another user, enforces self-service restrictions, and
 
     let detail = await openUserDetail(adminPage, username);
     await detail.getByLabel("Vai trò").click();
-    await adminPage.getByRole("option", { name: "Kiểm duyệt viên" }).click();
+    await adminPage.getByRole("option", { name: "Người kiểm duyệt" }).click();
     await detail.getByLabel("Lý do thay đổi quyền").fill("Kiểm tra E2E cập nhật vai trò");
     const roleUpdate = adminPage.waitForResponse((response) => response.url().includes("/api/v1/admin/users/") && response.request().method() === "PATCH");
     await detail.getByRole("button", { name: "Lưu thay đổi" }).click();
     expect((await roleUpdate).status()).toBe(200);
 
     await targetPage.goto("/admin");
-    await expect(targetPage.getByRole("link", { name: "Quay lại đăng nhập" })).toBeVisible();
+    await expect(targetPage.getByRole("link", { name: "Đăng nhập", exact: true })).toBeVisible();
 
-    await detail.getByRole("button", { name: "Gửi reset mật khẩu" }).click();
+    await detail.getByRole("button", { name: "Gửi email đặt lại mật khẩu" }).click();
     const passwordReset = adminPage.getByRole("dialog", { name: "Gửi yêu cầu đặt lại mật khẩu" });
     await passwordReset.getByLabel("Lý do thao tác").fill("Kiểm tra E2E mail đặt lại mật khẩu");
-    await passwordReset.getByRole("button", { name: "Gửi mail đặt lại" }).click();
+    await passwordReset.getByRole("button", { name: "Gửi email hướng dẫn" }).click();
     await expect(passwordReset).not.toBeAttached();
-    await expect(detail.getByText(/Đặt lại mật khẩu · pending/iu)).toBeVisible();
+    await expect(detail.getByText(/Đặt lại mật khẩu · Chờ sử dụng/iu)).toBeVisible();
     await waitForMailCount(request, email, 1);
 
-    await detail.getByRole("button", { name: "Đặt lại MFA" }).click();
-    const resetMfa = adminPage.getByRole("dialog", { name: "Đặt lại MFA" });
+    await detail.getByRole("button", { name: "Đặt lại xác thực", exact: true }).click();
+    const resetMfa = adminPage.getByRole("dialog", { name: "Đặt lại xác thực hai bước" });
     await resetMfa.getByLabel("Lý do thao tác").fill("Kiểm tra E2E thiết bị MFA bị mất");
-    await resetMfa.getByRole("button", { name: "Đặt lại MFA" }).click();
+    await resetMfa.getByRole("button", { name: "Đặt lại xác thực", exact: true }).click();
     await expect(resetMfa).not.toBeAttached();
     await expect(detail.getByText("Chưa đăng ký", { exact: true })).toBeVisible();
 
@@ -238,15 +238,15 @@ test("System Admin manages another user, enforces self-service restrictions, and
     await detail.getByRole("button", { name: "Đóng" }).click();
     detail = await openUserDetail(adminPage, requiredEnv("DANANGMAP_ADMIN_LOGIN"));
     await expect(detail.getByText("Tài khoản của bạn", { exact: true })).toBeVisible();
-    await expect(detail.getByText("Dùng luồng tự phục vụ cho tài khoản của bạn")).toBeVisible();
-    await expect(detail.getByRole("button", { name: "Đặt lại MFA" })).not.toBeAttached();
-    await expect(detail.getByRole("button", { name: "Thu hồi mọi phiên" })).not.toBeAttached();
+    await expect(detail.getByRole("link", { name: "Cài đặt bảo mật" })).toBeVisible();
+    await expect(detail.getByRole("button", { name: "Đặt lại xác thực", exact: true })).not.toBeAttached();
+    await expect(detail.getByRole("button", { name: "Đăng xuất tất cả" })).not.toBeAttached();
     await detail.getByRole("button", { name: "Đóng" }).click();
 
     await adminPage.goto("/admin/settings");
     await adminPage.getByLabel("Mật khẩu hiện tại").fill(requiredEnv("DANANGMAP_ADMIN_PASSWORD"));
     const totp = await freshTotp(adminPage, requiredEnv("DANANGMAP_ADMIN_TOTP_SECRET"), "DANANGMAP_ADMIN_LOGIN");
-    await adminPage.getByLabel("Mã MFA hoặc mã khôi phục").fill(totp);
+    await adminPage.getByLabel("Mã xác thực hoặc mã khôi phục").fill(totp);
     await adminPage.getByRole("checkbox", { name: /toàn bộ mã cũ sẽ mất hiệu lực/iu }).check();
     await adminPage.getByRole("button", { name: "Tạo lại 10 mã khôi phục" }).click();
     const newCodes = adminPage.getByRole("list", { name: "10 mã khôi phục mới" });

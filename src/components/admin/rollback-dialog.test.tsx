@@ -28,7 +28,7 @@ const publication: LayerPublicationHistory["items"][number] = {
 };
 
 function openAndCompleteForm() {
-  fireEvent.click(screen.getByRole("button", { name: /Khôi phục bản này, generation 8/u }));
+  fireEvent.click(screen.getByRole("button", { name: /Khôi phục bản này, lần công bố 8/u }));
   fireEvent.change(screen.getByLabelText("Lý do khôi phục"), { target: { value: "Khôi phục dữ liệu đã được kiểm chứng" } });
   fireEvent.change(screen.getByLabelText("Nhập KHÔI PHỤC để xác nhận"), { target: { value: "KHÔI PHỤC" } });
 }
@@ -38,7 +38,7 @@ afterEach(cleanup);
 describe("rollback dialog", () => {
   it("focuses the first field, associates validation help and restores the trigger after Escape", async () => {
     render(<RollbackDialog layerId={layerId} publication={publication} activePointerEtag={'"pointer-v8"'} auth={{ csrfToken: "csrf-fixed" }} transport={{ rollback: vi.fn() } as RollbackDialogTransport} onSuccess={vi.fn()}/>);
-    const trigger = screen.getByRole("button", { name: /Khôi phục bản này, generation 8/u });
+    const trigger = screen.getByRole("button", { name: /Khôi phục bản này, lần công bố 8/u });
     trigger.focus();
     fireEvent.click(trigger);
 
@@ -72,7 +72,7 @@ describe("rollback dialog", () => {
     openAndCompleteForm();
 
     fireEvent.click(screen.getByRole("button", { name: "Xác nhận khôi phục" }));
-    expect(await screen.findByText("connection closed")).toBeInTheDocument();
+    expect(await screen.findByText("Chưa thể kết nối hoặc hoàn tất thao tác. Kiểm tra kết nối rồi thử lại.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Xác nhận khôi phục" }));
     await waitFor(() => expect(rollback).toHaveBeenCalledTimes(2));
 
@@ -92,14 +92,15 @@ describe("rollback dialog", () => {
     openAndCompleteForm();
     fireEvent.click(screen.getByRole("button", { name: "Xác nhận khôi phục" }));
 
-    expect(await screen.findByText("Chi tiết từ máy chủ")).toBeInTheDocument();
-    fireEvent.click(screen.getByText("Chi tiết từ máy chủ"));
-    expect(screen.getByText(/pointer-v9/u)).toBeInTheDocument();
+    expect(await screen.findByText("Thông tin hỗ trợ")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Thông tin hỗ trợ"));
+    expect(screen.queryByText(/pointer-v9/u)).not.toBeInTheDocument();
+    expect(screen.getByText(/request-stale/u)).toBeInTheDocument();
     expect(onStale).toHaveBeenCalledWith(stale);
   });
 
   it.each([
-    ["SEPARATION_OF_DUTIES", "tách biệt nhiệm vụ"],
+    ["SEPARATION_OF_DUTIES", "cần một người khác"],
     ["PASSWORD_CHANGE_REQUIRED", "đổi mật khẩu"],
   ])("renders the typed %s problem", async (code, expected) => {
     const rollback = vi.fn().mockRejectedValue(new AdminApiError(403, code, "Forbidden.", "request-forbidden", { policy: code }));

@@ -38,7 +38,7 @@ export function accountSecurityErrorMessage(
   context: "change" | "request-reset" | "confirm-reset" | "revoke" | "recovery-codes",
 ) {
   if (!(error instanceof AccountSecurityError)) {
-    return error instanceof Error ? error.message : "Không thể hoàn tất yêu cầu bảo mật lúc này.";
+    return "Không thể hoàn tất yêu cầu bảo mật. Hãy kiểm tra kết nối và thử lại.";
   }
   if (error.status === 429) {
     return `Có quá nhiều lần thử.${
@@ -57,7 +57,7 @@ export function accountSecurityErrorMessage(
     }
     if (error.status === 422) return "Mật khẩu mới chưa đáp ứng yêu cầu hoặc hai ô chưa trùng khớp.";
     if (error.status === 403) return "Phiên này không được phép đổi mật khẩu. Hãy đăng nhập lại.";
-    if (error.status === 409) return "Yêu cầu đổi mật khẩu đang được xử lý. Không gửi lại bằng một mã thao tác khác.";
+    if (error.status === 409) return "Yêu cầu đổi mật khẩu đang được xử lý. Hãy chờ một lát trước khi thử lại.";
   }
   if (context === "request-reset") {
     if (error.status === 403) return "Yêu cầu bảo mật không hợp lệ. Hãy tải lại trang và thử lại.";
@@ -81,10 +81,10 @@ export function accountSecurityErrorMessage(
       return "Mật khẩu hiện tại không đúng.";
     }
     if (error.status === 401 && error.code === "AUTH_MFA_INVALID") {
-      return "Mã xác thực MFA hoặc mã khôi phục không đúng.";
+      return "Mã xác thực hoặc mã khôi phục không đúng.";
     }
     if (error.status === 409 && error.code === "AUTH_MFA_REQUIRED") {
-      return "Tài khoản chưa đăng ký MFA.";
+      return "Tài khoản chưa thiết lập xác thực hai bước.";
     }
     if (error.status === 409) {
       return "Yêu cầu trước có thể đã thay mã khôi phục. Hãy bắt đầu một lượt tạo mới; DanangMap không tự gửi lại để tránh làm lộ mã.";
@@ -94,7 +94,7 @@ export function accountSecurityErrorMessage(
   }
   if (error.status === 401) return "Phiên đăng nhập đã hết hạn.";
   if (error.status === 0) return "Không thể kết nối dịch vụ bảo mật. Kiểm tra mạng và thử lại.";
-  return error.message;
+  return "Không thể hoàn tất yêu cầu bảo mật lúc này. Vui lòng thử lại sau.";
 }
 
 export function isTerminalPasswordChange(error: unknown) {

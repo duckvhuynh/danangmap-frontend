@@ -38,6 +38,7 @@ let canAuthor = true;
 beforeEach(() => {
   canAuthor = true;
   mocks.session.principal.role = "system_admin";
+  mocks.session.principal.mfaEnabled = true;
   for (const value of Object.values(mocks)) if (typeof value === "function" && "mockReset" in value) value.mockReset();
   mocks.listUsers.mockResolvedValue(page());
   mocks.getAdminUser.mockResolvedValue({ data: detail, etag: firstUser.etag });
@@ -64,6 +65,20 @@ async function openManualAndFill() {
 }
 
 describe("System Admin users screen", () => {
+  it("uses the effective two-step policy and hides implementation details", async () => {
+    mocks.session.principal.mfaEnabled = false;
+    render(<UsersAdmin />);
+    await screen.findAllByText(firstUser.displayName);
+    expect(screen.getByText("Đăng nhập bằng mật khẩu")).toBeInTheDocument();
+    expect(screen.queryByText("Đã xác thực hai bước")).not.toBeInTheDocument();
+    expect(document.body).not.toHaveTextContent(/directory|kiểm soát phiên bản|MFA/);
+    fireEvent.click(screen.getByRole("button", { name: `Xem chi tiết ${firstUser.displayName}` }));
+    const dialog = await screen.findByRole("dialog");
+    await within(dialog).findByText("Đang tắt");
+    expect(dialog).not.toHaveTextContent(/CSRF|ETag|idempotency|read model|Phiên bản 4|Browser test/);
+    expect(within(dialog).queryByRole("button", { name: "Đặt lại xác thực" })).not.toBeInTheDocument();
+  });
+
   it("blocks non-System Admin before any directory request", () => {
     mocks.session.principal.role = "reviewer";
     render(<UsersAdmin />);
@@ -74,7 +89,7 @@ describe("System Admin users screen", () => {
   it("loads the server directory and sends search/filter state to the adapter", async () => {
     render(<UsersAdmin />);
     expect((await screen.findAllByText(firstUser.displayName)).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/1 phiên · 8 mã khôi phục/iu).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/1 phiên đăng nhập/iu).length).toBeGreaterThan(0);
     fireEvent.change(screen.getByLabelText("Tìm tài khoản"), { target: { value: "editor" } });
     await waitFor(() => expect(mocks.listUsers).toHaveBeenLastCalledWith(expect.objectContaining({ q: "editor", limit: 25 }), expect.any(AbortSignal)));
   });
@@ -84,13 +99,13 @@ describe("System Admin users screen", () => {
     render(<UsersAdmin />);
     expect((await screen.findAllByText(firstUser.displayName)).length).toBeGreaterThan(0);
     expect(screen.getByText("Chế độ chỉ xem")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Mời" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Gửi lời mời" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Tạo tài khoản" })).not.toBeInTheDocument();
     const mobileRow = screen.getAllByText(firstUser.displayName).map((node) => node.closest("button")).find(Boolean);
     fireEvent.click(mobileRow!);
     expect(await screen.findByText("Chi tiết chỉ xem")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Lưu thay đổi" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Đặt lại MFA" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Đặt lại xác thực" })).not.toBeInTheDocument();
   });
 
   it("creates a manual account, refreshes the directory and clears the secret dialog", async () => {
@@ -107,7 +122,7 @@ describe("System Admin users screen", () => {
     render(<UsersAdmin />);
     const dialog = await openManualAndFill();
     fireEvent.click(within(dialog).getByRole("button", { name: "Tạo tài khoản" }));
-    expect(await within(dialog).findByRole("alert")).toHaveTextContent("Mất kết nối");
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("Kiểm tra kết nối");
     fireEvent.click(within(dialog).getByRole("button", { name: "Tạo tài khoản" }));
     await waitFor(() => expect(mocks.createUser).toHaveBeenCalledTimes(2));
     expect(mocks.createUser.mock.calls.map((call) => call[1])).toEqual(["55555555-5555-4555-8555-555555555555", "55555555-5555-4555-8555-555555555555"]);
@@ -122,7 +137,7 @@ describe("System Admin users screen", () => {
     fireEvent.change(input, { target: { value: "Tên đã sửa" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Lưu thay đổi" }));
     await waitFor(() => expect(mocks.updateAdminUser).toHaveBeenCalledWith(firstUser.id, { displayName: "Tên đã sửa", unlock: false }, firstUser.etag, "55555555-5555-4555-8555-555555555555", { csrfToken: "csrf-test" }));
-    expect(await screen.findByText("Đã cập nhật tài khoản và làm mới phiên bản dữ liệu.")).toBeInTheDocument();
+    expect(await screen.findByText("Đã cập nhật tài khoản.")).toBeInTheDocument();
   });
 
   it("keeps an explicit 412 conflict in the detail instead of retrying with a new key", async () => {
@@ -134,7 +149,7 @@ describe("System Admin users screen", () => {
     fireEvent.change(await within(dialog).findByLabelText("Tên hiển thị"), { target: { value: "Tên xung đột" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Lưu thay đổi" }));
     expect(await within(dialog).findByRole("alert")).toHaveTextContent("Dữ liệu tài khoản đã thay đổi");
-    expect(within(dialog).getByRole("alert")).toHaveTextContent("request-stale");
+    expect(within(dialog).getByRole("alert")).not.toHaveTextContent("request-stale");
     expect(mocks.updateAdminUser).toHaveBeenCalledTimes(1);
   });
 });

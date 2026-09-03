@@ -90,5 +90,5 @@ export async function loginWithMfa(page: Page, environment: RealStackLoginEnviro
     await submitGeneratedTotp(page, secret, environment.login);
   }
   await expect(page).toHaveURL(/\/admin$/u);
-  await expect(page.getByRole("heading", { name: "Tổng quan hệ thống" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tổng quan" })).toBeVisible();
 }

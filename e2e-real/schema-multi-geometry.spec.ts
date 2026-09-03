@@ -306,10 +306,10 @@ test.describe("schema-driven editor and geometry round trips", () => {
         response.url().endsWith("/changes:batch") &&
         response.request().method() === "POST",
     );
-    await page.getByRole("button", { name: "Đồng bộ", exact: true }).click();
+    await page.getByRole("button", { name: "Lưu lên hệ thống", exact: true }).click();
     expect((await batchResponse).status()).toBe(200);
     await expect(
-      page.getByText("Đã đồng bộ 7 mutation lên máy chủ.", { exact: true }),
+      page.getByText("Đã lưu 7 thay đổi lên hệ thống.", { exact: true }),
     ).toBeVisible();
 
     await page.reload();

@@ -10,6 +10,9 @@ import {
   userImportStage,
   validSheetSelection,
   validateUserImportFile,
+  userImportIssueLabel,
+  userImportFieldLabel,
+  userImportReportCsv,
 } from "./user-import-state";
 
 const job = (overrides: Partial<UserImportJob> = {}): UserImportJob => ({
@@ -28,11 +31,25 @@ const job = (overrides: Partial<UserImportJob> = {}): UserImportJob => ({
 });
 
 describe("user import state policy", () => {
-  it("accepts only CSV/XLSX within the exact 5 MiB boundary", () => {
+  it("exports the loaded issues as a Vietnamese spreadsheet without internal references", () => {
+    const csv = userImportReportCsv([{ id: "private-issue-id", rowNumber: 4, severity: "error", code: "USER_IMPORT_EMAIL_INVALID", field: "email" }]);
+    expect(csv).toBe('\uFEFF"Dòng","Nội dung cần sửa","Cột"\r\n"4","Email chưa đúng định dạng","Email"');
+    expect(csv).not.toMatch(/private-issue-id|USER_IMPORT_EMAIL_INVALID/);
+  });
+
+  it("translates row issues and field names without leaking unknown internal codes", () => {
+    expect(userImportIssueLabel("USER_IMPORT_EMAIL_CONFLICT")).toBe("Email đã được sử dụng");
+    expect(userImportIssueLabel("USER_IMPORT_XLSX_FORMULA_FORBIDDEN")).toContain("thay công thức bằng giá trị");
+    expect(userImportIssueLabel("PRIVATE_INTERNAL_CODE")).not.toContain("PRIVATE_INTERNAL_CODE");
+    expect(userImportFieldLabel("displayName")).toBe("Tên hiển thị");
+    expect(userImportFieldLabel("internalField")).toBe("Cấu trúc tệp");
+  });
+
+  it("accepts only CSV/XLSX within the exact 5 MB boundary", () => {
     expect(inferUserImportFormat("users.CSV")).toBe("csv");
     expect(inferUserImportFormat("users.xlsx")).toBe("xlsx");
     expect(validateUserImportFile({ name: "users.csv", size: MAX_USER_IMPORT_BYTES })).toBeNull();
-    expect(validateUserImportFile({ name: "users.xlsx", size: MAX_USER_IMPORT_BYTES + 1 })).toContain("5 MiB");
+    expect(validateUserImportFile({ name: "users.xlsx", size: MAX_USER_IMPORT_BYTES + 1 })).toContain("5 MB");
     expect(validateUserImportFile({ name: "users.geojson", size: 20 })).toContain("CSV hoặc XLSX");
     expect(validateUserImportFile({ name: "users.csv", size: 0 })).toContain("trống");
   });

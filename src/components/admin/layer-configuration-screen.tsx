@@ -68,7 +68,7 @@ export function LayerConfigurationScreen({ layerId: layerIdProp, transport = def
   }, [layerId, reloadVersion, transport]);
 
   if (error) return <main className="mx-auto max-w-2xl p-4 sm:p-6"><AdminErrorNotice error={error} onRetry={reload}/></main>;
-  if (!bundle) return <main className="mx-auto max-w-[1440px] p-4 sm:p-6 md:p-8" role="status" aria-label="Đang tải cấu hình layer"><div className="flex flex-col gap-3"><Skeleton className="h-8 w-64"/><Skeleton className="h-4 w-full max-w-xl"/></div><div className="mt-8 grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]"><Skeleton className="h-52 rounded-panel"/><Skeleton className="h-[560px] rounded-panel"/></div></main>;
+  if (!bundle) return <main className="mx-auto max-w-[1440px] p-4 sm:p-6 md:p-8" role="status" aria-label="Đang tải cấu hình lớp"><div className="flex flex-col gap-3"><Skeleton className="h-8 w-64"/><Skeleton className="h-4 w-full max-w-xl"/></div><div className="mt-8 grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]"><Skeleton className="h-52 rounded-panel"/><Skeleton className="h-[560px] rounded-panel"/></div></main>;
 
   const auth = { csrfToken };
   return <LayerConfigurationEditor

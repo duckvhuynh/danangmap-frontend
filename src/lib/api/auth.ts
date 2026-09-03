@@ -217,15 +217,15 @@ export function parseEnrollmentUri(value: string): ParsedEnrollmentUri {
 }
 
 export function authErrorMessage(error: unknown, context: "login" | "verify" | "enroll" | "confirm") {
-  if (!(error instanceof AuthApiError)) return error instanceof Error ? error.message : "Không thể hoàn tất xác thực lúc này.";
+  if (!(error instanceof AuthApiError)) return "Không thể hoàn tất xác thực. Hãy kiểm tra kết nối và thử lại.";
   if (error.status === 429) return `Có quá nhiều lần thử.${error.retryAfterSeconds !== undefined ? ` Thử lại sau ${error.retryAfterSeconds} giây.` : " Vui lòng chờ rồi thử lại."}`;
   if (error.status === 403) return "Yêu cầu xác thực không được phép. Hãy đăng nhập lại bằng tài khoản nội bộ.";
-  if (error.status === 409) return "Phiên thiết lập MFA không còn dùng được. Hãy đăng nhập lại bằng mật khẩu để nhận mã thiết lập mới.";
+  if (error.status === 409) return "Yêu cầu xác thực không còn hiệu lực. Hãy đăng nhập lại bằng mật khẩu để tiếp tục.";
   if (error.status === 401) {
     if (error.code === "AUTH_INVALID_CREDENTIALS" || context === "login") return "Tên đăng nhập hoặc mật khẩu không đúng.";
     if (error.code === "AUTH_MFA_INVALID") return "Mã xác thực không đúng. Hãy kiểm tra và thử lại.";
     return "Phiên xác thực đã hết hạn. Hãy đăng nhập lại bằng mật khẩu.";
   }
   if (error.ambiguous && context === "enroll") return "Không xác định được yêu cầu thiết lập đã được xử lý hay chưa. Vì an toàn, hãy đăng nhập lại bằng mật khẩu để nhận mã thiết lập mới.";
-  return error.message;
+  return error.status >= 500 ? "Dịch vụ đăng nhập đang tạm gián đoạn. Vui lòng thử lại sau." : "Không thể hoàn tất xác thực. Hãy kiểm tra kết nối và thử lại.";
 }

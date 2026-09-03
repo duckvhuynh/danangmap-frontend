@@ -171,7 +171,7 @@ export function usePublicationJobTracking({
           } else {
             setTrackingIssue({
               code: "PUBLICATION_JOB_REPRESENTATION_REJECTED",
-              userMessage: "Máy chủ trả trạng thái publication job không nối tiếp trạng thái đã xác nhận. Đang chờ representation hợp lệ mới hơn.",
+              userMessage: "Chưa nhận được tiến độ mới nhất. Kết quả đã xác nhận vẫn được giữ; hệ thống sẽ tiếp tục kiểm tra.",
             });
             setTrackingState("disconnected");
           }

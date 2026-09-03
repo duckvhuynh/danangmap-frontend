@@ -90,9 +90,10 @@ async function assertPublicBaseline(request: APIRequestContext, slug: string, im
 
 async function deriveDraftRevision(page: Page, slug: string) {
   await page.goto("/admin/layers");
-  const row = page.getByRole("row").filter({ hasText: `danang:${slug}` });
+  await page.getByRole("textbox", { name: "Tìm lớp dữ liệu" }).fill(slug);
+  const row = page.getByRole("row").filter({ has: page.getByRole("link", { name: "Nhập dữ liệu", exact: true }) });
   await expect(row).toContainText("Bản nháp");
-  const importLink = row.getByRole("link", { name: "Nhập" });
+  const importLink = row.getByRole("link", { name: "Nhập dữ liệu", exact: true });
   const href = await importLink.getAttribute("href");
   const match = href?.match(/^\/admin\/layers\/([^/]+)\/import$/u);
   expect(Boolean(match)).toBe(true);
@@ -103,9 +104,9 @@ async function deriveDraftRevision(page: Page, slug: string) {
 }
 
 async function importSpatialFeature(page: Page, importedName: string, privateKey: string, privateValue: string) {
-  await expect(page.getByRole("heading", { name: "Nhập dữ liệu không gian" })).toBeVisible();
-  await expect(page.getByText("Demo · không ghi dữ liệu thật")).not.toBeAttached();
-  await page.getByLabel(/Chọn file CSV/u).setInputFiles({
+  await expect(page.getByRole("heading", { name: "Nhập dữ liệu" })).toBeVisible();
+  await expect(page.getByText("Dữ liệu minh họa · không được lưu vào hệ thống")).not.toBeAttached();
+  await page.getByLabel(/Chọn tệp CSV/u).setInputFiles({
     name: "gate-b-spatial.csv",
     mimeType: "text/csv",
     buffer: Buffer.from(
@@ -114,12 +115,12 @@ async function importSpatialFeature(page: Page, importedName: string, privateKey
     ),
   });
   await page.getByRole("button", { name: "Tải lên và tiếp tục" }).click();
-  await expect(page.getByRole("heading", { name: "2. Ánh xạ dữ liệu" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "2. Ghép cột dữ liệu" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Thêm mapping" }).click();
+  await page.getByRole("button", { name: "Thêm cột" }).click();
   await page.getByLabel("Cột nguồn 2").fill("address");
   await page.getByLabel("Trường đích 2").selectOption("address");
-  await page.getByRole("button", { name: "Thêm mapping" }).click();
+  await page.getByRole("button", { name: "Thêm cột" }).click();
   await page.getByLabel("Cột nguồn 3").fill(privateKey);
   await page.getByLabel("Trường đích 3").selectOption(privateKey);
   await page.getByRole("button", { name: "Lưu và kiểm tra" }).click();
@@ -127,7 +128,7 @@ async function importSpatialFeature(page: Page, importedName: string, privateKey
   const issues = page.getByRole("heading", { name: "4. Kiểm tra lỗi trước khi áp dụng" });
   await expect(issues).toBeVisible();
   await expect(page.getByText("Không có lỗi", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Áp dụng vào revision" }).click();
+  await page.getByRole("button", { name: "Nhập vào bản nháp" }).click();
   await expect(page.getByRole("heading", { name: "Nhập dữ liệu hoàn tất" })).toBeVisible();
   await expect(page.getByText(/Đã áp dụng 1 bản ghi, bỏ qua 0 bản ghi/u)).toBeVisible();
 }
@@ -137,9 +138,9 @@ async function submitRevisionFromEditor(page: Page, revisionId: string, imported
   await expect(page).toHaveURL(new RegExp(`/admin/layers/${revisionId}/edit$`, "u"));
   await expect(page.getByText(importedName).first()).toBeVisible();
   await page.getByLabel("Tóm tắt thay đổi").fill("Gate B: nhập điểm mới và gửi duyệt");
-  await page.getByLabel("Ghi chú reviewer").fill("Kiểm tra dữ liệu import thật qua UI.");
+  await page.getByLabel("Ghi chú cho người duyệt").fill("Kiểm tra dữ liệu import thật qua UI.");
   await page.getByRole("button", { name: "Gửi duyệt" }).click();
-  await expect(page.getByRole("heading", { name: "Revision này được giữ bất biến" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Đã gửi duyệt" })).toBeVisible();
 }
 
 async function assertEditorApproveDenied(page: Page, revisionId: string) {
@@ -177,25 +178,25 @@ async function assertEditorApproveDenied(page: Page, revisionId: string) {
 async function approveAsReviewer(page: Page, revisionId: string) {
   await page.goto(`/admin/layers/${revisionId}/review`);
   const header = page.locator("header");
-  await expect(header.getByText("Chờ duyệt", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Công bố revision" })).not.toBeAttached();
+  await expect(header.getByText("Chờ duyệt", { exact: true }).filter({ visible: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Công bố dữ liệu" })).not.toBeAttached();
   const commentsTab = page.getByRole("tab", { name: "Nhận xét" });
   await commentsTab.click();
   await expect(commentsTab).toHaveAttribute("aria-selected", "true");
   const commentsPanel = page.getByRole("tabpanel", { name: "Nhận xét" });
   await expect(commentsPanel).toBeVisible();
-  await commentsPanel.getByLabel("Bình luận review").fill("Gate B reviewer xác nhận dữ liệu hợp lệ.");
+  await commentsPanel.getByLabel("Ý kiến kiểm duyệt").fill("Gate B reviewer xác nhận dữ liệu hợp lệ.");
   await page.getByRole("button", { name: "Duyệt thay đổi" }).click();
-  await expect(header.getByText("Đã duyệt", { exact: true })).toBeVisible();
+  await expect(header.getByText("Đã duyệt", { exact: true }).filter({ visible: true })).toBeVisible();
 }
 
 async function publishAsPublisher(page: Page, revisionId: string) {
   await page.goto(`/admin/layers/${revisionId}/review`);
-  await expect(page.getByText("approved", { exact: true })).toBeVisible();
+  await expect(page.getByText("Đã duyệt", { exact: true }).filter({ visible: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Duyệt thay đổi" })).not.toBeAttached();
   await page.getByLabel("Ghi chú công bố").fill("Gate B công bố dữ liệu đã được duyệt.");
   const responsePromise = page.waitForResponse((response) => response.url().endsWith(`/api/v1/admin/revisions/${revisionId}:publish`) && response.request().method() === "POST");
-  await page.getByRole("button", { name: "Công bố revision" }).click();
+  await page.getByRole("button", { name: "Công bố dữ liệu" }).click();
   const response = await responsePromise;
   expect(response.status()).toBe(202);
   const accepted = record(record(await response.json()).data);
@@ -216,7 +217,7 @@ async function publishAsPublisher(page: Page, revisionId: string) {
     expect(response.headers().location).toBeUndefined();
     expect(response.headers()["retry-after"]).toBeUndefined();
   }
-  await expect(page.getByText("published", { exact: true })).toBeVisible({ timeout: 150_000 });
+  await expect(page.getByText("Đã công bố", { exact: true }).filter({ visible: true })).toBeVisible({ timeout: 150_000 });
 }
 
 async function assertPublicUi(page: Page, importedName: string, privateValue: string) {

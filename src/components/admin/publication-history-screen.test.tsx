@@ -142,32 +142,32 @@ describe("publication history screen", () => {
     render(<PublicationHistoryScreen layerId={layerId} transport={api}/>);
 
     expect(await screen.findByText("Lịch sử Ranh giới phường xã")).toBeInTheDocument();
-    expect(screen.getByText('"history-publications-v1"')).toBeInTheDocument();
-    expect(screen.getByText('"pointer-v6"')).toBeInTheDocument();
+    expect(screen.queryByText('"history-publications-v1"')).not.toBeInTheDocument();
+    expect(screen.queryByText('"pointer-v6"')).not.toBeInTheDocument();
     expect(screen.getByText("100%")).toBeInTheDocument();
     expect(screen.getByText("Chưa có số đo")).toBeInTheDocument();
     expect(screen.queryByText("50%")).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Publication jobs" })).toBeInTheDocument();
-    expect(screen.getByText('"publication-jobs-v1"')).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Revision #3" })).toHaveAttribute("href", `/admin/layers/${layerId}/revisions/${revisionId}/review`);
-    expect(screen.getByRole("button", { name: "Khôi phục bản này, generation 6" })).toBeInTheDocument();
-    expect(screen.getByRole("table", { name: "Các publication snapshot của lớp, sắp xếp từ mới nhất đến cũ nhất." })).toBeInTheDocument();
-    expect(screen.getByText("Đã tải 2 publication, 1 revision và 1 sự kiện kiểm toán.")).toHaveAttribute("role", "status");
+    expect(screen.getByRole("heading", { name: "Tiến độ công bố" })).toBeInTheDocument();
+    expect(screen.queryByText('"publication-jobs-v1"')).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Phiên bản #3" })).toHaveAttribute("href", `/admin/layers/${layerId}/revisions/${revisionId}/review`);
+    expect(screen.getByRole("button", { name: "Khôi phục bản này, lần công bố 6" })).toBeInTheDocument();
+    expect(screen.getByRole("table", { name: "Các lần công bố của lớp, từ mới nhất đến cũ nhất." })).toBeInTheDocument();
+    expect(screen.getByText("Đã tải 2 lần công bố, 1 phiên bản và 1 hoạt động.")).toHaveAttribute("role", "status");
 
-    fireEvent.click(screen.getByRole("button", { name: "Tải thêm revision" }));
+    fireEvent.click(screen.getByRole("button", { name: "Xem thêm phiên bản" }));
     await waitFor(() => expect(api.revisions).toHaveBeenCalledTimes(2));
     expect(vi.mocked(api.revisions).mock.calls[1]![1]?.cursor).toBe("opaque:revisions:2/+==");
 
-    fireEvent.click(screen.getByRole("button", { name: "Tải thêm publication job" }));
+    fireEvent.click(screen.getByRole("button", { name: "Xem thêm yêu cầu công bố" }));
     await waitFor(() => expect(api.jobs).toHaveBeenCalledTimes(2));
     expect(vi.mocked(api.jobs).mock.calls[1]![1]?.cursor).toBe("opaque:jobs:2/+==");
   });
 
   it("renders empty states for a new layer", async () => {
     render(<PublicationHistoryScreen layerId={layerId} transport={transport(true)}/>);
-    expect(await screen.findByText("Chưa có publication")).toBeInTheDocument();
-    expect(screen.getByText("Chưa có revision")).toBeInTheDocument();
-    expect(screen.getByText("Chưa có sự kiện kiểm toán")).toBeInTheDocument();
+    expect(await screen.findByText("Chưa có lần công bố nào")).toBeInTheDocument();
+    expect(screen.getByText("Chưa có phiên bản")).toBeInTheDocument();
+    expect(screen.getByText("Chưa có hoạt động")).toBeInTheDocument();
   });
 
   it.each([
@@ -178,23 +178,31 @@ describe("publication history screen", () => {
     setDesktop(desktop);
     render(<PublicationHistoryScreen layerId={layerId} transport={transport()}/>);
     expect(await screen.findByText("Lịch sử Ranh giới phường xã")).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: `Publication job ${publicationJob.id}` })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Trạng thái yêu cầu công bố" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Khôi phục bản này" })).not.toBeInTheDocument();
-    if (role === "publisher") expect(screen.getByText("Rollback chỉ dùng trên desktop")).toBeInTheDocument();
+    if (role === "publisher") expect(screen.getByText("Dùng máy tính để khôi phục dữ liệu")).toBeInTheDocument();
   });
 
   it("allows a System Admin to use the publisher rollback capability on desktop", async () => {
     vi.mocked(useAdminSession).mockReturnValue({ principal: { ...principal, role: "system_admin" }, csrfToken: "csrf-fixed", refreshCsrf: vi.fn(), clearClientPrincipal: vi.fn() });
     render(<PublicationHistoryScreen layerId={layerId} transport={transport()}/>);
 
-    expect(await screen.findByRole("button", { name: "Khôi phục bản này, generation 6" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Khôi phục bản này, lần công bố 6" })).toBeInTheDocument();
+  });
+
+  it("does not blame permissions for a publication that is already active", async () => {
+    const api = transport();
+    vi.mocked(api.publications).mockResolvedValue({ historyEtag: '"history"', activePointerEtag: '"pointer"', data: { items: [{ ...publication, isActive: true, rollbackEligibility: { eligible: false, reasonCode: "ROLE_FORBIDDEN" } }], activePointerEtag: '"pointer"', nextCursor: null, hasMore: false, limit: 25 } });
+    render(<PublicationHistoryScreen layerId={layerId} transport={api}/>);
+    expect(await screen.findByText("Đang sử dụng bản này")).toBeInTheDocument();
+    expect(screen.queryByText("Bạn không có quyền khôi phục bản công bố.")).not.toBeInTheDocument();
   });
 
   it("renders a typed load error", async () => {
     const api = transport();
     vi.mocked(api.publications).mockRejectedValue(new Error("history unavailable"));
     render(<PublicationHistoryScreen layerId={layerId} transport={api}/>);
-    expect(await screen.findByText("history unavailable")).toBeInTheDocument();
+    expect(await screen.findByText("Chưa thể kết nối hoặc hoàn tất thao tác. Kiểm tra kết nối rồi thử lại.")).toBeInTheDocument();
   });
 
   it("keeps core history available and offers a safe retry when the optional job list fails", async () => {
@@ -203,15 +211,15 @@ describe("publication history screen", () => {
     render(<PublicationHistoryScreen layerId={layerId} transport={api}/>);
 
     expect(await screen.findByText("Lịch sử Ranh giới phường xã")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Publication snapshots" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Revision #3" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Audit theo layer" })).toBeInTheDocument();
-    const warning = screen.getByText("Chưa thể tải publication jobs").closest('[role="status"]');
+    expect(screen.getByRole("heading", { name: "Các lần công bố" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Phiên bản #3" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Nhật ký của lớp" })).toBeInTheDocument();
+    const warning = screen.getByText("Chưa thể tải tiến độ công bố").closest('[role="status"]');
     expect(warning).not.toBeNull();
-    expect(warning).toHaveTextContent("Chưa thể tải publication jobs");
+    expect(warning).toHaveTextContent("Chưa thể tải tiến độ công bố");
     expect(warning).not.toHaveTextContent("private upstream detail");
 
-    fireEvent.click(screen.getByRole("button", { name: "Thử tải lại job" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tải lại tiến độ" }));
     await waitFor(() => expect(api.jobs).toHaveBeenCalledTimes(2));
   });
 
@@ -221,14 +229,14 @@ describe("publication history screen", () => {
     render(<PublicationHistoryScreen layerId={layerId} transport={api}/>);
 
     expect(await screen.findByText("Lịch sử Ranh giới phường xã")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Khôi phục bản này, generation 6" }));
-    const dialog = screen.getByRole("dialog", { name: "Khôi phục publication generation 6" });
+    fireEvent.click(screen.getByRole("button", { name: "Khôi phục bản này, lần công bố 6" }));
+    const dialog = screen.getByRole("dialog", { name: "Khôi phục lần công bố 6" });
     fireEvent.change(within(dialog).getByLabelText("Lý do khôi phục"), { target: { value: "Khôi phục dữ liệu đã được kiểm chứng" } });
     fireEvent.change(within(dialog).getByLabelText("Nhập KHÔI PHỤC để xác nhận"), { target: { value: "KHÔI PHỤC" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Xác nhận khôi phục" }));
 
-    expect(await within(dialog).findByText(/Publication pointer đã thay đổi/u)).toBeInTheDocument();
-    expect(screen.getAllByText(/Publication pointer đã thay đổi/u)).toHaveLength(1);
+    expect(await within(dialog).findByText(/Dữ liệu đã có thay đổi mới/u)).toBeInTheDocument();
+    expect(screen.getAllByText(/Dữ liệu đã có thay đổi mới/u)).toHaveLength(1);
     await waitFor(() => expect(api.publications).toHaveBeenCalledTimes(2));
   });
 
@@ -247,7 +255,7 @@ describe("publication history screen", () => {
     });
     render(<PublicationHistoryScreen layerId={layerId} transport={api}/>);
 
-    const trigger = await screen.findByRole("button", { name: "Khôi phục bản này, generation 6" });
+    const trigger = await screen.findByRole("button", { name: "Khôi phục bản này, lần công bố 6" });
     fireEvent.click(trigger);
     fireEvent.change(screen.getByLabelText("Lý do khôi phục"), { target: { value: "Khôi phục snapshot đã được đối chiếu" } });
     fireEvent.change(screen.getByLabelText("Nhập KHÔI PHỤC để xác nhận"), { target: { value: "KHÔI PHỤC" } });
@@ -257,6 +265,6 @@ describe("publication history screen", () => {
     const result = title.closest('[role="status"]');
     expect(result).not.toBeNull();
     await waitFor(() => expect(result).toHaveFocus());
-    expect(result).toHaveTextContent("Generation 7 đã được tạo");
+    expect(result).toHaveTextContent("Bản đồ công khai đã được cập nhật theo bản bạn chọn.");
   });
 });

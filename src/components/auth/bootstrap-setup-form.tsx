@@ -258,7 +258,7 @@ export function BootstrapSetupForm() {
     return (
       <Alert className="mt-7 border-success/30 bg-surface-subtle text-success" role="status">
         <IconCheck stroke={1.75} />
-        <AlertTitle>System Admin đã được tạo</AlertTitle>
+        <AlertTitle>Đã tạo tài khoản quản trị</AlertTitle>
         <AlertDescription>
           {stage.mfaRequired
             ? "Đang chuyển tới bước thiết lập ứng dụng xác thực và mã khôi phục."
@@ -292,7 +292,7 @@ export function BootstrapSetupForm() {
         <IconShieldCheck className="text-primary" stroke={1.75} />
         <AlertTitle>Một lần duy nhất</AlertTitle>
         <AlertDescription>
-          Tài khoản này có toàn quyền System Admin. Sau khi tạo, hệ thống sẽ áp dụng chính sách xác thực được cấu hình trên máy chủ.
+          Tài khoản này có quyền quản lý người dùng, dữ liệu và cấu hình của hệ thống.
         </AlertDescription>
       </Alert>
 
@@ -420,7 +420,7 @@ export function BootstrapSetupForm() {
             variant="destructive"
           >
             <IconAlertCircle stroke={1.75} />
-            <AlertTitle>Không thể tạo System Admin</AlertTitle>
+            <AlertTitle>Không thể tạo tài khoản quản trị</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
@@ -431,7 +431,7 @@ export function BootstrapSetupForm() {
           ) : (
             <IconUserPlus data-icon="inline-start" stroke={1.75} />
           )}
-          {pending ? "Đang tạo tài khoản..." : "Tạo System Admin và tiếp tục"}
+          {pending ? "Đang tạo tài khoản..." : "Tạo tài khoản và tiếp tục"}
         </Button>
       </form>
     </div>

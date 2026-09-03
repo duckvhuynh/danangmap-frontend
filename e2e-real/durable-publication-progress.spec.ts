@@ -291,11 +291,16 @@ function assertPublicUnchanged(current: PublicObservation, baseline: PublicObser
 }
 
 async function observeUi(page: Page, jobId: string) {
-  const region = page.getByRole("region", { name: `Publication job ${jobId}` });
+  const region = page.getByRole("region", { name: "Trạng thái yêu cầu công bố" });
   await expect(region).toBeVisible();
-  const workspaceRow = page.getByText("Workspace ETag", { exact: true }).locator("..");
-  const workspaceEtag = (await workspaceRow.locator("dd").textContent())?.trim();
-  if (!workspaceEtag) throw new Error("Review UI did not expose its workspace ETag.");
+  // Keep diagnostic tokens in test evidence, not in the operator interface.
+  const jobResponse = await browserGet(page, `/api/v1/admin/publication-jobs/${encodeURIComponent(jobId)}`);
+  expect(jobResponse.status).toBe(200);
+  const revisionId = stringField(envelopeData(jobResponse.body), "revisionId");
+  const workspaceResponse = await browserGet(page, `/api/v1/admin/revisions/${encodeURIComponent(revisionId)}/workspace`);
+  expect(workspaceResponse.status).toBe(200);
+  const workspaceEtag = requiredEtag(workspaceResponse.etag, "review workspace");
+  await expect(page.getByText("Workspace ETag", { exact: true })).not.toBeAttached();
   return { workspaceEtag, statusText: (await region.textContent())?.trim() ?? "" };
 }
 
@@ -324,7 +329,7 @@ async function queuePhase(browser: Browser, phaseDir: string, input: ActivationI
     await desktop.page.goto(`/admin/layers/${input.layerId}/revisions/${input.revisionId}/review`);
     await desktop.page.getByLabel("Ghi chú công bố").fill(`Activation ${input.runNonce}`);
     const responsePromise = desktop.page.waitForResponse((response) => response.url().endsWith(`/api/v1/admin/revisions/${input.revisionId}:publish`) && response.request().method() === "POST");
-    await desktop.page.getByRole("button", { name: "Công bố revision" }).click();
+    await desktop.page.getByRole("button", { name: "Công bố dữ liệu" }).click();
     const response = await responsePromise;
     expect(response.status()).toBe(202);
     expect(record(response.request().postDataJSON(), "publish request").clientIntent).toBe("desktop");
@@ -338,7 +343,7 @@ async function queuePhase(browser: Browser, phaseDir: string, input: ActivationI
     expect(accepted.attempt).toBe(0);
     expect(response.headers().location).toContain(`/api/v1/admin/publication-jobs/${jobId}`);
 
-    const acceptedRegion = desktop.page.getByRole("region", { name: `Publication job ${jobId}` });
+    const acceptedRegion = desktop.page.getByRole("region", { name: "Trạng thái yêu cầu công bố" });
     await expect(acceptedRegion).toBeVisible();
     expect(await acceptedRegion.evaluate((element) => document.activeElement === element)).toBe(true);
     await desktop.page.reload();
@@ -384,11 +389,11 @@ async function progressPhase(browser: Browser, phaseDir: string, input: Activati
     }, { timeout: 150_000, intervals: [250, 500, 1_000] }).toBe("building:scanning_features:1:3:33:1");
     const job = await observeJob(desktop.page, queued.jobId);
     const first = await openRecoveredJob(desktop.context, input, queued.jobId);
-    await expect(first.page.getByRole("region", { name: `Publication job ${queued.jobId}` })).toContainText("1 trên 3 đối tượng, 33%.");
+    await expect(first.page.getByRole("region", { name: "Trạng thái yêu cầu công bố" })).toContainText("1 trên 3 đối tượng, 33%.");
     await first.page.reload();
     const afterReload = await observeUi(first.page, queued.jobId);
     const second = await openRecoveredJob(desktop.context, input, queued.jobId);
-    await expect(second.page.getByRole("region", { name: `Publication job ${queued.jobId}` })).toContainText("1 trên 3 đối tượng, 33%.");
+    await expect(second.page.getByRole("region", { name: "Trạng thái yêu cầu công bố" })).toContainText("1 trên 3 đối tượng, 33%.");
     await second.page.close();
     const publicState = await observePublic(desktop.page, input);
     assertPublicUnchanged(publicState, queued.observed.public, input);
@@ -419,11 +424,11 @@ async function crashedPhase(browser: Browser, phaseDir: string, input: Activatio
     expect(job.progress).toEqual(progress.observed.api.progress);
     expect(job.result).toBeNull();
     const first = await openRecoveredJob(desktop.context, input, progress.jobId);
-    await expect(first.page.getByRole("region", { name: `Publication job ${progress.jobId}` })).not.toContainText(/Đã tạo generation|không thành công/u);
+    await expect(first.page.getByRole("region", { name: "Trạng thái yêu cầu công bố" })).not.toContainText(/Dữ liệu mới đã hiển thị|không thành công/u);
     await first.page.reload();
     const afterReload = await observeUi(first.page, progress.jobId);
     const second = await openRecoveredJob(desktop.context, input, progress.jobId);
-    await expect(second.page.getByRole("region", { name: `Publication job ${progress.jobId}` })).toContainText("1 trên 3 đối tượng, 33%.");
+    await expect(second.page.getByRole("region", { name: "Trạng thái yêu cầu công bố" })).toContainText("1 trên 3 đối tượng, 33%.");
     await second.page.close();
     const publicState = await observePublic(desktop.page, input);
     assertPublicUnchanged(publicState, progress.observed.public, input);
@@ -461,7 +466,7 @@ async function terminalPhase(browser: Browser, phaseDir: string, input: Activati
     expect(result.generation).toBe(input.baseline.generation + 1);
 
     const recovered = await openRecoveredJob(desktop.context, input, crashed.jobId);
-    await expect(recovered.page.getByRole("region", { name: `Publication job ${crashed.jobId}` })).toContainText(`Đã tạo generation ${result.generation}.`);
+    await expect(recovered.page.getByRole("region", { name: "Trạng thái yêu cầu công bố" })).toContainText("Dữ liệu mới đã hiển thị trên bản đồ.");
     await recovered.page.reload();
     const afterReload = await observeUi(recovered.page, crashed.jobId);
     await expect(recovered.page.getByLabel("Ghi chú công bố")).not.toBeAttached();

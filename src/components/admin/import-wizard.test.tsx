@@ -46,17 +46,17 @@ describe("admin import wizard", () => {
     vi.mocked(applySpatialImport).mockResolvedValue({ ...baseJob, status: "applying", progress: 10 });
 
     render(<ImportWizard revisionId={revisionId} principalRole="editor" csrfToken="csrf-1" canAuthor/>);
-    expect(await screen.findByRole("heading", { name: "Nhập dữ liệu không gian" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Nhập dữ liệu" })).toBeInTheDocument();
     const file = new File(["name,longitude,latitude\nA,108.2,16.1"], "data.csv", { type: "text/csv" });
-    fireEvent.change(screen.getByLabelText(/Chọn file CSV/), { target: { files: [file] } });
+    fireEvent.change(screen.getByLabelText(/Chọn tệp CSV/), { target: { files: [file] } });
     fireEvent.click(screen.getByRole("button", { name: /Tải lên và tiếp tục/ }));
 
-    expect(await screen.findByRole("heading", { name: "2. Ánh xạ dữ liệu" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "2. Ghép cột dữ liệu" })).toBeInTheDocument();
     expect(createSpatialImport).toHaveBeenCalledWith(revisionId, file, "csv", "append", expect.any(String), '"rev-v1"', expect.any(String), { csrfToken: "csrf-1" });
     fireEvent.click(screen.getByRole("button", { name: /Lưu và kiểm tra/ }));
 
     expect(await screen.findByRole("heading", { name: "4. Kiểm tra lỗi trước khi áp dụng" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /Áp dụng vào revision/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Nhập vào bản nháp/ }));
     expect(await screen.findByRole("heading", { name: "Nhập dữ liệu hoàn tất" })).toBeInTheDocument();
     expect(applySpatialImport).toHaveBeenCalledWith(importId, { skipInvalid: false, acknowledgedWarningCodes: [] }, '"rev-v1"', expect.any(String), { csrfToken: "csrf-1" });
     await waitFor(() => expect(window.sessionStorage.getItem(`danangmap:import:apply:${importId}`)).toBeNull());
@@ -72,7 +72,7 @@ describe("admin import wizard", () => {
   it("allows a System Admin to use the editor import capability", async () => {
     render(<ImportWizard revisionId={revisionId} principalRole="system_admin" csrfToken="csrf-1" canAuthor/>);
 
-    expect(await screen.findByRole("heading", { name: "Nhập dữ liệu không gian" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Nhập dữ liệu" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Tải lên và tiếp tục/ })).toBeInTheDocument();
   });
 
@@ -80,13 +80,13 @@ describe("admin import wizard", () => {
     vi.mocked(createSpatialImport).mockRejectedValueOnce(new TypeError("network interrupted")).mockResolvedValueOnce({ ...baseJob, status: "uploaded" });
     vi.mocked(getSpatialImport).mockResolvedValue({ ...baseJob, status: "mapping_required", progress: 100 });
     render(<ImportWizard revisionId={revisionId} principalRole="editor" csrfToken="csrf-1" canAuthor/>);
-    await screen.findByRole("heading", { name: "Nhập dữ liệu không gian" });
+    await screen.findByRole("heading", { name: "Nhập dữ liệu" });
     const file = new File(["name,longitude,latitude\nA,108.2,16.1"], "retry.csv", { type: "text/csv" });
-    fireEvent.change(screen.getByLabelText(/Chọn file CSV/), { target: { files: [file] } });
+    fireEvent.change(screen.getByLabelText(/Chọn tệp CSV/), { target: { files: [file] } });
     fireEvent.click(screen.getByRole("button", { name: /Tải lên và tiếp tục/ }));
     await screen.findByRole("alert");
     fireEvent.click(screen.getByRole("button", { name: /Tải lên và tiếp tục/ }));
-    await screen.findByRole("heading", { name: "2. Ánh xạ dữ liệu" });
+    await screen.findByRole("heading", { name: "2. Ghép cột dữ liệu" });
     const first = vi.mocked(createSpatialImport).mock.calls[0];
     const retry = vi.mocked(createSpatialImport).mock.calls[1];
     expect(retry[4]).toBe(first[4]);
@@ -98,11 +98,11 @@ describe("admin import wizard", () => {
     vi.mocked(createSpatialImport).mockResolvedValue({ ...baseJob, format: "xlsx", status: "uploaded", file: { name: "layers.xlsx", sizeBytes: 12 }, inspection: { ...inspection, parserStatus: "pending", sheets: [] } });
     vi.mocked(getSpatialImport).mockResolvedValue({ ...baseJob, format: "xlsx", status: "mapping_required", progress: 100, file: { name: "layers.xlsx", sizeBytes: 12 }, inspection: { ...inspection, sheets: ["Dữ liệu", "Danh mục"] } });
     render(<ImportWizard revisionId={revisionId} principalRole="editor" csrfToken="csrf-1" canAuthor/>);
-    await screen.findByRole("heading", { name: "Nhập dữ liệu không gian" });
-    fireEvent.change(screen.getByLabelText(/Chọn file CSV/), { target: { files: [new File(["xlsx"], "layers.xlsx", { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })] } });
+    await screen.findByRole("heading", { name: "Nhập dữ liệu" });
+    fireEvent.change(screen.getByLabelText(/Chọn tệp CSV/), { target: { files: [new File(["xlsx"], "layers.xlsx", { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })] } });
     fireEvent.click(screen.getByRole("button", { name: /Tải lên và tiếp tục/ }));
-    await screen.findByRole("heading", { name: "2. Ánh xạ dữ liệu" });
-    const sheet = screen.getByLabelText("Tên sheet") as HTMLSelectElement;
+    await screen.findByRole("heading", { name: "2. Ghép cột dữ liệu" });
+    const sheet = screen.getByLabelText("Trang tính") as HTMLSelectElement;
     expect(sheet.value).toBe("Dữ liệu");
     expect(Array.from(sheet.options).map((option) => option.value)).toEqual(["", "Dữ liệu", "Danh mục"]);
   });
@@ -114,10 +114,10 @@ describe("admin import wizard", () => {
     vi.mocked(saveSpatialImportMappingDraft).mockResolvedValue({ ...baseJob, status: "mapping_required", progress: 100 });
     vi.mocked(validateSpatialImport).mockResolvedValue({ ...baseJob, status: "validating", progress: 40 });
     render(<ImportWizard revisionId={revisionId} principalRole="editor" csrfToken="csrf-1" canAuthor/>);
-    await screen.findByRole("heading", { name: "Nhập dữ liệu không gian" });
-    fireEvent.change(screen.getByLabelText(/Chọn file CSV/), { target: { files: [new File(["csv"], "terminal.csv", { type: "text/csv" })] } });
+    await screen.findByRole("heading", { name: "Nhập dữ liệu" });
+    fireEvent.change(screen.getByLabelText(/Chọn tệp CSV/), { target: { files: [new File(["csv"], "terminal.csv", { type: "text/csv" })] } });
     fireEvent.click(screen.getByRole("button", { name: /Tải lên và tiếp tục/ }));
-    await screen.findByRole("heading", { name: "2. Ánh xạ dữ liệu" });
+    await screen.findByRole("heading", { name: "2. Ghép cột dữ liệu" });
     fireEvent.click(screen.getByRole("button", { name: /Lưu và kiểm tra/ }));
     expect(await screen.findByRole("heading", { name: heading })).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /Về trình biên tập/ }).length).toBeGreaterThan(0);
@@ -127,6 +127,6 @@ describe("admin import wizard", () => {
   it("keeps a changes-requested predecessor immutable", async () => {
     vi.mocked(loadRevisionBundle).mockResolvedValue({ ...bundle, revision: { ...bundle.revision, status: "changes_requested" } });
     render(<ImportWizard revisionId={revisionId} principalRole="editor" csrfToken="csrf-1" canAuthor/>);
-    expect(await screen.findByRole("heading", { name: "Revision không thể nhập dữ liệu" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Phiên bản này không thể nhập dữ liệu" })).toBeInTheDocument();
   });
 });

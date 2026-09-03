@@ -73,6 +73,7 @@ import {
   type AdminRole,
 } from "@/lib/api/admin";
 import { canAuthorContent } from "@/lib/admin/role-capabilities";
+import { geometryLabel, revisionStatusLabel } from "@/lib/admin/labels";
 import { cn } from "@/lib/utils";
 
 type EditorTab = "overview" | "geometry" | "schema" | "presentation";
@@ -80,8 +81,8 @@ type EditorTab = "overview" | "geometry" | "schema" | "presentation";
 const tabs: Array<{ id: EditorTab; label: string; icon: typeof IconSettings }> =
   [
     { id: "overview", label: "Thông tin", icon: IconSettings },
-    { id: "geometry", label: "Geometry", icon: IconGeometry },
-    { id: "schema", label: "Schema", icon: IconForms },
+    { id: "geometry", label: "Loại đối tượng", icon: IconGeometry },
+    { id: "schema", label: "Trường dữ liệu", icon: IconForms },
     { id: "presentation", label: "Hiển thị", icon: IconEye },
   ];
 
@@ -90,26 +91,26 @@ const geometryModes: Array<{
   label: string;
   description: string;
 }> = [
-  { value: "point", label: "Point", description: "Điểm đơn hoặc MultiPoint." },
+  { value: "point", label: "Điểm", description: "Vị trí đơn lẻ hoặc một nhóm vị trí." },
   {
     value: "circle",
-    label: "Circle",
-    description: "Lưu tâm Point và bán kính theo mét.",
+    label: "Hình tròn",
+    description: "Vùng quanh một vị trí, có bán kính tính bằng mét.",
   },
   {
     value: "polyline",
-    label: "Polyline",
-    description: "LineString hoặc MultiLineString.",
+    label: "Đường",
+    description: "Một đường hoặc nhiều đoạn đường.",
   },
   {
     value: "polygon",
-    label: "Polygon",
-    description: "Polygon hoặc MultiPolygon.",
+    label: "Vùng",
+    description: "Một vùng hoặc nhiều vùng tách rời.",
   },
   {
     value: "mixed",
-    label: "Mixed",
-    description: "Cho phép nhiều họ geometry trong một logical layer.",
+    label: "Kết hợp",
+    description: "Cho phép điểm, đường và vùng trong cùng lớp.",
   },
 ];
 
@@ -130,6 +131,15 @@ const fieldTypeLabels: Record<LayerFieldType, string> = {
   image: "Hình ảnh",
   attachment: "Tệp đính kèm",
 };
+
+const fieldIconOptions = [
+  { value: "map-pin", label: "Vị trí" },
+  { value: "phone", label: "Điện thoại" },
+  { value: "mail", label: "Thư điện tử" },
+  { value: "link", label: "Liên kết" },
+  { value: "calendar", label: "Lịch" },
+  { value: "number", label: "Chữ số" },
+];
 
 function sectionClassName() {
   return "rounded-panel border bg-surface p-5 map-panel-shadow sm:p-6";
@@ -157,16 +167,16 @@ function ReadOnlyNotice({
   const contentAuthor = canAuthorContent(role);
   const title =
     status !== "draft"
-      ? "Revision này được giữ bất biến"
+      ? "Phiên bản này chỉ được xem"
       : !contentAuthor
-        ? "Cấu hình chỉ đọc theo vai trò"
+        ? "Bạn có quyền xem cấu hình"
         : "Sửa cấu hình cần máy tính";
   const description =
     status !== "draft"
-      ? "Chỉ draft hoặc successor draft mới nhận thay đổi schema, geometry và hiển thị."
+      ? "Chỉ bản nháp mới có thể chỉnh sửa. Với dữ liệu đã công bố, hãy tạo bản nháp mới trước khi thay đổi."
       : !contentAuthor
-        ? "Reviewer và Publisher có thể xem cấu hình nhưng không thay đổi nội dung layer."
-        : "Tính năng này cần máy tính có chuột hoặc trackpad và bàn phím.";
+        ? "Bạn cần quyền biên tập hoặc quản trị hệ thống để thay đổi cấu hình lớp."
+        : "Tính năng này cần máy tính có bàn phím, chuột hoặc bàn di chuột.";
   return (
     <Alert role="note">
       <IconInfoCircle stroke={1.75} />
@@ -204,10 +214,10 @@ function OverviewSection({
       aria-labelledby="layer-overview-title"
     >
       <h2 id="layer-overview-title" className="text-lg font-semibold">
-        Thông tin catalog
+        Thông tin lớp
       </h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        Tên, nhóm và vị trí mà người dân nhìn thấy trong catalog công bố.
+        Đặt tên dễ nhận biết, chọn nhóm và cách lớp xuất hiện trên bản đồ.
       </p>
       <FieldGroup className="mt-6">
         <div className="grid gap-5 md:grid-cols-2">
@@ -229,7 +239,7 @@ function OverviewSection({
               }
             />
             <FieldDescription id="layer-slug-help">
-              Ổn định sau khi tạo; chữ thường, số và dấu gạch ngang.
+              Dùng chữ thường không dấu, số và dấu gạch ngang, ví dụ: tru-so-phuong. Mã này không đổi sau khi tạo.
             </FieldDescription>
             <FieldError id="layer-slug-error">{error.slug}</FieldError>
           </Field>
@@ -292,7 +302,7 @@ function OverviewSection({
             </Select>
           </Field>
           <Field>
-            <FieldLabel htmlFor="layer-order">Thứ tự catalog</FieldLabel>
+            <FieldLabel htmlFor="layer-order">Thứ tự hiển thị</FieldLabel>
             <Input
               id="layer-order"
               type="number"
@@ -343,14 +353,13 @@ function GeometrySection({
       aria-labelledby="layer-geometry-title"
     >
       <h2 id="layer-geometry-title" className="text-lg font-semibold">
-        Geometry được phép
+        Đối tượng được phép
       </h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        Mỗi thay đổi phải qua impact analysis trước khi áp dụng lên draft có dữ
-        liệu.
+        Chọn loại đối tượng của lớp. Khi lưu, hệ thống sẽ kiểm tra để tránh làm sai dữ liệu hiện có.
       </p>
       <fieldset className="mt-6">
-        <legend className="text-sm font-medium">Chế độ layer</legend>
+        <legend className="text-sm font-medium">Loại lớp</legend>
         <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
           {geometryModes.map((mode) => (
             <label
@@ -383,7 +392,7 @@ function GeometrySection({
           error.allowedGeometryKinds ? "geometry-kinds-error" : undefined
         }
       >
-        <legend className="text-sm font-medium">Kiểu geometry</legend>
+        <legend className="text-sm font-medium">Các loại đối tượng cho phép</legend>
         <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {geometryKindLabels.map((kind) => {
             const compatible =
@@ -418,7 +427,7 @@ function GeometrySection({
                     )
                   }
                 />
-                <span className="text-sm">{kind.label}</span>
+                <span className="text-sm">{geometryLabel(kind.value)}</span>
               </label>
             );
           })}
@@ -430,10 +439,9 @@ function GeometrySection({
       {draft.allowedGeometryKinds.includes("circle") && (
         <Alert className="mt-6" role="note">
           <IconInfoCircle />
-          <AlertTitle>Circle dùng đơn vị mét</AlertTitle>
+          <AlertTitle>Bán kính tính bằng mét</AlertTitle>
           <AlertDescription>
-            HTTP và database giữ Point làm tâm cùng radiusM; polygon trên bản đồ
-            chỉ là biểu diễn.
+            Hình tròn được xác định bằng vị trí tâm và bán kính. Bạn có thể điều chỉnh bán kính khi biên tập trên bản đồ.
           </AlertDescription>
         </Alert>
       )}
@@ -470,14 +478,14 @@ function FieldFlags({
     { key: "sensitive", label: "Nhạy cảm" },
     {
       key: "offlineCache",
-      label: "Cho recovery cache",
+      label: "Cho phép lưu nháp trên thiết bị",
       disabled: field.sensitive,
     },
   ];
   return (
     <fieldset>
       <legend className="text-xs font-medium text-muted-foreground">
-        Quyền và khả năng
+        Cách sử dụng trường
       </legend>
       <div className="mt-2 flex flex-wrap gap-2">
         {flags.map((flag) => (
@@ -539,8 +547,8 @@ function SchemaFieldCard({
           </h3>
           <p className="text-xs text-muted-foreground">
             {field.serverId
-              ? "Field hiện có · key được giữ ổn định"
-              : "Field chưa lưu"}
+              ? "Đã lưu · mã trường không đổi"
+              : "Trường mới · chưa lưu"}
           </p>
         </div>
         <Button
@@ -577,7 +585,7 @@ function SchemaFieldCard({
       </header>
       <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Field data-invalid={Boolean(errors[`${path}.key`])}>
-          <FieldLabel htmlFor={`field-key-${field.clientId}`}>Key</FieldLabel>
+          <FieldLabel htmlFor={`field-key-${field.clientId}`}>Mã trường</FieldLabel>
           <Input
             id={`field-key-${field.clientId}`}
             value={field.key}
@@ -597,7 +605,7 @@ function SchemaFieldCard({
         </Field>
         <Field data-invalid={Boolean(errors[`${path}.label`])}>
           <FieldLabel htmlFor={`field-label-${field.clientId}`}>
-            Nhãn tiếng Việt
+            Tên hiển thị
           </FieldLabel>
           <Input
             id={`field-label-${field.clientId}`}
@@ -636,17 +644,16 @@ function SchemaFieldCard({
         </Field>
         <Field>
           <FieldLabel htmlFor={`field-icon-${field.clientId}`}>
-            Tabler icon key
+            Biểu tượng
           </FieldLabel>
-          <Input
-            id={`field-icon-${field.clientId}`}
-            value={field.icon}
-            disabled={disabled}
-            placeholder="map-pin"
-            onChange={(event) =>
-              onChange(changeSchemaField(field, "icon", event.target.value))
-            }
-          />
+          <Select value={field.icon || "__auto"} disabled={disabled} onValueChange={(value) => onChange(changeSchemaField(field, "icon", value === "__auto" ? "" : value))}>
+            <SelectTrigger id={`field-icon-${field.clientId}`}><SelectValue /></SelectTrigger>
+            <SelectContent><SelectGroup>
+              <SelectItem value="__auto">Theo kiểu dữ liệu</SelectItem>
+              {fieldIconOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
+              {field.icon && !fieldIconOptions.some((option) => option.value === field.icon) && <SelectItem value={field.icon}>Biểu tượng đang dùng</SelectItem>}
+            </SelectGroup></SelectContent>
+          </Select>
         </Field>
       </div>
       <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -687,7 +694,7 @@ function SchemaFieldCard({
           data-invalid={Boolean(errors[`${path}.options`])}
         >
           <FieldLabel htmlFor={`field-options-${field.clientId}`}>
-            Lựa chọn enum · mỗi dòng một giá trị
+            Các lựa chọn · mỗi dòng một giá trị
           </FieldLabel>
           <textarea
             id={`field-options-${field.clientId}`}
@@ -735,11 +742,10 @@ function SchemaSection({
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h2 id="layer-schema-title" className="text-lg font-semibold">
-            Schema metadata
+            Trường dữ liệu
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Key ổn định; private và sensitive không được đi vào public
-            projection.
+            Tạo các thông tin cần nhập cho mỗi đối tượng, như tên, địa chỉ và số điện thoại. Chỉ trường được đánh dấu công khai mới hiển thị cho người dân.
           </p>
         </div>
         <Button
@@ -920,10 +926,9 @@ function PresentationSection({
   return (
     <div className="grid gap-5 xl:grid-cols-2">
       <section className={sectionClassName()}>
-        <h2 className="text-lg font-semibold">Style của revision</h2>
+        <h2 className="text-lg font-semibold">Màu sắc và kích thước</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Chỉ hiển thị style tương thích với geometry đang được phép; không nhận
-          Mapbox expression tùy ý.
+          Điều chỉnh cách các đối tượng hiển thị trên bản đồ. Chỉ các lựa chọn phù hợp với loại đối tượng của lớp được hiển thị.
         </p>
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           {colorStyles
@@ -935,7 +940,7 @@ function PresentationSection({
                   <input
                     className="size-11 rounded-control border bg-surface p-1"
                     type="color"
-                    aria-label={`Chọn ${key}`}
+                    aria-label={`Chọn ${label.toLocaleLowerCase("vi")}`}
                     disabled={disabled}
                     value={draft.style[key]}
                     onChange={(event) =>
@@ -996,7 +1001,7 @@ function PresentationSection({
         </div>
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <Field>
-            <FieldLabel htmlFor="min-zoom">Zoom tối thiểu</FieldLabel>
+            <FieldLabel htmlFor="min-zoom">Mức thu phóng tối thiểu</FieldLabel>
             <Input
               id="min-zoom"
               type="number"
@@ -1016,7 +1021,7 @@ function PresentationSection({
             />
           </Field>
           <Field>
-            <FieldLabel htmlFor="max-zoom">Zoom tối đa</FieldLabel>
+            <FieldLabel htmlFor="max-zoom">Mức thu phóng tối đa</FieldLabel>
             <Input
               id="max-zoom"
               type="number"
@@ -1037,9 +1042,12 @@ function PresentationSection({
           </Field>
         </div>
         <FieldError className="mt-3">{errors.renderZoom}</FieldError>
-        <Field className="mt-5">
+        <details className="mt-5 rounded-control border p-4">
+          <summary className="cursor-pointer text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Tùy chọn tải dữ liệu nâng cao</summary>
+          <p className="mt-2 text-xs leading-5 text-muted-foreground">Nên giữ Tự động. Chỉ đổi khi cần điều chỉnh cách tải cho lớp có nhiều dữ liệu.</p>
+        <Field className="mt-3">
           <FieldLabel htmlFor="source-policy">
-            Chính sách nguồn dữ liệu
+            Cách tải dữ liệu bản đồ
           </FieldLabel>
           <Select
             disabled={disabled}
@@ -1059,13 +1067,14 @@ function PresentationSection({
             <SelectContent>
               <SelectGroup>
                 <SelectItem value="auto">Tự động</SelectItem>
-                <SelectItem value="geojson">GeoJSON</SelectItem>
-                <SelectItem value="mvt">Vector tile (MVT)</SelectItem>
+                <SelectItem value="geojson">Tải toàn bộ dữ liệu (GeoJSON)</SelectItem>
+                <SelectItem value="mvt">Tải theo vùng nhìn (MVT)</SelectItem>
                 <SelectItem value="hybrid">Kết hợp</SelectItem>
               </SelectGroup>
             </SelectContent>
           </Select>
         </Field>
+        </details>
         {hasClusterablePoints && (
           <div className="mt-5 flex flex-col gap-3">
             <Field orientation="horizontal">
@@ -1084,7 +1093,7 @@ function PresentationSection({
                 }
               />
               <FieldLabel htmlFor="cluster-points">
-                Gom cụm dữ liệu điểm ở nguồn render
+                Gom các điểm gần nhau khi thu nhỏ bản đồ
               </FieldLabel>
             </Field>
             <Field orientation="horizontal">
@@ -1100,21 +1109,20 @@ function PresentationSection({
                 }
               />
               <FieldLabel htmlFor="style-cluster-points">
-                Bật style cluster cho point
+                Hiển thị ký hiệu cho nhóm điểm
               </FieldLabel>
             </Field>
           </div>
         )}
       </section>
       <section className={sectionClassName()}>
-        <h2 className="text-lg font-semibold">Popup và public projection</h2>
+        <h2 className="text-lg font-semibold">Thông tin người dân nhìn thấy</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Field công khai mới được hiển thị. Tìm kiếm và bộ lọc lấy trực tiếp từ
-          cờ của từng field.
+          Chọn thông tin hiển thị khi người dân bấm vào một đối tượng. Chỉ các trường công khai có thể được chọn.
         </p>
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           <Field data-invalid={Boolean(errors["popupConfig.titleField"])}>
-            <FieldLabel htmlFor="popup-title-field">Field tiêu đề</FieldLabel>
+            <FieldLabel htmlFor="popup-title-field">Trường làm tiêu đề</FieldLabel>
             <Select
               disabled={disabled}
               value={draft.popupConfig.titleField || "__none"}
@@ -1136,7 +1144,7 @@ function PresentationSection({
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  <SelectItem value="__none">Chọn field</SelectItem>
+                  <SelectItem value="__none">Chọn trường</SelectItem>
                   {publicFields.map((field) => (
                     <SelectItem key={field.clientId} value={field.key}>
                       {field.label || field.key}
@@ -1148,7 +1156,7 @@ function PresentationSection({
             <FieldError>{errors["popupConfig.titleField"]}</FieldError>
           </Field>
           <Field>
-            <FieldLabel htmlFor="popup-subtitle-field">Field phụ đề</FieldLabel>
+            <FieldLabel htmlFor="popup-subtitle-field">Trường làm phụ đề</FieldLabel>
             <Select
               disabled={disabled}
               value={draft.popupConfig.subtitleField || "__none"}
@@ -1180,7 +1188,7 @@ function PresentationSection({
         </div>
         <div className="mt-6">
           <ProjectionFieldChecks
-            legend="Field hiển thị trong popup"
+            legend="Thông tin trong bảng chi tiết"
             selected={draft.popupConfig.fieldKeys}
             fields={draft.fields}
             disabled={disabled}
@@ -1263,10 +1271,10 @@ function lifecycleBaseline(
 }
 
 const impactReasonLabels: Record<string, string> = {
-  GEOMETRY_KIND_IN_USE: "Kiểu geometry đang được dữ liệu hiện có sử dụng",
-  FIELD_REMOVAL_WITH_DATA: "Field bị xóa đang có dữ liệu",
-  FIELD_CONSTRAINT_CHANGE_WITH_DATA: "Ràng buộc field mới xung đột dữ liệu",
-  REQUIRED_FIELD_MISSING: "Field bắt buộc còn thiếu ở feature hiện có",
+  GEOMETRY_KIND_IN_USE: "Loại đối tượng này đang có dữ liệu",
+  FIELD_REMOVAL_WITH_DATA: "Trường cần xóa đang có dữ liệu",
+  FIELD_CONSTRAINT_CHANGE_WITH_DATA: "Quy tắc mới của trường không phù hợp với dữ liệu hiện có",
+  REQUIRED_FIELD_MISSING: "Đối tượng hiện có còn thiếu trường bắt buộc",
 };
 
 export function LayerConfigurationEditor({
@@ -1418,7 +1426,7 @@ export function LayerConfigurationEditor({
     await run(
       "create",
       () => actions.create!(draft, { operationKey: operationKey("create") }),
-      "Đã tạo layer và draft cấu hình.",
+      "Đã tạo lớp dữ liệu. Bạn có thể bắt đầu biên tập hoặc nhập dữ liệu.",
       "all",
     );
   }
@@ -1432,7 +1440,7 @@ export function LayerConfigurationEditor({
           etag: draft.layerEtag!,
           operationKey: operationKey("catalog"),
         }),
-      "Đã lưu vị trí và trạng thái catalog.",
+      "Đã lưu nhóm, thứ tự và chế độ hiển thị của lớp.",
       "catalog",
     );
   }
@@ -1467,7 +1475,7 @@ export function LayerConfigurationEditor({
         structuredClone(revisionBaseline(previous, result.configuration)),
       );
       setServerImpact(result.impact ?? impact);
-      setSuccess("Đã thay thế cấu hình draft sau khi phân tích tác động.");
+      setSuccess("Đã lưu cấu hình bản nháp. Dữ liệu hiện có đã được kiểm tra.");
       delete operationKeys.current.revision;
       onSaved?.(result);
     } catch (reason) {
@@ -1492,8 +1500,8 @@ export function LayerConfigurationEditor({
           operationKey: operationKey(action),
         }),
       action === "archive"
-        ? "Đã lưu trữ layer. Publication hiện hành không bị xóa."
-        : "Đã khôi phục layer vào catalog quản trị.",
+        ? "Đã lưu trữ lớp. Nội dung đã công bố vẫn được giữ nguyên."
+        : "Đã khôi phục lớp vào danh sách đang sử dụng.",
       "lifecycle",
     );
     setArchiveConfirmation("");
@@ -1514,7 +1522,7 @@ export function LayerConfigurationEditor({
           etag: draft.revisionEtag!,
           operationKey: operationKey("successor"),
         }),
-      "Đã tạo successor draft từ publication hiện hành.",
+      "Đã tạo bản nháp mới từ nội dung đang công bố.",
       "revision",
     );
   }
@@ -1530,10 +1538,9 @@ export function LayerConfigurationEditor({
         </Button>
         <Alert className="mt-6" variant="destructive">
           <IconAlertTriangle stroke={1.75} />
-          <AlertTitle>Không có quyền tạo layer</AlertTitle>
+          <AlertTitle>Không có quyền tạo lớp</AlertTitle>
           <AlertDescription>
-            Chỉ Editor hoặc System Admin được tạo layer và schema. Reviewer và
-            Publisher dùng workflow chỉ đọc.
+            Bạn cần quyền biên tập hoặc quản trị hệ thống để tạo lớp và các trường dữ liệu.
           </AlertDescription>
         </Alert>
       </main>
@@ -1549,11 +1556,9 @@ export function LayerConfigurationEditor({
         </Button>
         <Alert className="mt-6" role="note">
           <IconInfoCircle stroke={1.75} />
-          <AlertTitle>Tạo layer cần máy tính</AlertTitle>
+          <AlertTitle>Tạo lớp cần máy tính</AlertTitle>
           <AlertDescription>
-            Schema và cấu hình layer chỉ mở trên thiết bị desktop có bàn phím
-            cùng chuột hoặc bàn di chuột. Trên thiết bị này, bạn vẫn có thể xem
-            và duyệt revision.
+            Tạo và sửa lớp cần máy tính có bàn phím, chuột hoặc bàn di chuột. Trên thiết bị này, bạn vẫn có thể xem dữ liệu và duyệt nội dung.
           </AlertDescription>
         </Alert>
       </main>
@@ -1575,7 +1580,7 @@ export function LayerConfigurationEditor({
                 ? "Tạo lớp dữ liệu"
                 : draft.title || "Cấu hình lớp dữ liệu"}
             </h1>
-            <Badge>{draft.revisionStatus}</Badge>
+            <Badge>{revisionStatusLabel(draft.revisionStatus)}</Badge>
             {draft.archivedAt && (
               <Badge className="border bg-surface text-warning">
                 Đã lưu trữ
@@ -1583,8 +1588,7 @@ export function LayerConfigurationEditor({
             )}
           </div>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-            Catalog và revision dùng hai phiên bản độc lập. Cấu hình revision
-            luôn được phân tích tác động trước khi thay thế.
+            Thiết lập thông tin, loại đối tượng và cách hiển thị của lớp. Thay đổi nội dung chỉ xuất hiện cho người dân sau khi được duyệt và công bố.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -1606,7 +1610,7 @@ export function LayerConfigurationEditor({
               ) : (
                 <>
                   <IconDeviceFloppy data-icon="inline-start" />
-                  Tạo layer
+                  Tạo lớp
                 </>
               )}
             </Button>
@@ -1625,7 +1629,7 @@ export function LayerConfigurationEditor({
               ) : (
                 <IconDatabase data-icon="inline-start" />
               )}
-              Lưu catalog
+              Lưu sắp xếp lớp
             </Button>
           )}
           {mode === "edit" && canRevisionMutate && (
@@ -1665,7 +1669,7 @@ export function LayerConfigurationEditor({
                 ) : (
                   <IconGitBranch data-icon="inline-start" />
                 )}
-                Tạo successor draft
+                Tạo bản nháp mới
               </Button>
             )}
         </div>
@@ -1675,17 +1679,16 @@ export function LayerConfigurationEditor({
           <ReadOnlyNotice
             role={principalRole}
             canAuthor={canAuthor}
-            status={draft.revisionStatus}
+            status={revisionStatusLabel(draft.revisionStatus)}
           />
         </div>
       )}
       {heuristicImpact && canRevisionMutate && !serverImpact && (
         <Alert className="mt-4 border-warning/40" role="status">
           <IconAlertTriangle className="text-warning" />
-          <AlertTitle>Thay đổi cần impact analysis</AlertTitle>
+          <AlertTitle>Cần kiểm tra dữ liệu trước khi lưu</AlertTitle>
           <AlertDescription>
-            Máy chủ sẽ kiểm tra feature hiện có trước khi chấp nhận cấu hình; UI
-            không tự bỏ dữ liệu.
+            Hệ thống sẽ kiểm tra các đối tượng hiện có. Dữ liệu không phù hợp sẽ được báo để bạn xử lý; không bị tự động xóa.
           </AlertDescription>
         </Alert>
       )}
@@ -1699,16 +1702,11 @@ export function LayerConfigurationEditor({
           <AlertTitle>
             {serverImpact.blocking
               ? "Không thể áp dụng cấu hình"
-              : "Impact analysis đã hoàn tất"}
+              : "Đã kiểm tra dữ liệu"}
           </AlertTitle>
           <AlertDescription>
             <p>
-              {serverImpact.featureCount.toLocaleString("vi-VN")} feature được
-              kiểm tra
-              {serverImpact.schemaVersionWillIncrement
-                ? "; schemaVersion sẽ tăng"
-                : ""}
-              .
+              {serverImpact.featureCount.toLocaleString("vi-VN")} đối tượng đã được kiểm tra.
             </p>
             {serverImpact.reasons.length > 0 && (
               <ul className="mt-2 list-disc space-y-1 pl-5">
@@ -1716,12 +1714,12 @@ export function LayerConfigurationEditor({
                   <li
                     key={`${reason.code}-${reason.fieldKey ?? reason.geometryKind ?? index}`}
                   >
-                    {impactReasonLabels[reason.code] ?? reason.code}
-                    {reason.fieldKey ? ` · ${reason.fieldKey}` : ""}
+                    {impactReasonLabels[reason.code] ?? "Dữ liệu cần được xem lại"}
+                    {reason.fieldKey ? ` · ${draft.fields.find((field) => field.key === reason.fieldKey)?.label || "Trường dữ liệu"}` : ""}
                     {reason.geometryKind
-                      ? ` · ${reason.geometryKind}`
+                      ? ` · ${geometryLabel(reason.geometryKind)}`
                       : ""} · {reason.affectedFeatures.toLocaleString("vi-VN")}{" "}
-                    feature
+                    đối tượng
                   </li>
                 ))}
               </ul>
@@ -1742,15 +1740,13 @@ export function LayerConfigurationEditor({
                   ? adminErrorMessage(error)
                   : `Kiểm tra ${Object.keys(errors).length} trường chưa hợp lệ.`}
               </p>
-              {error instanceof AdminApiError &&
-                Object.keys(error.details).length > 0 && (
+              {error instanceof AdminApiError && (
                   <details className="mt-2">
                     <summary className="cursor-pointer">
-                      Chi tiết từ máy chủ
+                      Thông tin hỗ trợ kỹ thuật
                     </summary>
-                    <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap text-xs">
-                      {JSON.stringify(error.details, null, 2)}
-                    </pre>
+                    <p className="mt-2 text-xs">Mã lỗi: {error.code}</p>
+                    {error.requestId && <p className="mt-1 break-all text-xs">Mã hỗ trợ: {error.requestId}</p>}
                   </details>
                 )}
               {staleError && onReload && (
@@ -1845,10 +1841,9 @@ export function LayerConfigurationEditor({
           <div className="flex items-start gap-3">
             <IconDatabase className="mt-0.5 text-destructive" />
             <div>
-              <h2 className="font-semibold">Trạng thái catalog</h2>
+              <h2 className="font-semibold">Lưu trữ lớp</h2>
               <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                Lưu trữ là soft delete. Snapshot đã công bố không bị xóa âm
-                thầm.
+                Lớp đã lưu trữ được ẩn khỏi danh sách đang sử dụng và có thể khôi phục. Nội dung đã công bố trên bản đồ vẫn được giữ nguyên.
               </p>
             </div>
           </div>
@@ -1862,8 +1857,7 @@ export function LayerConfigurationEditor({
               }
               onClick={() => setArchived("unarchive")}
             >
-              {pending === "unarchive" ? <Spinner /> : <IconRestore />}Khôi phục
-              layer
+              {pending === "unarchive" ? <Spinner /> : <IconRestore />}Khôi phục lớp
             </Button>
           ) : (
             <div className="mt-5 flex flex-wrap items-end gap-3">
@@ -1893,8 +1887,7 @@ export function LayerConfigurationEditor({
                 }
                 onClick={() => setArchived("archive")}
               >
-                {pending === "archive" ? <Spinner /> : <IconArchive />}Lưu trữ
-                layer
+                {pending === "archive" ? <Spinner /> : <IconArchive />}Lưu trữ lớp
               </Button>
             </div>
           )}

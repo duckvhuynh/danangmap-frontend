@@ -45,8 +45,8 @@ describe("admin trust-state feedback", () => {
   it.each([
     [401, "Phiên đăng nhập đã hết hạn"],
     [403, "không có quyền"],
-    [409, "Trạng thái revision đã thay đổi"],
-    [412, "Dữ liệu trên máy chủ mới hơn"],
+    [409, "Trạng thái dữ liệu đã thay đổi"],
+    [412, "Dữ liệu đã có thay đổi mới"],
     [422, "Dữ liệu chưa hợp lệ"],
   ])("renders an explicit %i response", (status, expected) => {
     render(<AdminErrorNotice error={new AdminApiError(status, `HTTP_${status}`, "Chi tiết API", `request-${status}`)}/>);
@@ -54,11 +54,23 @@ describe("admin trust-state feedback", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(`request-${status}`);
   });
 
-  it("retains structured conflict details for recovery decisions", () => {
+  it("keeps only a support reference behind a closed disclosure", () => {
     render(<AdminErrorNotice error={new AdminApiError(409, "PUBLICATION_BASE_STALE", "Publication base stale.", "request-stale", { baseRevisionId: "base-revision", activeRevisionId: "active-revision" })}/>);
-    fireEvent.click(screen.getByText("Chi tiết từ máy chủ"));
-    expect(screen.getByRole("alert")).toHaveTextContent("base-revision");
-    expect(screen.getByRole("alert")).toHaveTextContent("active-revision");
+    const details = screen.getByText("Thông tin hỗ trợ").closest("details");
+    expect(details).not.toHaveAttribute("open");
+    expect(details).toHaveTextContent("request-stale");
+    expect(screen.getByRole("alert")).not.toHaveTextContent("base-revision");
+    expect(screen.getByRole("alert")).not.toHaveTextContent("active-revision");
+  });
+
+  it("shows a single sign-in action instead of a failure for an expired session", async () => {
+    vi.mocked(getAdminSession).mockRejectedValueOnce(new AdminApiError(401, "AUTH_SESSION_EXPIRED", "Internal detail", "request-expired"));
+    render(<AdminSessionProvider><SessionProbe /></AdminSessionProvider>);
+    expect(await screen.findByRole("heading", { name: "Đăng nhập để tiếp tục" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Đăng nhập" })).toHaveAttribute("href", "/login");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Thử lại" })).not.toBeInTheDocument();
+    expect(document.body).not.toHaveTextContent("request-expired");
   });
 });
 

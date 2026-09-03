@@ -123,7 +123,7 @@ function ReviewSkeleton() {
     <main
       className="min-h-[100dvh] bg-surface-subtle p-4 md:p-6"
       role="status"
-      aria-label="Đang tải revision"
+      aria-label="Đang tải phiên bản"
     >
       <div className="mx-auto flex max-w-5xl flex-col gap-4">
         <Skeleton className="h-16 w-full" />
@@ -369,7 +369,7 @@ function RevisionReviewSession({
         throw new AdminApiError(
           404,
           "REVISION_LAYER_MISMATCH",
-          "Revision không thuộc layer trên đường dẫn hiện tại.",
+          "Phiên bản không thuộc lớp dữ liệu này.",
           undefined,
           {
             requestedLayerId: layerId,
@@ -613,7 +613,7 @@ function RevisionReviewSession({
             result: accepted.data,
           });
           setSuccess(
-            `Dữ liệu đã được công bố ở generation ${accepted.data.generation}. Snapshot ${accepted.data.snapshotId}.`,
+            "Dữ liệu mới đã được công bố trên bản đồ.",
           );
           setFeedbackFocusRequest((value) => value + 1);
           setBusy(null);
@@ -626,15 +626,15 @@ function RevisionReviewSession({
         setJobSeed({ identity: publicationIdentity, resource: accepted });
         setAcceptedJobId(accepted.data.id);
         setSuccess(
-          "Yêu cầu công bố đã được nhận. Trạng thái dưới đây lấy trực tiếp từ máy chủ.",
+          "Yêu cầu công bố đã được nhận. Bạn có thể theo dõi tiến độ bên dưới.",
         );
         return;
       }
       if (!isCurrent()) return;
       setSuccess(
         action === "approve"
-          ? "Đã duyệt revision."
-          : "Đã trả revision cho Editor.",
+          ? "Đã phê duyệt dữ liệu."
+          : "Đã gửi yêu cầu chỉnh sửa cho biên tập viên.",
       );
       setFeedbackFocusRequest((value) => value + 1);
       delete operationKeys.current[action];
@@ -691,7 +691,7 @@ function RevisionReviewSession({
     currentSynchronousPublication !== null;
   const visibleSuccess =
     publicationJob?.status === "succeeded"
-      ? "Dữ liệu đã được công bố sau khi publication job hoàn tất."
+      ? "Dữ liệu mới đã được công bố trên bản đồ."
       : publicationJob?.status === "failed"
         ? null
         : success;
@@ -705,7 +705,7 @@ function RevisionReviewSession({
   const publishLabel =
     publicationJob?.status === "failed"
       ? "Thử công bố lại"
-      : "Công bố revision";
+      : "Công bố dữ liệu";
   const status = reviewStatus(bundle.revision.status);
   const validationLabel =
     history?.data.validation.status === "valid"
@@ -720,7 +720,7 @@ function RevisionReviewSession({
         <Button asChild variant="ghost" size="icon">
           <Link
             href={`/admin/layers/${resolvedLayerId}/history`}
-            aria-label="Quay lại lịch sử layer"
+            aria-label="Quay lại lịch sử lớp"
           >
             <IconArrowLeft stroke={1.75} />
           </Link>
@@ -738,7 +738,7 @@ function RevisionReviewSession({
             />
             <span className="md:hidden">Bản #{bundle.revision.revisionNo}</span>
             <span className="hidden md:inline">
-              Revision #{bundle.revision.revisionNo}, {bundle.revision.id}
+              Phiên bản #{bundle.revision.revisionNo}
             </span>
           </p>
         </div>
@@ -747,7 +747,7 @@ function RevisionReviewSession({
           {status.label}
         </Badge>
         <Badge className="hidden md:inline-flex">
-          {bundle.revision.status}
+          {status.label}
         </Badge>
       </header>
 
@@ -820,7 +820,7 @@ function RevisionReviewSession({
             />
             <div className="hidden border-t p-4 md:block">
               <h2 id="review-content-title" className="font-semibold">
-                Nội dung revision
+                Nội dung phiên bản
               </h2>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 {bundle.revision.description || "Không có mô tả."}
@@ -834,7 +834,7 @@ function RevisionReviewSession({
                 </div>
                 <div className="rounded-control bg-surface-subtle p-3">
                   <dt className="text-xs text-muted-foreground">
-                    Trường metadata
+                    Trường thông tin
                   </dt>
                   <dd className="mt-1 text-lg font-semibold">
                     {bundle.fields.length}
@@ -848,14 +848,14 @@ function RevisionReviewSession({
                 type="button"
                 onClick={() => activateMobileSection("changes", true)}
                 className="flex min-h-11 w-full items-center gap-3 rounded-control text-left outline-none hover:bg-surface-subtle focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label={`Xem thay đổi của ${bundle.workspace.featureCount} đối tượng`}
+                aria-label={`Xem phiên bản có ${bundle.workspace.featureCount} đối tượng`}
               >
                 <span className="grid size-10 shrink-0 place-items-center rounded-control bg-accent-subtle text-primary">
                   <IconPolygon size={21} stroke={1.75} />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-semibold">
-                    {bundle.workspace.featureCount} đối tượng thay đổi
+                    {bundle.workspace.featureCount} đối tượng trong phiên bản
                   </span>
                   <span className="mt-0.5 block text-xs text-muted-foreground">
                     {geometryModeLabel(bundle.revision.geometryMode)}
@@ -875,7 +875,7 @@ function RevisionReviewSession({
                   <div className="min-w-0">
                     <dt className="text-muted-foreground">Tác giả</dt>
                     <dd className="truncate font-medium">
-                      {bundle.revision.createdBy}
+                      {history?.data.revision?.createdByDisplayName ?? "Người dùng nội bộ"}
                     </dd>
                   </div>
                 </div>
@@ -980,10 +980,10 @@ function RevisionReviewSession({
               </span>
               <div>
                 <h2 id="workspace-title" className="text-sm font-semibold">
-                  Workspace server
+                  Thông tin phiên bản
                 </h2>
                 <p className="text-xs text-muted-foreground">
-                  WGS84, đơn vị bán kính mét
+                  Thông tin lưu trên hệ thống
                 </p>
               </div>
             </div>
@@ -991,7 +991,7 @@ function RevisionReviewSession({
               <div className="flex justify-between py-3">
                 <dt className="text-muted-foreground">Người tạo</dt>
                 <dd className="max-w-[12rem] truncate font-medium">
-                  {bundle.revision.createdBy}
+                  {history?.data.revision?.createdByDisplayName ?? "Người dùng nội bộ"}
                 </dd>
               </div>
               <div className="flex justify-between py-3">
@@ -1000,20 +1000,6 @@ function RevisionReviewSession({
                   {new Date(bundle.revision.updatedAt).toLocaleString("vi-VN")}
                 </dd>
               </div>
-              <div className="flex justify-between py-3">
-                <dt className="text-muted-foreground">Workspace ETag</dt>
-                <dd className="max-w-[12rem] truncate font-mono text-xs">
-                  {bundle.etag}
-                </dd>
-              </div>
-              {history && (
-                <div className="flex justify-between py-3">
-                  <dt className="text-muted-foreground">History ETag</dt>
-                  <dd className="max-w-[12rem] truncate font-mono text-xs">
-                    {history.historyEtag}
-                  </dd>
-                </div>
-              )}
             </dl>
           </section>
           {(error !== null || visibleSuccess) && (
@@ -1035,7 +1021,7 @@ function RevisionReviewSession({
                       <Link
                         href={`/admin/layers/${resolvedLayerId}/revisions/${activeRevisionId}/review`}
                       >
-                        Mở revision đang công bố
+                        Mở phiên bản đang công bố
                       </Link>
                     </Button>
                   )}
@@ -1056,8 +1042,7 @@ function RevisionReviewSession({
               <AlertTitle>Chưa thể khôi phục trạng thái công bố</AlertTitle>
               <AlertDescription>
                 <p>
-                  Không thể đọc publication job hiện hành. Dữ liệu trên máy chủ
-                  không bị đánh dấu thất bại.
+                  Chưa thể tải tiến độ. Quá trình công bố trên hệ thống vẫn có thể đang tiếp tục.
                 </p>
                 <Button
                   type="button"
@@ -1087,7 +1072,7 @@ function RevisionReviewSession({
             <section className="rounded-panel border bg-surface p-4">
               <Field>
                 <FieldLabel htmlFor="review-comment">
-                  Bình luận review
+                  Ý kiến kiểm duyệt
                 </FieldLabel>
                 <textarea
                   id="review-comment"
@@ -1128,16 +1113,24 @@ function RevisionReviewSession({
                   placeholder="Mô tả dữ liệu được công bố"
                 />
                 <FieldDescription id="release-note-description">
-                  Một yêu cầu mới sau khi job thất bại luôn dùng idempotency key
-                  mới.
+                  Tóm tắt nội dung của lần công bố này để dễ tra cứu về sau.
                 </FieldDescription>
               </Field>
             </section>
           )}
           {!reviewerActions && !publisherAction && !publicationJob && (
             <section className="rounded-panel border bg-surface p-4 text-sm text-muted-foreground">
-              Revision đang ở chế độ chỉ đọc đối với vai trò{" "}
-              {principal.role.replace("_", " ")}.
+              {bundle.revision.status === "draft"
+                ? "Bản nháp chưa được gửi duyệt. Mở lớp dữ liệu để tiếp tục biên tập."
+                : bundle.revision.status === "changes_requested"
+                  ? "Nội dung cần chỉnh sửa. Bản nháp mới đã được tạo để biên tập viên cập nhật."
+                  : bundle.revision.status === "approved"
+                    ? canPublishContent(principal.role) && !canPublishHere
+                      ? "Dữ liệu đã được duyệt. Dùng máy tính để công bố lên bản đồ."
+                      : "Dữ liệu đã được duyệt và đang chờ công bố."
+                    : bundle.revision.status === "published"
+                      ? "Phiên bản này đã được công bố. Muốn thay đổi dữ liệu, hãy tạo bản nháp mới từ lớp dữ liệu."
+                      : "Bạn có thể xem nội dung và theo dõi kết quả kiểm duyệt tại đây."}
             </section>
           )}
         </aside>
@@ -1185,7 +1178,7 @@ function RevisionReviewSession({
             <h2 id="diff-title" className="text-base font-semibold">
               So sánh thay đổi
             </h2>
-            <RevisionDiffView revisionId={revisionId} />
+            <RevisionDiffView revisionId={revisionId} fieldLabels={Object.fromEntries(bundle.fields.map((field) => [field.key, field.label]))} />
           </section>
         </div>
         <div
@@ -1199,7 +1192,7 @@ function RevisionReviewSession({
             aria-labelledby="workflow-title"
           >
             <h2 id="workflow-title" className="text-base font-semibold">
-              Tiến trình workflow
+              Lịch sử duyệt
             </h2>
             <WorkflowTimeline
               events={workflow?.data ?? null}
@@ -1220,7 +1213,7 @@ function RevisionReviewSession({
             aria-labelledby="audit-title"
           >
             <h2 id="audit-title" className="text-base font-semibold">
-              Nhật ký revision
+              Nhật ký phiên bản
             </h2>
             <AuditEventList
               events={audit?.data ?? null}
@@ -1243,7 +1236,7 @@ function RevisionReviewSession({
         <div
           className="fixed inset-x-0 bottom-16 z-20 border-t bg-surface p-3 md:bottom-0 md:left-60"
           role="region"
-          aria-label="Hành động workflow"
+          aria-label="Thao tác kiểm duyệt"
           aria-busy={busy !== null}
         >
           <div className="mx-auto flex max-w-5xl gap-2">

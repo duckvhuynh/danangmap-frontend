@@ -53,7 +53,7 @@ describe("System Admin invitation queue", () => {
     const dialog = await screen.findByRole("dialog");
     fireEvent.change(within(dialog).getByLabelText("Lý do gửi lại"), { target: { value: "Người dùng yêu cầu gửi lại" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Gửi lời mời mới" }));
-    expect(await within(dialog).findByRole("alert")).toHaveTextContent("đã thay đổi trên máy chủ");
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("vừa thay đổi");
     expect(changed).not.toHaveBeenCalled();
   });
 

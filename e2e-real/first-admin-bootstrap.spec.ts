@@ -27,12 +27,12 @@ test("fresh stack bootstraps its first System Admin and disables setup after MFA
       response.request().method() === "POST",
   );
   await page
-    .getByRole("button", { name: "Tạo System Admin và tiếp tục" })
+    .getByRole("button", { name: "Tạo tài khoản và tiếp tục" })
     .click();
   expect((await creation).status()).toBe(201);
   await expect(page).toHaveURL(/\/login\/mfa\?enrollment=required$/u);
 
-  await page.getByRole("button", { name: "Bắt đầu thiết lập MFA" }).click();
+  await page.getByRole("button", { name: "Thiết lập xác thực hai bước" }).click();
   const manualSecret = (await page.getByTestId("manual-mfa-secret").textContent())?.trim();
   expect(manualSecret).toMatch(/^[A-Z2-7]{32}$/u);
   await page
@@ -52,7 +52,7 @@ test("fresh stack bootstraps its first System Admin and disables setup after MFA
     .click();
   await expect(page).toHaveURL(/\/admin$/u);
   await expect(
-    page.getByRole("heading", { name: "Tổng quan hệ thống" }),
+    page.getByRole("heading", { name: "Tổng quan" }),
   ).toBeVisible();
 
   const persisted = await page.evaluate(async () => ({

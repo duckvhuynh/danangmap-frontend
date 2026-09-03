@@ -161,6 +161,15 @@ afterEach(() => {
 });
 
 describe("layer catalog manager", () => {
+  it("keeps group controls collapsed and presents readable geometry without internal slugs", async () => {
+    render(<LayerCatalogManager transport={transport()} />);
+    const row = await screen.findByRole("row", { name: /Ranh giới phường xã/u });
+    expect(within(row).getByText("Vùng")).toBeInTheDocument();
+    expect(screen.getByText("Quản lý nhóm lớp").closest("details")).not.toHaveAttribute("open");
+    expect(screen.queryByText("danang:wards")).not.toBeInTheDocument();
+    expect(screen.queryByText("administration")).not.toBeInTheDocument();
+  });
+
   it("links catalog identity to layer configuration while revision actions keep revision identity", async () => {
     render(<LayerCatalogManager transport={transport()} />);
     const row = await screen.findByRole("row", {
@@ -191,11 +200,11 @@ describe("layer catalog manager", () => {
       });
     render(<LayerCatalogManager transport={api} />);
     const down = await screen.findByRole("button", {
-      name: "Đưa layer Ranh giới phường xã xuống",
+      name: "Đưa lớp Ranh giới phường xã xuống",
     });
     fireEvent.click(down);
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "network interrupted",
+      "Kiểm tra kết nối rồi thử lại.",
     );
     fireEvent.click(down);
     await waitFor(() => expect(api.reorderLayers).toHaveBeenCalledTimes(2));
@@ -222,6 +231,7 @@ describe("layer catalog manager", () => {
         etag: '"layer-group-v3"',
       });
     render(<LayerCatalogManager transport={api} />);
+    fireEvent.click(screen.getByText("Quản lý nhóm lớp"));
     const card = (await screen.findByText("Hành chính")).closest("article")!;
     fireEvent.click(within(card).getByRole("button", { name: "Lưu trữ" }));
     const confirm = within(card).getByRole("button", {
@@ -229,7 +239,7 @@ describe("layer catalog manager", () => {
     });
     fireEvent.click(confirm);
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "connection closed",
+      "Kiểm tra kết nối rồi thử lại.",
     );
     fireEvent.click(confirm);
     await waitFor(() => expect(api.archiveGroup).toHaveBeenCalledTimes(2));
@@ -256,6 +266,7 @@ describe("layer catalog manager", () => {
         etag: '"layer-group-v3"',
       });
     render(<LayerCatalogManager transport={api} />);
+    fireEvent.click(screen.getByText("Quản lý nhóm lớp"));
     let card = (await screen.findByText("Hành chính")).closest("article")!;
     fireEvent.click(within(card).getByRole("button", { name: "Lưu trữ" }));
     const firstContextButton = within(card).getByRole("button", {
@@ -294,7 +305,7 @@ describe("layer catalog manager", () => {
         (await screen.findAllByText("Ranh giới phường xã")).length,
       ).toBeGreaterThan(0);
       expect(
-        screen.queryByRole("button", { name: /Đưa layer/u }),
+        screen.queryByRole("button", { name: /Đưa lớp/u }),
       ).not.toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Tạo lớp" })).toBeDisabled();
     },
@@ -312,7 +323,7 @@ describe("layer catalog manager", () => {
       await screen.findByRole("link", { name: "Tạo lớp" }),
     ).toBeInTheDocument();
     expect(
-      screen.getAllByRole("button", { name: /Đưa layer/u }).length,
+      screen.getAllByRole("button", { name: /Đưa lớp/u }).length,
     ).toBeGreaterThan(0);
   });
 

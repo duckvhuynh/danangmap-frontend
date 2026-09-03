@@ -26,7 +26,6 @@ import {
   coerceFieldValue,
   validateFieldValue,
 } from "@/lib/editor/field-values";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 
 const fieldIcons: Record<string, Icon> = {
@@ -111,8 +110,7 @@ export function FeaturePropertiesEditor({
           Thuộc tính đối tượng
         </h2>
         <p className="mt-2 rounded-control bg-surface-subtle p-3 text-xs leading-5 text-muted-foreground">
-          Chọn một đối tượng trên bản đồ hoặc Explorer để xem và chỉnh sửa các
-          trường metadata theo schema của revision.
+          Chọn một đối tượng trên bản đồ hoặc trong danh sách để xem và sửa thông tin.
         </p>
       </section>
     );
@@ -130,7 +128,6 @@ export function FeaturePropertiesEditor({
         <h2 id="feature-properties-title" className="text-sm font-semibold">
           Thuộc tính đối tượng
         </h2>
-        <Badge>{featureId.slice(0, 8)}</Badge>
       </div>
       <div className="mt-4 space-y-4">
         {sortedFields.map((field) => {

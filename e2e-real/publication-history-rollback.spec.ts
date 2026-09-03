@@ -72,7 +72,7 @@ async function createLayer(page: Page, stamp: string) {
   await page.getByLabel("Mã lớp").fill(`history-${stamp}`);
   await page.getByLabel("Tên lớp").fill(`History ${stamp}`);
   const responsePromise = page.waitForResponse((response) => response.url().endsWith("/api/v1/admin/layers") && response.request().method() === "POST");
-  await page.getByRole("button", { name: "Tạo layer" }).click();
+  await page.getByRole("button", { name: "Tạo lớp" }).click();
   const response = await responsePromise;
   expect(response.status()).toBe(201);
   const created = record(envelopeData(await response.json()));
@@ -186,14 +186,14 @@ test("history, diff, role gates, synchronous rollback, stale pointer and idempot
 
     await mobileReviewerPage.goto(`/admin/layers/${first.layerId}/history`);
     await expect(mobileReviewerPage.getByRole("heading", { name: /Lịch sử/u })).toBeVisible();
-    await expect(mobileReviewerPage.getByRole("button", { name: "Khôi phục bản này" })).not.toBeAttached();
+    await expect(mobileReviewerPage.getByRole("button", { name: /Khôi phục bản này/u })).not.toBeAttached();
 
     await rollbackPage.goto(`/admin/layers/${first.layerId}/history`);
     await staleRollbackPage.goto(`/admin/layers/${first.layerId}/history`);
     await expect(rollbackPage.getByText("100%").first()).toBeVisible();
     await expect(rollbackPage.getByText("50%")).not.toBeAttached();
     const rollbackResponsePromise = rollbackPage.waitForResponse((response) => response.url().endsWith(`/api/v1/admin/layers/${first.layerId}:rollback`) && response.request().method() === "POST");
-    await rollbackPage.getByRole("button", { name: "Khôi phục bản này" }).click();
+    await rollbackPage.getByRole("button", { name: /Khôi phục bản này/u }).click();
     await rollbackPage.getByLabel("Lý do khôi phục").fill("Khôi phục baseline đã được cơ quan xác nhận");
     await rollbackPage.getByLabel("Nhập KHÔI PHỤC để xác nhận").fill("KHÔI PHỤC");
     await rollbackPage.getByRole("button", { name: "Xác nhận khôi phục" }).click();
@@ -216,18 +216,18 @@ test("history, diff, role gates, synchronous rollback, stale pointer and idempot
     expect(envelopeData(replay.body)).toEqual(firstRollbackData);
     expect(replay.etag).toBe(rollbackResponse.headers()["etag"]);
 
-    await staleRollbackPage.getByRole("button", { name: "Khôi phục bản này" }).click();
+    await staleRollbackPage.getByRole("button", { name: /Khôi phục bản này/u }).click();
     await staleRollbackPage.getByLabel("Lý do khôi phục").fill("Kiểm tra stale pointer từ history cũ");
     await staleRollbackPage.getByLabel("Nhập KHÔI PHỤC để xác nhận").fill("KHÔI PHỤC");
     const staleResponsePromise = staleRollbackPage.waitForResponse((response) => response.url().endsWith(`/api/v1/admin/layers/${first.layerId}:rollback`));
     await staleRollbackPage.getByRole("button", { name: "Xác nhận khôi phục" }).click();
     const staleResponse = await staleResponsePromise;
     expect(staleResponse.status()).toBe(412);
-    await expect(staleRollbackPage.getByText(/Publication pointer đã thay đổi|pointer đã thay đổi/u)).toBeVisible();
+    await expect(staleRollbackPage.getByText(/Dữ liệu đã có thay đổi mới|Nội dung đang công bố đã thay đổi/u)).toBeVisible();
 
     await systemAdminPage.goto("/admin/audit");
-    await expect(systemAdminPage.getByRole("heading", { name: "Audit toàn hệ thống" })).toBeVisible();
-    await expect(systemAdminPage.getByText("publication.rolled_back").first()).toBeVisible();
+    await expect(systemAdminPage.getByRole("heading", { name: "Nhật ký hoạt động" })).toBeVisible();
+    await expect(systemAdminPage.getByText("Khôi phục bản công bố trước").first()).toBeVisible();
   } finally {
     await editorContext.close();
     await reviewerContext.close();

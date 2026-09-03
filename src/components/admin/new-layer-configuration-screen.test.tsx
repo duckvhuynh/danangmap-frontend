@@ -79,7 +79,7 @@ describe("new layer configuration screen", () => {
     const api = transport();
     render(<NewLayerConfigurationScreen transport={api} />);
     expect(
-      screen.getByRole("status", { name: "Đang tải cấu hình layer" }),
+      screen.getByRole("status", { name: "Đang tải cấu hình lớp" }),
     ).toBeInTheDocument();
     expect(
       await screen.findByRole("heading", { name: "Tạo lớp dữ liệu" }),
@@ -110,7 +110,7 @@ describe("new layer configuration screen", () => {
     fireEvent.change(screen.getByLabelText("Tên lớp"), {
       target: { value: "Trụ sở hành chính" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Tạo layer" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tạo lớp" }));
     await waitFor(() =>
       expect(replace).toHaveBeenCalledWith(
         "/admin/layers/22222222-2222-4222-8222-222222222222",
@@ -122,7 +122,7 @@ describe("new layer configuration screen", () => {
     authoringMatches = false;
     const api = transport();
     render(<NewLayerConfigurationScreen transport={api} />);
-    expect(screen.getByText("Tạo layer cần máy tính")).toBeInTheDocument();
+    expect(screen.getByText("Tạo lớp cần máy tính")).toBeInTheDocument();
     expect(api.listGroups).not.toHaveBeenCalled();
   });
 
@@ -137,7 +137,7 @@ describe("new layer configuration screen", () => {
       });
       const api = transport();
       render(<NewLayerConfigurationScreen transport={api} />);
-      expect(screen.getByText("Không có quyền tạo layer")).toBeInTheDocument();
+      expect(screen.getByText("Không có quyền tạo lớp")).toBeInTheDocument();
       expect(api.listGroups).not.toHaveBeenCalled();
     },
   );
@@ -164,7 +164,7 @@ describe("new layer configuration screen", () => {
     );
     render(<NewLayerConfigurationScreen transport={api} />);
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Không tải được nhóm lớp",
+      "Kiểm tra kết nối rồi thử lại.",
     );
   });
 });

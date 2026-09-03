@@ -185,7 +185,7 @@ describe("feature attachment panel", () => {
       arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
     } as File;
 
-    fireEvent.change(screen.getByLabelText("Chọn tệp, tối đa 25 MiB"), {
+    fireEvent.change(screen.getByLabelText("Chọn tệp, tối đa 25 MB"), {
       target: { files: [file] },
     });
 
@@ -211,7 +211,7 @@ describe("feature attachment panel", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Tiếp tục" }));
 
     expect(
-      (await screen.findAllByText(/Dịch vụ quét an toàn tạm thời/u)).length,
+      (await screen.findAllByText(/Chưa kiểm tra được độ an toàn/u)).length,
     ).toBeGreaterThan(0);
     expect(container.querySelector("img")).toBeNull();
     expect(await draftDb.attachmentIntents.get(attachmentId)).toBeDefined();
@@ -242,7 +242,7 @@ describe("feature attachment panel", () => {
   });
 
   it.each([401, 403, 409, 412, 422])(
-    "keeps request diagnostics for attachment mutation HTTP %s",
+    "shows a readable error without a request ID for attachment mutation HTTP %s",
     async (status) => {
       await draftDb.attachmentIntents.put(recovery("binding"));
       const transport = createTransport();
@@ -259,9 +259,7 @@ describe("feature attachment panel", () => {
       fireEvent.click(await screen.findByRole("button", { name: "Tiếp tục" }));
 
       await waitFor(() =>
-        expect(screen.getAllByRole("alert")[0]).toHaveTextContent(
-          `request-${status}`,
-        ),
+        expect(screen.getAllByRole("alert")[0]).not.toHaveTextContent(`request-${status}`),
       );
       expect(await draftDb.attachmentIntents.get(attachmentId)).toBeDefined();
     },

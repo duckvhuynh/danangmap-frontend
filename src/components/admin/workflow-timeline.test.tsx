@@ -27,9 +27,9 @@ describe("workflow timeline accessibility", () => {
     const { rerender } = render(<WorkflowTimeline events={events} onLoadMore={onLoadMore}/>);
 
     expect(screen.getByText((_, element) => element?.textContent === "Từ Đang chờ duyệt sang Đã duyệt.")).toHaveClass("sr-only");
-    expect(screen.getByRole("status")).toHaveTextContent("Đã tải 1 chuyển trạng thái workflow.");
-    const list = screen.getByRole("list", { name: "Tiến trình workflow" });
-    const loadMore = screen.getByRole("button", { name: "Tải thêm workflow" });
+    expect(screen.getByRole("status")).toHaveTextContent("Đã tải 1 thao tác duyệt.");
+    const list = screen.getByRole("list", { name: "Lịch sử duyệt" });
+    const loadMore = screen.getByRole("button", { name: "Xem thêm lịch sử duyệt" });
     expect(loadMore).toHaveAttribute("aria-controls", list.id);
     loadMore.focus();
     fireEvent.click(loadMore);

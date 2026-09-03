@@ -423,8 +423,7 @@ export function FeatureAttachmentPanel({
   if (attachmentFields.length === 0) {
     return (
       <section className="rounded-control border border-dashed p-3 text-xs leading-5 text-muted-foreground">
-        Schema chưa có trường kiểu <strong>image</strong> hoặc{" "}
-        <strong>attachment</strong>.
+        Lớp này chưa có trường hình ảnh hoặc tệp đính kèm. Thêm trường trong cấu hình lớp để sử dụng.
       </section>
     );
   }
@@ -437,7 +436,7 @@ export function FeatureAttachmentPanel({
             Tệp đính kèm
           </h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            Quét an toàn trước khi gắn.
+            Tệp được kiểm tra an toàn trước khi thêm vào đối tượng.
           </p>
         </div>
         <Badge className="bg-accent-subtle text-primary">
@@ -469,7 +468,7 @@ export function FeatureAttachmentPanel({
         className="mt-3 block text-xs font-medium"
         htmlFor="attachment-file"
       >
-        Chọn tệp, tối đa 25 MiB
+        Chọn tệp, tối đa 25 MB
       </label>
       <Input
         id="attachment-file"
@@ -572,7 +571,7 @@ export function FeatureAttachmentPanel({
       <div className="mt-4 space-y-2">
         {attachments.length === 0 ? (
           <div className="rounded-control border border-dashed p-3 text-center text-xs text-muted-foreground">
-            Chưa có tệp đã quét sạch trong trường này.
+            Chưa có tệp đính kèm. Chọn một tệp để thêm.
           </div>
         ) : (
           attachments.map((attachment, index) => {
@@ -592,7 +591,7 @@ export function FeatureAttachmentPanel({
                     {attachment.fileName}
                   </p>
                   <p className="mt-0.5 text-[11px] text-muted-foreground">
-                    {formatBytes(attachment.sizeBytes)} · Đã quét sạch
+                    {formatBytes(attachment.sizeBytes)} · Đã kiểm tra an toàn
                   </p>
                 </div>
                 <Button
@@ -638,8 +637,7 @@ export function FeatureAttachmentPanel({
         )}
       </div>
       <p className="mt-3 text-[11px] leading-4 text-muted-foreground">
-        Không xem trước tệp đang cách ly hoặc tệp riêng tư. Tệp chỉ xuất hiện
-        công khai sau khi revision được publish.
+        Tệp chỉ hiển thị cho người dân sau khi nội dung được công bố và trường chứa tệp được đặt là công khai.
       </p>
     </section>
   );

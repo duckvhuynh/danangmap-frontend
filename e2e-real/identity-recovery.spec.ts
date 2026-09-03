@@ -129,7 +129,7 @@ async function readBodyOnlyCredential(
 
 async function createInvite(page: Page, email: string, username: string, displayName: string) {
   await page.goto("/admin/users");
-  await page.getByRole("button", { name: "Mời" }).click();
+  await page.getByRole("button", { name: "Gửi lời mời" }).click();
   const dialog = page.getByRole("dialog", { name: "Gửi lời mời tài khoản" });
   await dialog.getByLabel("Tên hiển thị").fill(displayName);
   await dialog.getByLabel("Tên đăng nhập").fill(username);
@@ -177,7 +177,7 @@ async function revokeInvite(page: Page, inviteId: string) {
 async function createManualEditor(page: Page, email: string, username: string, displayName: string, password: string) {
   await page.goto("/admin/users");
   await page.getByRole("button", { name: "Tạo tài khoản" }).click();
-  const dialog = page.getByRole("dialog", { name: "Tạo tài khoản thủ công" });
+  const dialog = page.getByRole("dialog", { name: "Tạo tài khoản" });
   await dialog.getByLabel("Tên hiển thị").fill(displayName);
   await dialog.getByLabel("Tên đăng nhập").fill(username);
   await dialog.getByLabel("Email công vụ").fill(email);
@@ -197,7 +197,7 @@ async function initialLoginAndPasswordChange(
   await page.getByLabel("Mật khẩu").fill(temporaryPassword);
   await page.getByRole("button", { name: "Đăng nhập" }).click();
   await expect(page).toHaveURL(/\/login\/mfa\?enrollment=required$/u);
-  await page.getByRole("button", { name: "Bắt đầu thiết lập MFA" }).click();
+  await page.getByRole("button", { name: "Thiết lập xác thực hai bước" }).click();
   const secret = (await page.getByTestId("manual-mfa-secret").textContent())?.trim();
   expect(secret?.length).toBe(32);
   if (!secret) throw new Error("MFA enrollment did not expose a manual secret.");
@@ -236,7 +236,7 @@ async function loginWithRecoveryCode(page: Page, username: string, password: str
   await page.getByLabel("Mã khôi phục").fill(recoveryCode);
   await page.getByRole("button", { name: "Xác nhận" }).click();
   await expect(page).toHaveURL(/\/admin$/u);
-  await expect(page.getByRole("heading", { name: "Tổng quan hệ thống" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tổng quan" })).toBeVisible();
   await expectSecretsAbsent(page, [password, recoveryCode]);
 }
 
@@ -259,8 +259,8 @@ async function confirmPasswordReset(page: Page, token: string, password: string)
 
 async function expectSessionDenied(page: Page) {
   await page.goto("/admin");
-  await expect(page.getByRole("link", { name: "Quay lại đăng nhập" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Tổng quan hệ thống" })).not.toBeAttached();
+  await expect(page.getByRole("link", { name: "Đăng nhập", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tổng quan" })).not.toBeAttached();
 }
 
 async function closeContexts(contexts: BrowserContext[]) {
@@ -336,9 +336,9 @@ test("password reset and revoke-all invalidate every real browser session", asyn
     await loginWithRecoveryCode(freshSession, username, resetPassword, recoveryCodes[1]!);
     await loginWithRecoveryCode(otherFreshSession, username, resetPassword, recoveryCodes[2]!);
     await freshSession.goto("/admin/settings");
-    await freshSession.getByRole("button", { name: "Thu hồi toàn bộ phiên" }).click();
-    await expect(freshSession.getByRole("button", { name: "Xác nhận thu hồi" })).toBeFocused();
-    await freshSession.getByRole("button", { name: "Xác nhận thu hồi" }).click();
+    await freshSession.getByRole("button", { name: "Đăng xuất trên mọi thiết bị" }).click();
+    await expect(freshSession.getByRole("button", { name: "Xác nhận đăng xuất" })).toBeFocused();
+    await freshSession.getByRole("button", { name: "Xác nhận đăng xuất" }).click();
     await expect(freshSession).toHaveURL(/\/login$/u);
     await expectSessionDenied(otherFreshSession);
   } finally {
