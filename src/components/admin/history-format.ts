@@ -1,27 +1,11 @@
-const statusLabels: Record<string, string> = {
-  draft: "Bản nháp",
-  in_review: "Đang chờ duyệt",
-  changes_requested: "Cần chỉnh sửa",
-  approved: "Đã duyệt",
-  publishing: "Đang công bố",
-  published: "Đã công bố",
-  building: "Đang xử lý",
-  failed: "Thất bại",
-};
-
-const roleLabels: Record<string, string> = {
-  editor: "Editor",
-  reviewer: "Reviewer",
-  publisher: "Publisher",
-  system_admin: "System Admin",
-};
+import { adminRoleLabel, revisionStatusLabel } from "@/lib/admin/labels";
 
 export function historyStatusLabel(value: string) {
-  return statusLabels[value] ?? value;
+  return revisionStatusLabel(value);
 }
 
 export function historyRoleLabel(value: string | null) {
-  return value ? roleLabels[value] ?? value : "Hệ thống";
+  return adminRoleLabel(value);
 }
 
 export function historyDate(value: string | null) {

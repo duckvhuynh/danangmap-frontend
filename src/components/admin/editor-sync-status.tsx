@@ -8,6 +8,7 @@ import {
   IconRefresh,
 } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
+import { AdminApiError, adminErrorMessage } from "@/lib/api/admin";
 import type { FeatureMutationLedgerEntry } from "@/lib/editor/draft-db";
 
 export type EditorSyncPhase =
@@ -19,13 +20,15 @@ export type EditorSyncPhase =
 
 function issueText(issue: FeatureMutationLedgerEntry) {
   if (issue.response?.status === "conflict")
-    return `Máy chủ đã đổi ${issue.response.conflict.changedPaths.join(", ") || "đối tượng này"}.`;
-  if (issue.response?.status === "rejected") return issue.response.error.message;
-  return issue.lastError?.message ?? "Mutation cần được xử lý lại.";
+    return "Đối tượng này đã có thay đổi mới. Chọn giữ bản đã lưu hoặc giữ thay đổi của bạn để lưu lại.";
+  if (issue.response?.status === "rejected")
+    return adminErrorMessage(new AdminApiError(422, issue.response.error.code, issue.response.error.message));
+  return "Chưa lưu được thay đổi này. Kiểm tra kết nối rồi thử lại.";
 }
 
 export function EditorSyncStatus({
   phase,
+  hasLocalChanges = false,
   pendingCount,
   issues,
   remoteChanges,
@@ -33,6 +36,7 @@ export function EditorSyncStatus({
   onRetryLocal,
 }: {
   phase: EditorSyncPhase;
+  hasLocalChanges?: boolean;
   pendingCount: number;
   issues: FeatureMutationLedgerEntry[];
   remoteChanges: number;
@@ -60,12 +64,14 @@ export function EditorSyncStatus({
             ? `${issues.length} thay đổi cần xử lý`
             : pendingCount
               ? `${pendingCount} thay đổi đang chờ`
-              : "Đã đồng bộ";
+              : hasLocalChanges
+                ? "Có thay đổi chưa lưu"
+                : "Đã lưu lên hệ thống";
 
   return (
     <section
-      className="w-[min(360px,calc(100vw-32px))] rounded-panel border bg-surface p-3 map-panel-shadow"
-      aria-label="Trạng thái đồng bộ editor"
+      className="w-full max-w-[360px] rounded-panel border bg-surface p-3 map-panel-shadow"
+      aria-label="Trạng thái lưu dữ liệu"
     >
       <div className="flex items-center gap-2" role="status" aria-live="polite">
         <span className="grid size-9 shrink-0 place-items-center rounded-map-control bg-accent-subtle text-primary">
@@ -80,7 +86,9 @@ export function EditorSyncStatus({
           <p className="mt-0.5 text-xs text-muted-foreground">
             {remoteChanges > 0
               ? `Đã nhận ${remoteChanges} thay đổi mới từ máy chủ.`
-              : "Mutation được lưu bền vững trên thiết bị này."}
+              : hasLocalChanges || pendingCount > 0
+                ? "Thay đổi chưa được lưu lên hệ thống."
+                : "Bạn có thể tiếp tục biên tập hoặc gửi duyệt."}
           </p>
         </div>
       </div>
@@ -89,7 +97,7 @@ export function EditorSyncStatus({
           {issues.map((issue) => (
             <article
               key={issue.id}
-              className="rounded-control bg-amber-50 p-3 text-xs text-warning"
+              className="rounded-control bg-warning/10 p-3 text-xs text-warning"
             >
               <p className="font-semibold text-foreground">
                 {issue.mutation.operation === "create"
@@ -100,9 +108,10 @@ export function EditorSyncStatus({
               </p>
               <p className="mt-1 leading-5">{issueText(issue)}</p>
               {issue.responseRequestId && (
-                <p className="mt-1 font-mono text-[11px] text-muted-foreground">
-                  Mã yêu cầu: {issue.responseRequestId}
-                </p>
+                <details className="mt-2 text-muted-foreground">
+                  <summary className="cursor-pointer">Thông tin hỗ trợ kỹ thuật</summary>
+                  <p className="mt-1 break-all">Mã hỗ trợ: {issue.responseRequestId}</p>
+                </details>
               )}
               <div className="mt-2 flex flex-wrap gap-2">
                 <Button
@@ -110,11 +119,11 @@ export function EditorSyncStatus({
                   variant="outline"
                   onClick={() => onKeepServer(issue)}
                 >
-                  Giữ bản máy chủ
+                  Giữ bản đã lưu
                 </Button>
                 <Button size="sm" onClick={() => onRetryLocal(issue)}>
                   {issue.status === "conflict"
-                    ? "Dùng bản cục bộ"
+                    ? "Giữ thay đổi của tôi"
                     : "Sửa và thử lại"}
                 </Button>
               </div>

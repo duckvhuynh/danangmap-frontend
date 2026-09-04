@@ -106,9 +106,9 @@ export default function EditorMapCanvas({
       attributionControl: true,
     });
     mapRef.current = map;
-    map.on("error", (event) =>
+    map.on("error", () =>
       onErrorRef.current(
-        event.error?.message ?? "Không tải được bản đồ biên tập.",
+        "Chưa tải được bản đồ. Kiểm tra kết nối hoặc tải lại trang để thử lại.",
       ),
     );
     map.on("load", () => {
@@ -277,10 +277,9 @@ export default function EditorMapCanvas({
     return (
       <div className="grid h-full place-items-center bg-surface-subtle p-6">
         <div className="max-w-sm rounded-panel border bg-surface p-5 text-center">
-          <p className="font-semibold">Canvas biên tập chưa sẵn sàng</p>
+          <p className="font-semibold">Bản đồ biên tập chưa sẵn sàng</p>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Cấu hình Mapbox public token để vẽ geometry. Metadata và bản nháp
-            cục bộ vẫn có thể xem.
+            Liên hệ người quản trị để kiểm tra cấu hình bản đồ. Bạn vẫn có thể xem thông tin đối tượng và bản nháp đã lưu trên thiết bị.
           </p>
         </div>
       </div>
@@ -289,7 +288,7 @@ export default function EditorMapCanvas({
     <div
       ref={containerRef}
       className="h-full w-full"
-      aria-label="Canvas biên tập geometry"
+      aria-label="Bản đồ biên tập"
     />
   );
 }

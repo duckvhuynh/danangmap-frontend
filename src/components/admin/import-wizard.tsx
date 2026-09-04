@@ -50,6 +50,7 @@ import { pollSpatialImport } from "@/lib/imports/import-polling";
 import {
   canApplyImport,
   importStatusLabel,
+  importIssueLabel,
   inferImportFormat,
   replaceConfirmationValid,
   shouldPollImport,
@@ -82,8 +83,8 @@ type WizardStep =
   | "terminal";
 
 const stepNames: Array<{ id: WizardStep; label: string }> = [
-  { id: "upload", label: "Tải file" },
-  { id: "mapping", label: "Ánh xạ" },
+  { id: "upload", label: "Chọn tệp" },
+  { id: "mapping", label: "Ghép cột" },
   { id: "validating", label: "Kiểm tra" },
   { id: "issues", label: "Xử lý lỗi" },
   { id: "applying", label: "Áp dụng" },
@@ -121,12 +122,6 @@ function defaultMapping(format: ImportFormat): ImportMappingDraft {
   };
 }
 
-function storageSummary(estimate: StorageEstimate) {
-  if (estimate.quota === undefined || estimate.usage === undefined) return null;
-  const available = Math.max(0, estimate.quota - estimate.usage);
-  return `Trình duyệt còn khoảng ${Math.round(available / 1024 / 1024)} MiB bộ nhớ tạm.`;
-}
-
 function Stepper({ current }: { current: WizardStep }) {
   const visualStep =
     current === "inspecting"
@@ -143,7 +138,7 @@ function Stepper({ current }: { current: WizardStep }) {
       {stepNames.map((step, stepIndex) => (
         <li
           key={step.id}
-          className={`flex items-center gap-2 rounded-control border px-3 py-2 text-xs ${stepIndex === index ? "border-primary bg-accent-subtle text-primary" : stepIndex < index ? "border-emerald-200 bg-emerald-50 text-success" : "bg-surface text-muted-foreground"}`}
+          className={`flex items-center gap-2 rounded-control border px-3 py-2 text-xs ${stepIndex === index ? "border-primary bg-accent-subtle text-primary" : stepIndex < index ? "border-success/20 bg-success/10 text-success" : "bg-surface text-muted-foreground"}`}
           aria-current={stepIndex === index ? "step" : undefined}
         >
           <span className="grid size-6 shrink-0 place-items-center rounded-full border bg-surface font-medium">
@@ -180,10 +175,9 @@ function FileStep({
       <div className="flex items-start gap-3">
         <IconFileSpreadsheet className="mt-0.5 text-primary" stroke={1.75} />
         <div>
-          <h2 className="font-semibold">1. Chọn file và cách nhập</h2>
+          <h2 className="font-semibold">1. Chọn tệp và cách nhập</h2>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            File được gửi thẳng đến API khi bạn tiếp tục; trình duyệt không lưu
-            nội dung file vào IndexedDB hay bộ nhớ cục bộ.
+            Chọn tệp, kiểm tra dữ liệu rồi xác nhận nhập. Dữ liệu hiện có chưa thay đổi ở bước này.
           </p>
         </div>
       </div>
@@ -193,7 +187,7 @@ function FileStep({
           htmlFor="import-file"
           className="mt-3 inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
         >
-          Chọn file CSV, XLSX, GeoJSON hoặc KML
+          Chọn tệp CSV, XLSX, GeoJSON hoặc KML
         </label>
         <input
           id="import-file"
@@ -203,7 +197,7 @@ function FileStep({
           onChange={(event) => onFile(event.target.files?.[0] ?? null)}
         />
         <p className="mt-2 text-xs text-muted-foreground">
-          Tối đa 25 MiB (26.214.400 byte) mỗi lần · không quá 100.000 bản ghi
+          Tối đa 25 MB mỗi lần · không quá 100.000 dòng
         </p>
         {file && (
           <div className="mx-auto mt-4 flex max-w-lg items-center justify-between rounded-control border bg-surface px-4 py-3 text-left">
@@ -213,14 +207,14 @@ function FileStep({
                 {(file.size / 1024).toLocaleString("vi-VN", {
                   maximumFractionDigits: 1,
                 })}{" "}
-                KiB
+                KB
               </p>
             </div>
             <Button
               type="button"
               size="icon-sm"
               variant="ghost"
-              aria-label="Bỏ file đã chọn"
+              aria-label="Bỏ tệp đã chọn"
               onClick={() => onFile(null)}
             >
               <IconTrash stroke={1.75} />
@@ -234,11 +228,11 @@ function FileStep({
           {(
             [
               ["append", "Thêm mới", "Giữ dữ liệu hiện tại và thêm bản ghi."],
-              ["upsert", "Cập nhật hoặc thêm", "Khớp theo định danh đã chọn."],
+              ["upsert", "Cập nhật hoặc thêm", "Cập nhật đối tượng có cùng mã, thêm mới nếu chưa có."],
               [
                 "replace",
                 "Thay thế toàn bộ",
-                "Xóa dữ liệu revision rồi thay bằng file.",
+                "Thay toàn bộ dữ liệu của bản nháp bằng dữ liệu trong tệp.",
               ],
             ] as Array<[ImportMode, string, string]>
           ).map(([value, label, description]) => (
@@ -284,9 +278,9 @@ function FieldMappingRows({
   const targets = [
     { key: "", label: "Bỏ qua cột" },
     ...revisionFields.map((field) => ({ key: field.key, label: field.label })),
-    { key: "feature_id", label: "Feature ID" },
-    { key: "external_source", label: "Nguồn ngoài" },
-    { key: "external_id", label: "ID ngoài" },
+    { key: "feature_id", label: "Mã đối tượng" },
+    { key: "external_source", label: "Tên nguồn dữ liệu" },
+    { key: "external_id", label: "Mã tại nguồn dữ liệu" },
   ];
   return (
     <div>
@@ -338,7 +332,7 @@ function FieldMappingRows({
               type="button"
               variant="ghost"
               size="icon-sm"
-              aria-label={`Xóa mapping ${index + 1}`}
+              aria-label={`Bỏ ghép cột ${index + 1}`}
               onClick={() =>
                 onChange(fields.filter((item) => item.id !== field.id))
               }
@@ -361,7 +355,7 @@ function FieldMappingRows({
         }
       >
         <IconPlus stroke={1.75} />
-        Thêm mapping
+        Thêm cột
       </Button>
     </div>
   );
@@ -391,17 +385,16 @@ function MappingStep({
     <section className="rounded-panel border bg-surface p-5 map-panel-shadow sm:p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="font-semibold">2. Ánh xạ dữ liệu</h2>
+          <h2 className="font-semibold">2. Ghép cột dữ liệu</h2>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            Khai báo cách đọc geometry và map cột nguồn sang schema của
-            revision.
+            Chọn cột trong tệp tương ứng với vị trí và từng thông tin của lớp.
           </p>
         </div>
         <Badge>{format.toUpperCase()}</Badge>
       </div>
       {format === "xlsx" && (
         <label className="mt-6 block text-sm font-medium">
-          Tên sheet
+          Trang tính
           <select
             className={`${selectClass} mt-2`}
             value={mapping.sheet}
@@ -410,7 +403,7 @@ function MappingStep({
             }
             disabled={sheets.length === 0}
           >
-            <option value="">Chọn sheet đã kiểm tra</option>
+            <option value="">Chọn trang tính</option>
             {sheets.map((sheet) => (
               <option key={sheet} value={sheet}>
                 {sheet}
@@ -419,7 +412,7 @@ function MappingStep({
           </select>
           {sheets.length === 0 && (
             <span className="mt-2 block text-xs text-destructive">
-              Máy chủ không trả danh sách sheet; không thể tiếp tục an toàn.
+              Chưa đọc được danh sách trang tính. Kiểm tra tệp Excel và tải lại.
             </span>
           )}
         </label>
@@ -427,7 +420,7 @@ function MappingStep({
       {format === "csv" && (
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           <label className="text-sm font-medium">
-            Encoding
+            Bảng mã ký tự
             <select
               className={`${selectClass} mt-2`}
               value={mapping.csvEncoding}
@@ -467,7 +460,7 @@ function MappingStep({
         </div>
       )}
       <fieldset className="mt-6">
-        <legend className="text-sm font-medium">Geometry</legend>
+        <legend className="text-sm font-medium">Vị trí trên bản đồ</legend>
         {tabular ? (
           <div className="mt-3 grid gap-4 sm:grid-cols-2">
             <label className="text-sm">
@@ -534,15 +527,15 @@ function MappingStep({
           </div>
         ) : (
           <p className="mt-2 rounded-control bg-surface-subtle p-3 text-sm text-muted-foreground">
-            Geometry được đọc trực tiếp từ cấu trúc{" "}
+            Vị trí được đọc trực tiếp từ tệp{" "}
             {format === "geojson" ? "GeoJSON" : "KML"}; không cần chọn cột.
           </p>
         )}
       </fieldset>
       <div className="mt-6">
-        <h3 className="text-sm font-medium">Map thuộc tính</h3>
+        <h3 className="text-sm font-medium">Ghép các trường thông tin</h3>
         <p className="mb-3 mt-1 text-xs text-muted-foreground">
-          Tên cột được đối chiếu chính xác; cột bỏ trống sẽ bị bỏ qua.
+          Nhập đúng tên cột trong tệp rồi chọn trường tương ứng. Cột không được ghép sẽ không nhập.
         </p>
         <FieldMappingRows
           fields={mapping.fields}
@@ -563,14 +556,14 @@ function MappingStep({
               })
             }
           >
-            <option value="feature_id">Feature ID</option>
-            <option value="external_identity">Nguồn ngoài + ID ngoài</option>
+            <option value="feature_id">Mã đối tượng</option>
+            <option value="external_identity">Tên nguồn và mã tại nguồn dữ liệu</option>
           </select>
         </label>
       )}
       <div className="mt-7 flex items-center justify-between gap-3">
         <p className="text-xs text-muted-foreground">
-          File đã được tải lên. Rời trang để bỏ phiên nhập hiện tại.
+          Tệp đã tải lên, nhưng dữ liệu của lớp chưa thay đổi.
         </p>
         <Button type="button" onClick={onContinue} disabled={busy}>
           {busy ? "Đang bắt đầu kiểm tra..." : "Lưu và kiểm tra"}
@@ -608,7 +601,7 @@ function ProcessingStep({
         />
       </div>
       <p className="mt-4 text-xs text-muted-foreground">
-        Có thể để tab này mở; kiểm tra chạy bất đồng bộ trên máy chủ.
+        Hệ thống đang xử lý. Giữ trang này mở để xem kết quả.
       </p>
     </section>
   );
@@ -625,7 +618,7 @@ function TerminalStep({
 }) {
   return (
     <section className="rounded-panel border bg-surface p-8 text-center map-panel-shadow">
-      <span className="mx-auto grid size-12 place-items-center rounded-full bg-red-50 text-destructive">
+      <span className="mx-auto grid size-12 place-items-center rounded-full bg-destructive/10 text-destructive">
         <IconAlertTriangle stroke={1.75} />
       </span>
       <h2 className="mt-4 text-lg font-semibold">
@@ -635,10 +628,10 @@ function TerminalStep({
       </h2>
       <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
         {job.status === "failed"
-          ? `Mã lỗi: ${job.failureCode ?? "IMPORT_FAILED"}. Kiểm tra thông báo phía trên hoặc quay lại revision.`
+          ? importIssueLabel(job.failureCode ?? "IMPORT_FAILED")
           : job.status === "cancelled"
             ? "Không có dữ liệu nào được áp dụng từ phiên này."
-            : "Kết nối polling bị gián đoạn; có thể thử kiểm tra lại mà không tạo job mới."}
+            : "Chưa nhận được tiến độ mới. Chọn Kiểm tra lại để tiếp tục theo dõi lượt nhập này."}
       </p>
       <div className="mt-6 flex flex-wrap justify-center gap-3">
         {onRetry && (
@@ -660,6 +653,7 @@ function TerminalStep({
 
 function IssuesStep({
   job,
+  fields,
   issues,
   skipInvalid,
   onSkipInvalid,
@@ -672,6 +666,7 @@ function IssuesStep({
 }: {
   job: SpatialImportJob;
   issues: SpatialImportIssue[];
+  fields: AdminField[];
   skipInvalid: boolean;
   onSkipInvalid(value: boolean): void;
   acknowledged: boolean;
@@ -693,14 +688,14 @@ function IssuesStep({
         <div>
           <h2 className="font-semibold">4. Kiểm tra lỗi trước khi áp dụng</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Đọc kỹ lỗi và cảnh báo. Apply là thao tác nguyên tử trong revision.
+            Xem các dòng cần sửa trước khi nhập. Dữ liệu chỉ được lưu sau khi bạn xác nhận.
           </p>
         </div>
         <Badge
           className={
             invalid
-              ? "bg-red-50 text-destructive"
-              : "bg-emerald-50 text-success"
+              ? "bg-destructive/10 text-destructive"
+              : "bg-success/10 text-success"
           }
         >
           {invalid ? `${invalid} lỗi` : "Không có lỗi"}
@@ -729,7 +724,7 @@ function IssuesStep({
               <tr>
                 <th className="px-3 py-2 font-medium">Dòng</th>
                 <th className="px-3 py-2 font-medium">Mức</th>
-                <th className="px-3 py-2 font-medium">Mã</th>
+                <th className="px-3 py-2 font-medium">Nội dung cần kiểm tra</th>
                 <th className="px-3 py-2 font-medium">Trường</th>
               </tr>
             </thead>
@@ -748,8 +743,8 @@ function IssuesStep({
                       {issue.severity === "error" ? "Lỗi" : "Cảnh báo"}
                     </span>
                   </td>
-                  <td className="px-3 py-2 font-mono text-xs">{issue.code}</td>
-                  <td className="px-3 py-2">{issue.field ?? "—"}</td>
+                  <td className="px-3 py-2">{importIssueLabel(issue.code)}</td>
+                  <td className="px-3 py-2">{issue.field === "geometry" ? "Vị trí / hình dạng" : fields.find((field) => field.key === issue.field)?.label ?? (issue.field ? "Trường dữ liệu" : "—")}</td>
                 </tr>
               ))}
             </tbody>
@@ -757,8 +752,7 @@ function IssuesStep({
         </div>
       )}
       <p className="mt-2 text-xs text-muted-foreground">
-        Hiển thị tối đa 100 vấn đề đầu tiên. Báo cáo đầy đủ được lưu theo chính
-        sách máy chủ.
+        Hiển thị tối đa 100 vấn đề đầu tiên. Sửa các dòng được chỉ ra trong tệp nếu bạn không muốn bỏ qua chúng.
       </p>
       {invalid > 0 && (
         <label className="mt-5 flex items-start gap-3 rounded-control border p-4">
@@ -774,8 +768,7 @@ function IssuesStep({
               Bỏ qua dòng lỗi và chỉ áp dụng dòng hợp lệ
             </span>
             <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-              Không khả dụng nếu lỗi mang tính cấu trúc hoặc máy chủ không cho
-              phép skip-invalid.
+              Nếu tệp bị lỗi cấu trúc, bạn cần sửa tệp và tải lại trước khi nhập.
             </span>
           </span>
         </label>
@@ -789,7 +782,7 @@ function IssuesStep({
             onChange={(event) => onAcknowledged(event.target.checked)}
           />
           <span className="text-sm">
-            Tôi đã xem và chấp nhận các mã cảnh báo đang hiển thị.
+            Tôi đã xem và chấp nhận các cảnh báo đang hiển thị.
           </span>
         </label>
       )}
@@ -806,7 +799,7 @@ function IssuesStep({
       )}
       <div className="mt-6 flex justify-end">
         <Button type="button" onClick={onApply} disabled={!allowed || busy}>
-          {busy ? "Đang áp dụng..." : "Áp dụng vào revision"}
+          {busy ? "Đang áp dụng..." : "Nhập vào bản nháp"}
           <IconArrowRight stroke={1.75} />
         </Button>
       </div>
@@ -846,7 +839,6 @@ export function ImportWizard({
   const [skipInvalid, setSkipInvalid] = useState(false);
   const [acknowledged, setAcknowledged] = useState(false);
   const [confirmation, setConfirmation] = useState("");
-  const [storage, setStorage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [reload, setReload] = useState(0);
@@ -958,12 +950,10 @@ export function ImportWizard({
     if (!selected || !bundle) return;
     const message = validateImportFile(selected);
     if (message)
-      return setError(new AdminApiError(422, "IMPORT_FILE_INVALID", message));
+      return setError(new AdminApiError(422, "CLIENT_IMPORT_FILE_INVALID", message));
     setBusy(true);
     setError(null);
     try {
-      if (navigator.storage?.estimate)
-        setStorage(storageSummary(await navigator.storage.estimate()));
       const currentAttempt = uploadAttemptRef.current;
       const attempt =
         currentAttempt?.file === selected &&
@@ -1003,7 +993,7 @@ export function ImportWizard({
     const errors = validateImportMapping(mapping, mode, format);
     if (errors.length)
       return setError(
-        new AdminApiError(422, "IMPORT_MAPPING_INVALID", errors.join(" ")),
+        new AdminApiError(422, "CLIENT_IMPORT_MAPPING_INVALID", errors.join(" ")),
       );
     setBusy(true);
     setError(null);
@@ -1026,8 +1016,6 @@ export function ImportWizard({
     setBusy(true);
     setError(null);
     try {
-      if (navigator.storage?.estimate)
-        setStorage(storageSummary(await navigator.storage.estimate()));
       const warningCodes = acknowledged
         ? Array.from(
             new Set(
@@ -1074,9 +1062,7 @@ export function ImportWizard({
             Nhập dữ liệu cần máy tính
           </h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Chức năng tải file và chỉnh mapping chỉ mở trên thiết bị desktop có
-            chuột hoặc trackpad. Trên di động, bạn vẫn có thể xem và duyệt
-            revision.
+            Nhập dữ liệu cần máy tính có bàn phím, chuột hoặc bàn di chuột. Trên di động, bạn vẫn có thể xem và duyệt nội dung.
           </p>
           <Button asChild variant="outline" className="mt-5">
             <Link href="/admin/layers">
@@ -1096,7 +1082,7 @@ export function ImportWizard({
             Không có quyền nhập dữ liệu
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Chỉ Editor hoặc System Admin có thể nhập dữ liệu vào revision nháp.
+            Bạn cần quyền biên tập hoặc quản trị hệ thống để nhập dữ liệu vào bản nháp.
           </p>
         </div>
       </main>
@@ -1107,7 +1093,7 @@ export function ImportWizard({
         className="grid min-h-[60vh] place-items-center text-sm text-muted-foreground"
         role="status"
       >
-        Đang tải revision...
+        Đang tải bản nháp...
       </main>
     );
   if (!bundle)
@@ -1121,11 +1107,10 @@ export function ImportWizard({
       <main className="mx-auto max-w-2xl p-6">
         <div className="rounded-panel border bg-surface p-6">
           <h1 className="text-xl font-semibold">
-            Revision không thể nhập dữ liệu
+            Phiên bản này không thể nhập dữ liệu
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Chỉ successor revision ở trạng thái bản nháp mới nhận file import;
-            revision cần chỉnh sửa cũ được giữ bất biến.
+            Chỉ bản nháp mới có thể nhận dữ liệu. Tạo bản nháp mới từ cấu hình lớp để tiếp tục.
           </p>
         </div>
       </main>
@@ -1142,30 +1127,24 @@ export function ImportWizard({
             </Link>
           </Button>
           <p className="text-sm text-muted-foreground">
-            {bundle.revision.title} · Revision {bundle.revision.revisionNo}
+            {bundle.revision.title} · Phiên bản {bundle.revision.revisionNo}
           </p>
           <h1 className="mt-1 text-2xl font-semibold tracking-[-0.02em]">
-            Nhập dữ liệu không gian
+            Nhập dữ liệu
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            Tải lên, ánh xạ, kiểm tra vấn đề và chỉ áp dụng khi kết quả rõ ràng.
+            Chọn tệp, ghép cột và kiểm tra trước khi lưu dữ liệu vào bản nháp.
           </p>
         </div>
         {process.env.NEXT_PUBLIC_DANANGMAP_DEMO_MODE === "true" && (
-          <Badge className="bg-amber-50 text-warning">
-            Demo · không ghi dữ liệu thật
+          <Badge className="bg-warning/10 text-warning">
+            Dữ liệu minh họa · không được lưu vào hệ thống
           </Badge>
         )}
       </header>
       <div className="mt-6">
         <Stepper current={step} />
       </div>
-      {storage && (
-        <p className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-          <IconInfoCircle size={16} />
-          {storage}
-        </p>
-      )}
       {error !== null && (
         <div className="mt-5">
           <AdminErrorNotice error={error} />
@@ -1186,7 +1165,7 @@ export function ImportWizard({
           />
         )}{" "}
         {step === "inspecting" && job && (
-          <ProcessingStep job={job} label="Đang đọc cấu trúc file" />
+          <ProcessingStep job={job} label="Đang đọc tệp" />
         )}{" "}
         {step === "mapping" && (
           <MappingStep
@@ -1207,6 +1186,7 @@ export function ImportWizard({
           <IssuesStep
             job={job}
             issues={issues}
+            fields={bundle.fields}
             skipInvalid={skipInvalid}
             onSkipInvalid={setSkipInvalid}
             acknowledged={acknowledged}
@@ -1218,7 +1198,7 @@ export function ImportWizard({
           />
         )}{" "}
         {step === "applying" && job && (
-          <ProcessingStep job={job} label="Đang áp dụng vào revision" />
+          <ProcessingStep job={job} label="Đang lưu vào bản nháp" />
         )}{" "}
         {step === "terminal" && job && (
           <TerminalStep
@@ -1229,7 +1209,7 @@ export function ImportWizard({
         )}{" "}
         {step === "complete" && job && (
           <section className="rounded-panel border bg-surface p-8 text-center map-panel-shadow">
-            <span className="mx-auto grid size-14 place-items-center rounded-full bg-emerald-50 text-success">
+            <span className="mx-auto grid size-14 place-items-center rounded-full bg-success/10 text-success">
               <IconCircleCheck size={30} stroke={1.75} />
             </span>
             <h2 className="mt-4 text-xl font-semibold">

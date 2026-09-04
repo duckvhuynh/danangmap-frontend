@@ -48,7 +48,7 @@ describe("MFA enrollment privacy and one-time workflow", () => {
     const databasesBefore = await indexedDB.databases();
 
     render(<StrictMode><MfaForm enrollmentRequired /></StrictMode>);
-    const start = screen.getByRole("button", { name: /Bắt đầu thiết lập MFA/ });
+    const start = screen.getByRole("button", { name: /Thiết lập xác thực hai bước/ });
     start.focus();
     fireEvent.click(start);
     fireEvent.click(start);
@@ -56,7 +56,7 @@ describe("MFA enrollment privacy and one-time workflow", () => {
 
     await act(async () => resolveEnrollment?.({ status: "pending", enrollmentUri }));
     expect(await screen.findByTestId("manual-mfa-secret")).toHaveTextContent("JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP");
-    expect(screen.getByRole("img", { name: "Mã QR thiết lập MFA DanangMap" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Mã QR thiết lập xác thực hai bước DanangMap" })).toBeInTheDocument();
     expect(storageSpy).not.toHaveBeenCalled();
     expect(consoleSpy).not.toHaveBeenCalled();
     expect(await indexedDB.databases()).toEqual(databasesBefore);
@@ -73,7 +73,7 @@ describe("MFA enrollment privacy and one-time workflow", () => {
     Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: revokeObjectURL });
 
     render(<MfaForm enrollmentRequired />);
-    fireEvent.click(screen.getByRole("button", { name: /Bắt đầu thiết lập MFA/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Thiết lập xác thực hai bước/ }));
     const otp = await screen.findByLabelText("Mã xác nhận 6 số");
     fireEvent.change(otp, { target: { value: "123456" } });
     fireEvent.click(screen.getByRole("button", { name: "Xác nhận và tạo mã khôi phục" }));
@@ -104,7 +104,7 @@ describe("MFA enrollment privacy and one-time workflow", () => {
       recoveryCodes,
     });
     render(<MfaForm enrollmentRequired />);
-    fireEvent.click(screen.getByRole("button", { name: /Bắt đầu thiết lập MFA/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Thiết lập xác thực hai bước/ }));
     fireEvent.change(await screen.findByLabelText("Mã xác nhận 6 số"), { target: { value: "123456" } });
     fireEvent.click(screen.getByRole("button", { name: "Xác nhận và tạo mã khôi phục" }));
     await screen.findByRole("list", { name: "10 mã khôi phục" });
@@ -122,7 +122,7 @@ describe("MFA enrollment privacy and one-time workflow", () => {
     vi.mocked(confirmMfaEnrollment).mockResolvedValue({ principal, recoveryCodes });
     vi.mocked(navigator.clipboard.writeText).mockRejectedValue(new Error("denied"));
     render(<MfaForm enrollmentRequired />);
-    fireEvent.click(screen.getByRole("button", { name: /Bắt đầu thiết lập MFA/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Thiết lập xác thực hai bước/ }));
     fireEvent.change(await screen.findByLabelText("Mã xác nhận 6 số"), { target: { value: "123456" } });
     fireEvent.click(screen.getByRole("button", { name: "Xác nhận và tạo mã khôi phục" }));
     fireEvent.click(await screen.findByRole("button", { name: "Sao chép 10 mã" }));
@@ -138,9 +138,9 @@ describe("MFA enrollment privacy and one-time workflow", () => {
   ])("forces a fresh password login after %s and never exposes an unsafe retry", async (failure) => {
     vi.mocked(startMfaEnrollment).mockRejectedValue(failure);
     render(<MfaForm enrollmentRequired />);
-    fireEvent.click(screen.getByRole("button", { name: /Bắt đầu thiết lập MFA/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Thiết lập xác thực hai bước/ }));
     expect(await screen.findByText("Cần đăng nhập lại")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Bắt đầu thiết lập MFA/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Thiết lập xác thực hai bước/ })).not.toBeInTheDocument();
     expect(vi.mocked(startMfaEnrollment)).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole("button", { name: "Đăng nhập lại bằng mật khẩu" }));
     expect(router.replace).toHaveBeenCalledWith("/login");
@@ -149,11 +149,11 @@ describe("MFA enrollment privacy and one-time workflow", () => {
   it("surfaces rate limiting as a retryable accessible alert", async () => {
     vi.mocked(startMfaEnrollment).mockRejectedValue(new AuthApiError(429, "AUTH_MFA_RATE_LIMITED", "limited", undefined, 30));
     render(<MfaForm enrollmentRequired />);
-    fireEvent.click(screen.getByRole("button", { name: /Bắt đầu thiết lập MFA/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Thiết lập xác thực hai bước/ }));
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("30 giây");
     expect(alert).toHaveFocus();
-    expect(screen.getByRole("button", { name: /Bắt đầu thiết lập MFA/ })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /Thiết lập xác thực hai bước/ })).toBeEnabled();
   });
 });
 
@@ -190,5 +190,6 @@ describe("existing MFA verification", () => {
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent(expected);
     expect(alert).toHaveFocus();
+    expect(screen.getByLabelText("Mã xác thực 6 số")).toHaveValue("");
   });
 });

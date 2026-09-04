@@ -134,9 +134,9 @@ export function RecoveryCodesPanel({
           <IconKey stroke={1.75} />
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className="font-medium" id="recovery-codes-title">Mã khôi phục MFA</h2>
+          <h2 className="font-medium" id="recovery-codes-title">Mã khôi phục đăng nhập</h2>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            Tạo một bộ 10 mã mới cho chính tài khoản này. Toàn bộ mã cũ sẽ mất hiệu lực ngay.
+            Dùng khi bạn không thể lấy mã từ ứng dụng xác thực. Mỗi mã chỉ dùng được một lần.
           </p>
         </div>
       </div>
@@ -144,8 +144,8 @@ export function RecoveryCodesPanel({
       {!canMutate ? (
         <Alert className="mt-4 border-primary/20 bg-accent-subtle">
           <IconDeviceDesktop stroke={1.75} />
-          <AlertTitle>Chỉ thực hiện trên desktop</AlertTitle>
-          <AlertDescription>Thiết bị di động có thể xem cài đặt, nhưng thao tác thay credential cần desktop có bàn phím.</AlertDescription>
+          <AlertTitle>Cần dùng máy tính</AlertTitle>
+          <AlertDescription>Để tạo mã khôi phục mới, hãy mở trang này trên máy tính có bàn phím và chuột.</AlertDescription>
         </Alert>
       ) : stage.name === "restart" ? (
         <div className="mt-4 grid gap-4">
@@ -163,7 +163,7 @@ export function RecoveryCodesPanel({
           <Alert className="border-success/30 bg-surface-subtle text-success">
             <IconCheck stroke={1.75} />
             <AlertTitle>Đã tạo 10 mã khôi phục mới</AlertTitle>
-            <AlertDescription>Các mã này chỉ hiển thị trong bước hiện tại. DanangMap không lưu chúng trong trình duyệt.</AlertDescription>
+            <AlertDescription>Lưu các mã ở nơi an toàn. Bạn sẽ không xem lại được sau khi rời bước này.</AlertDescription>
           </Alert>
           <ol aria-label="10 mã khôi phục mới" className="grid gap-2 rounded-control border bg-surface-subtle p-3 sm:grid-cols-2">
             {stage.codes.map((code, index) => (
@@ -185,7 +185,7 @@ export function RecoveryCodesPanel({
             <Checkbox checked={acknowledged} id="new-recovery-codes-saved" onCheckedChange={(value) => setAcknowledged(value === true)} />
             <FieldContent>
               <FieldLabel htmlFor="new-recovery-codes-saved">Tôi đã lưu 10 mã mới ở nơi an toàn</FieldLabel>
-              <FieldDescription>Rời bước này đồng nghĩa các mã không thể hiển thị lại.</FieldDescription>
+              <FieldDescription>Mỗi mã chỉ dùng được một lần.</FieldDescription>
             </FieldContent>
           </Field>
           <Button disabled={!acknowledged} onClick={resetForm} type="button">Đã lưu, ẩn các mã</Button>
@@ -194,7 +194,7 @@ export function RecoveryCodesPanel({
         <form className="mt-4 grid gap-4" onSubmit={submit}>
           <Alert className="border-warning/30 bg-surface-subtle text-warning">
             <IconAlertTriangle stroke={1.75} />
-            <AlertTitle>Thao tác thay credential</AlertTitle>
+            <AlertTitle>Các mã cũ sẽ hết hiệu lực</AlertTitle>
             <AlertDescription>Sau khi xác nhận thành công, mọi mã khôi phục hiện tại sẽ không còn dùng được.</AlertDescription>
           </Alert>
           <Field>
@@ -212,7 +212,7 @@ export function RecoveryCodesPanel({
             />
           </Field>
           <Field>
-            <FieldLabel htmlFor="recovery-mfa-code">Mã MFA hoặc mã khôi phục</FieldLabel>
+            <FieldLabel htmlFor="recovery-mfa-code">Mã xác thực hoặc mã khôi phục</FieldLabel>
             <Input
               autoCapitalize="characters"
               autoComplete="one-time-code"
@@ -224,7 +224,7 @@ export function RecoveryCodesPanel({
               required
               value={mfaCode}
             />
-            <FieldDescription>Dùng mã 6 số từ ứng dụng MFA hoặc một mã khôi phục chưa sử dụng.</FieldDescription>
+            <FieldDescription>Dùng mã 6 số từ ứng dụng xác thực hoặc một mã khôi phục chưa sử dụng.</FieldDescription>
           </Field>
           {error ? <SecurityError errorRef={errorRef} message={error} /> : null}
           <Field orientation="horizontal">

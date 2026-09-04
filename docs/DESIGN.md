@@ -317,6 +317,14 @@ Viewport query policy đã triển khai:
 
 ## 9. Admin information architecture
 
+### Ngôn ngữ vận hành (2026-09-03)
+
+- Câu chữ quản trị dùng tiếng Việt, mô tả tác vụ và kết quả thực tế. `catalog` → danh sách lớp; `revision` → phiên bản; `schema` → trường thông tin; `publication/snapshot` → bản công bố; `audit` → nhật ký hoạt động; `MFA` → xác thực hai bước.
+- Vai trò hiển thị là Quản trị hệ thống, Biên tập viên, Người kiểm duyệt, Người công bố; không đổi giá trị API hoặc quyền tương ứng.
+- Không hiển thị UUID, ETag, mã lỗi máy, địa chỉ API, tên thư viện hoặc giải thích kiến trúc trong nội dung chính. Khi thật sự cần hỗ trợ sự cố, mã tham chiếu nằm trong phần “Thông tin hỗ trợ” thu gọn mặc định.
+- Giữ rõ khác biệt giữa “Đã lưu trên thiết bị” và “Đã lưu lên máy chủ”, giữa bản nháp và dữ liệu đã công bố. Không bỏ cảnh báo mất thay đổi, quyền truy cập, dữ liệu riêng tư hoặc xác nhận thao tác quan trọng.
+- Tổng quan ưu tiên công việc theo vai trò; danh sách lớp ưu tiên tìm và mở lớp, còn quản lý nhóm là phần mở thêm. Cài đặt tài khoản không phải bảng chẩn đoán hạ tầng.
+
 Một app chung, không tách frontend thứ hai.
 
 - `/admin`: overview và công việc cần xử lý.

@@ -31,7 +31,7 @@ async function expectMapReady(page: Page, accessibleName: string | RegExp) {
   await expect(map).toBeVisible();
   await expect(map.locator("canvas.mapboxgl-canvas")).toBeVisible();
   await expect(page.getByTestId("map-degraded")).not.toBeAttached();
-  await expect(page.getByRole("alert").filter({ hasText: /Không tải được bản đồ/u })).not.toBeAttached();
+  await expect(page.getByRole("alert").filter({ hasText: /(?:Không|Chưa) tải được bản đồ/u })).not.toBeAttached();
 }
 
 test("live Street and Light render across the approved public and admin target surfaces", async ({ page }) => {
@@ -67,8 +67,8 @@ test("live Street and Light render across the approved public and admin target s
   await page.setViewportSize({ width: 1487, height: 1058 });
   await page.goto("/admin/layers/wards/edit");
   await expect(page.getByRole("heading", { name: "Ranh giới phường, xã" })).toBeVisible();
-  await expectMapReady(page, "Canvas biên tập geometry");
-  await expect(page.getByText("Đơn vị: mét · Light")).toBeVisible();
+  await expectMapReady(page, "Bản đồ biên tập");
+  await expect(page.getByText("Bán kính tính bằng mét")).toBeVisible();
   await page.getByRole("button", { name: "Vẽ vùng" }).click();
   await expect(page.getByRole("button", { name: "Vẽ vùng" })).toHaveAttribute("aria-pressed", "true");
 

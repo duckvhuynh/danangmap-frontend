@@ -75,29 +75,30 @@ async function loginWithMfa(page: Page) {
   await page.getByLabel("Mã xác thực 6 số").fill(code);
   await page.getByRole("button", { name: "Xác nhận" }).click();
   await expect(page).toHaveURL(/\/admin$/u);
-  await expect(page.getByRole("heading", { name: "Tổng quan hệ thống" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tổng quan" })).toBeVisible();
   expect([password, secret, code].some((value) => page.url().includes(value))).toBe(false);
   expect(await browserStateContains(page, [password, secret, code])).toBe(false);
 }
 
 async function importInvitedEditor(page: Page, email: string, username: string, displayName: string) {
   await page.goto("/admin/users/import");
-  await expect(page.getByRole("heading", { name: "Import người dùng nội bộ" })).toBeVisible();
-  await expect(page.getByText("Demo · không phải dữ liệu thật")).not.toBeAttached();
-  await page.getByLabel("Chọn file CSV hoặc XLSX").setInputFiles({
+  await expect(page.getByRole("heading", { name: "Nhập danh sách người dùng" })).toBeVisible();
+  await expect(page.getByText("Bản dùng thử · dữ liệu minh họa")).not.toBeAttached();
+  await page.getByLabel("Chọn tệp CSV hoặc XLSX").setInputFiles({
     name: "real-stack-users.csv",
     mimeType: "text/csv",
     buffer: Buffer.from(`email,username,displayName,role\n${email},${username},${displayName},editor\n`, "utf8"),
   });
   await page.getByRole("button", { name: "Tải lên và kiểm tra" }).click();
-  await expect(page.getByRole("heading", { name: /Xác nhận cấu trúc/u })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Kiểm tra danh sách đã tải lên/u })).toBeVisible();
   await page.getByRole("button", { name: "Kiểm tra dữ liệu" }).click();
-  await expect(page.getByRole("heading", { name: /Xem kết quả kiểm tra thử/u })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Xem kết quả kiểm tra/u })).toBeVisible();
   await expect(page.getByText("Không có lỗi", { exact: true })).toBeVisible();
   await page.getByRole("checkbox", { name: /Tôi hiểu đây là thao tác tạo lời mời/u }).check();
   await page.getByRole("button", { name: "Gửi 1 lời mời" }).click();
-  await expect(page.getByRole("heading", { name: "Import người dùng hoàn tất" })).toBeVisible();
-  await expect(page.getByText(/Đã tạo 1 lời mời đang chờ chấp nhận/u)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Đã nhập danh sách người dùng" })).toBeVisible();
+  await expect(page.getByText(/Đã tạo 1 lời mời/u)).toBeVisible();
+  await expect(page.getByText(/Người nhận cần mở email và đặt mật khẩu để bắt đầu sử dụng tài khoản/u)).toBeVisible();
 }
 
 async function readInviteToken(request: APIRequestContext, email: string) {
@@ -152,7 +153,7 @@ async function acceptInviteAndEnroll(page: Page, token: string, password: string
 
   expect(await browserStateContains(page, [token, password])).toBe(false);
 
-  await page.getByRole("button", { name: "Bắt đầu thiết lập MFA" }).click();
+  await page.getByRole("button", { name: "Thiết lập xác thực hai bước" }).click();
   const secret = (await page.getByTestId("manual-mfa-secret").textContent())?.trim();
   expect(secret?.length).toBe(32);
   if (!secret) throw new Error("MFA enrollment did not expose a manual secret.");
@@ -166,7 +167,7 @@ async function acceptInviteAndEnroll(page: Page, token: string, password: string
   await page.getByRole("checkbox", { name: /Tôi đã lưu mã khôi phục/u }).check();
   await page.getByRole("button", { name: "Tiếp tục vào trang quản trị" }).click();
   await expect(page).toHaveURL(/\/admin$/u);
-  await expect(page.getByRole("heading", { name: "Tổng quan hệ thống" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tổng quan" })).toBeVisible();
   await expect(page.getByText(displayName).first()).toBeVisible();
   await expect(codes).not.toBeAttached();
   const sensitiveValues = [token, password, secret, code, ...recoveryCodes];

@@ -313,77 +313,64 @@ export function assertAdminResult<T>(result: {
 
 export function adminErrorMessage(error: unknown) {
   if (!(error instanceof AdminApiError))
-    return error instanceof Error
-      ? error.message
-      : "Không thể hoàn tất yêu cầu.";
-  const prefix =
-    (
-      {
-        SLUG_CONFLICT: "Mã lớp đã tồn tại.",
-        SCHEMA_VIOLATION: "Cấu hình chưa hợp lệ.",
-        CONFIG_IMPACT_BLOCKED: "Cấu hình mới ảnh hưởng dữ liệu hiện có.",
-        DRAFT_ALREADY_EXISTS: "Layer đã có chuỗi biên tập đang hoạt động.",
-        PUBLISHED_REVISION_REQUIRED: "Layer chưa có revision đã công bố.",
-        REVISION_NOT_EDITABLE:
-          "Revision không còn ở trạng thái có thể chỉnh sửa.",
-        PUBLICATION_BASE_STALE:
-          "Revision dựa trên publication không còn hiện hành.",
-        PUBLICATION_POINTER_STALE:
-          "Publication pointer đã thay đổi. Lịch sử đang được làm mới.",
-        ETAG_MISMATCH:
-          "Dữ liệu trên máy chủ mới hơn bản bạn đang xem. Publication pointer đã thay đổi.",
-        SEPARATION_OF_DUTIES:
-          "Quy tắc tách biệt nhiệm vụ không cho phép tài khoản này thực hiện thao tác.",
-        PASSWORD_CHANGE_REQUIRED:
-          "Tài khoản phải đổi mật khẩu trước khi tiếp tục.",
-        ROLLBACK_TARGET_INVALID:
-          "Mốc công bố đã chọn không thể dùng để khôi phục.",
-        ROLLBACK_TARGET_NOT_FOUND: "Không tìm thấy mốc công bố đã chọn.",
-        IDEMPOTENCY_KEY_REUSED:
-          "Khóa idempotency đã được dùng cho nội dung khác.",
-        IDEMPOTENCY_IN_PROGRESS:
-          "Yêu cầu trước với cùng khóa đang được xử lý. Hãy thử lại.",
-        SYNC_CURSOR_EXPIRED:
-          "Lịch sử đồng bộ cục bộ đã quá cũ. Bản nháp vẫn được giữ để đối chiếu với workspace mới.",
-        SYNC_BASE_CURSOR_INVALID:
-          "Cursor cục bộ mới hơn trạng thái máy chủ.",
-        SYNC_BASE_REVISION_MISMATCH:
-          "Phiên bản revision của mutation không còn khớp máy chủ.",
-        SYNC_PAYLOAD_HASH_MISMATCH:
-          "Dấu kiểm toàn vẹn của mutation không hợp lệ.",
-        CLIENT_FEATURE_MAPPING_NOT_FOUND:
-          "Chưa có ánh xạ máy chủ cho đối tượng được tạo cục bộ.",
-        CLIENT_FEATURE_ID_REUSED:
-          "Định danh đối tượng cục bộ đã được dùng cho một đối tượng khác.",
-        ROLLBACK_TARGET_ACTIVE: "Mốc công bố này đang là mốc hiện hành.",
-        DIFF_TOO_LARGE: "Diff vượt giới hạn xử lý đồng bộ.",
-        GROUP_ARCHIVED: "Nhóm layer đã được lưu trữ.",
-        LAYER_ARCHIVED: "Layer đã được lưu trữ.",
-        ATTACHMENT_SCAN_FAILED: "Dịch vụ quét an toàn tạm thời không khả dụng.",
-        ATTACHMENT_SCAN_REJECTED: "Tệp không vượt qua kiểm tra an toàn.",
-        ATTACHMENT_MALWARE_DETECTED:
-          "Tệp bị từ chối vì phát hiện nội dung nguy hiểm.",
-        ATTACHMENT_MIME_MISMATCH:
-          "Nội dung tệp không khớp định dạng đã khai báo.",
-        ATTACHMENT_TYPE_UNSUPPORTED: "Định dạng tệp chưa được hỗ trợ.",
-        ATTACHMENT_UPLOAD_EXPIRED: "Lượt tải lên đã hết hạn. Hãy chọn lại tệp.",
-        ATTACHMENT_NOT_CLEAN:
-          "Tệp phải được quét sạch trước khi gắn vào đối tượng.",
-      } as Record<string, string>
-    )[error.code] ??
-    (
-      {
-        401: "Phiên đăng nhập đã hết hạn.",
-        403: "Bạn không có quyền thực hiện thao tác này.",
-        409: "Trạng thái revision đã thay đổi.",
-        412: "Dữ liệu trên máy chủ mới hơn bản bạn đang xem.",
-        413: "Tệp vượt giới hạn dung lượng cho phép.",
-        415: "Định dạng tệp chưa được hỗ trợ.",
-        422: "Dữ liệu chưa hợp lệ.",
-        503: "Dịch vụ lưu trữ hoặc quét tệp tạm thời không khả dụng.",
-      } as Record<number, string>
-    )[error.status];
-  return `${prefix ?? error.message}${prefix && error.message !== prefix ? ` ${error.message}` : ""}${error.requestId ? ` Mã yêu cầu: ${error.requestId}.` : ""}`;
+    return "Chưa thể kết nối hoặc hoàn tất thao tác. Kiểm tra kết nối rồi thử lại.";
+  if (error.code === "CLIENT_IMPORT_FILE_INVALID" || error.code === "CLIENT_IMPORT_MAPPING_INVALID")
+    return error.message;
+  const messages: Record<string, string> = {
+    SLUG_CONFLICT: "Mã lớp đã được sử dụng. Hãy chọn mã khác.",
+    SCHEMA_VIOLATION: "Thông tin chưa hợp lệ. Kiểm tra các trường được đánh dấu rồi thử lại.",
+    CONFIG_IMPACT_BLOCKED: "Cấu hình mới không phù hợp với một số đối tượng hiện có. Xem kết quả kiểm tra để điều chỉnh.",
+    DRAFT_ALREADY_EXISTS: "Lớp đã có một bản nháp đang xử lý. Mở bản nháp đó để tiếp tục.",
+    PUBLISHED_REVISION_REQUIRED: "Lớp chưa có nội dung đã công bố để tạo bản nháp mới.",
+    REVISION_NOT_EDITABLE: "Phiên bản này không còn ở trạng thái có thể chỉnh sửa. Mở lại lớp để xem trạng thái mới nhất.",
+    PUBLICATION_BASE_STALE: "Nội dung công bố đã thay đổi. Mở lại lớp để tạo bản nháp từ dữ liệu mới nhất.",
+    PUBLICATION_POINTER_STALE: "Nội dung đang công bố đã thay đổi. Tải lại lịch sử trước khi tiếp tục.",
+    ETAG_MISMATCH: "Dữ liệu đã có thay đổi mới. Tải lại bản mới nhất trước khi tiếp tục.",
+    SEPARATION_OF_DUTIES: "Thao tác này cần một người khác trong quy trình thực hiện. Hãy chuyển nội dung cho người có quyền phù hợp.",
+    PASSWORD_CHANGE_REQUIRED: "Bạn cần đổi mật khẩu trước khi tiếp tục.",
+    ROLLBACK_TARGET_INVALID: "Mốc công bố đã chọn không thể dùng để khôi phục.",
+    ROLLBACK_TARGET_NOT_FOUND: "Không tìm thấy mốc công bố đã chọn.",
+    ROLLBACK_TARGET_ACTIVE: "Mốc công bố này đang được sử dụng.",
+    IDEMPOTENCY_KEY_REUSED: "Nội dung thao tác đã thay đổi. Tải lại trang rồi thực hiện lại.",
+    IDEMPOTENCY_IN_PROGRESS: "Thao tác trước vẫn đang được xử lý. Chờ một lúc rồi kiểm tra lại.",
+    SYNC_CURSOR_EXPIRED: "Bản nháp trên thiết bị đã quá cũ. Thay đổi của bạn vẫn được giữ để đối chiếu với dữ liệu mới.",
+    SYNC_BASE_CURSOR_INVALID: "Chưa đối chiếu được bản nháp với dữ liệu đã lưu. Tải lại bản mới nhất trước khi tiếp tục.",
+    SYNC_BASE_REVISION_MISMATCH: "Dữ liệu đã có phiên bản mới. Tải lại trước khi lưu thay đổi.",
+    SYNC_PAYLOAD_HASH_MISMATCH: "Chưa xác nhận được nội dung cần lưu. Giữ bản nháp và thử lại.",
+    CLIENT_FEATURE_MAPPING_NOT_FOUND: "Đối tượng mới chưa được lưu lên hệ thống. Lưu lại trước khi tiếp tục.",
+    CLIENT_FEATURE_ID_REUSED: "Đối tượng mới bị trùng mã. Tải lại dữ liệu rồi thử lại.",
+    DIFF_TOO_LARGE: "Có quá nhiều thay đổi để xem cùng lúc. Chọn phạm vi hoặc phiên bản gần hơn.",
+    GROUP_ARCHIVED: "Nhóm lớp đã được lưu trữ. Chọn nhóm khác trước khi tiếp tục.",
+    LAYER_ARCHIVED: "Lớp đã được lưu trữ. Khôi phục lớp trước khi tiếp tục.",
+    LAYER_UNCONFIGURED: "Lớp chưa có cấu hình. Hãy tạo bản nháp để bắt đầu.",
+    ATTACHMENT_SCAN_FAILED: "Chưa kiểm tra được độ an toàn của tệp. Thử kiểm tra lại sau.",
+    ATTACHMENT_SCAN_REJECTED: "Tệp không vượt qua kiểm tra an toàn. Hãy chọn tệp khác.",
+    ATTACHMENT_MALWARE_DETECTED: "Tệp bị từ chối vì phát hiện nội dung nguy hiểm.",
+    ATTACHMENT_MIME_MISMATCH: "Nội dung tệp không khớp định dạng. Kiểm tra và chọn lại tệp.",
+    ATTACHMENT_TYPE_UNSUPPORTED: "Định dạng tệp chưa được hỗ trợ.",
+    ATTACHMENT_UPLOAD_EXPIRED: "Lượt tải lên đã hết hạn. Hãy chọn lại tệp.",
+    ATTACHMENT_NOT_CLEAN: "Tệp cần hoàn tất kiểm tra an toàn trước khi thêm vào đối tượng.",
+    IMPORT_MAPPING_INVALID: "Các cột chưa được ghép đúng. Kiểm tra cột nguồn và trường tương ứng.",
+    IMPORT_FILE_REQUIRED: "Chọn một tệp để nhập dữ liệu.",
+    IMPORT_CONCURRENCY_LIMIT: "Đang có nhiều lượt nhập dữ liệu. Chờ lượt trước hoàn tất rồi thử lại.",
+    IMPORT_HAS_ERRORS: "Tệp còn dòng lỗi. Sửa tệp hoặc chọn bỏ qua dòng lỗi nếu được phép.",
+    IMPORT_NO_VALID_ROWS: "Không có dòng hợp lệ để nhập. Kiểm tra tệp nguồn rồi thử lại.",
+    CONTRACT_INVALID: "Chưa đọc được dữ liệu từ hệ thống. Thử tải lại; nếu vẫn lỗi, liên hệ người quản trị.",
+    ETAG_MISSING: "Chưa xác nhận được phiên bản dữ liệu. Tải lại trước khi thực hiện thao tác.",
+  };
+  const statuses: Record<number, string> = {
+    401: "Phiên đăng nhập đã hết hạn. Đăng nhập lại để tiếp tục.",
+    403: "Bạn không có quyền thực hiện thao tác này.",
+    404: "Không tìm thấy dữ liệu. Có thể nội dung đã được chuyển hoặc xóa.",
+    409: "Trạng thái dữ liệu đã thay đổi. Tải lại để xem thông tin mới nhất.",
+    412: "Dữ liệu đã có thay đổi mới. Tải lại trước khi tiếp tục.",
+    413: "Tệp vượt giới hạn dung lượng. Hãy chia nhỏ dữ liệu rồi thử lại.",
+    415: "Định dạng tệp chưa được hỗ trợ.",
+    422: "Dữ liệu chưa hợp lệ. Kiểm tra thông tin đã nhập rồi thử lại.",
+    429: "Bạn thao tác quá nhanh. Chờ một lúc rồi thử lại.",
+    503: "Dịch vụ tạm thời chưa sẵn sàng. Thử lại sau ít phút.",
+  };
+  return messages[error.code] ?? statuses[error.status] ?? "Hệ thống chưa thể hoàn tất thao tác. Thử lại sau hoặc liên hệ người quản trị.";
 }
 
 function demoRole(): AdminRole {

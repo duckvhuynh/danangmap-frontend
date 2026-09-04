@@ -34,6 +34,7 @@ import {
   subscribeDesktopAuthoringCapability,
 } from "@/lib/admin/authoring-capability";
 import { canAuthorContent } from "@/lib/admin/role-capabilities";
+import { geometryLabel } from "@/lib/admin/labels";
 import { AdminApiError } from "@/lib/api/admin";
 import {
   archiveLayerGroup,
@@ -59,11 +60,11 @@ const statusLabels: Record<string, string> = {
 function Status({ value }: { value: string }) {
   const className =
     value === "published"
-      ? "bg-emerald-50 text-success"
+      ? "bg-success/10 text-success"
       : value === "in_review" || value === "approved"
-        ? "bg-amber-50 text-warning"
+        ? "bg-warning/10 text-warning"
         : "bg-surface-subtle text-muted-foreground";
-  return <Badge className={className}>{statusLabels[value] ?? value}</Badge>;
+  return <Badge className={className}>{statusLabels[value] ?? "Chưa xác định"}</Badge>;
 }
 
 function move<T>(items: T[], index: number, direction: -1 | 1) {
@@ -288,8 +289,7 @@ export function LayerCatalogManager({
             Lớp dữ liệu
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Quản lý catalog, revision và nhóm lớp với phiên bản đồng thời độc
-            lập.
+            Tìm lớp dữ liệu để biên tập, nhập tệp hoặc xem nội dung chờ duyệt.
           </p>
         </div>
         {contentAuthor && canAuthor ? (
@@ -304,8 +304,8 @@ export function LayerCatalogManager({
             disabled
             title={
               contentAuthor
-                ? "Tạo lớp cần desktop"
-                : "Chỉ Editor hoặc System Admin có quyền tạo lớp"
+                ? "Mở trên máy tính để tạo lớp"
+                : "Bạn cần quyền biên tập hoặc quản trị hệ thống để tạo lớp"
             }
           >
             <IconPlus data-icon="inline-start" />
@@ -318,17 +318,15 @@ export function LayerCatalogManager({
           <AdminErrorNotice error={error} onRetry={reload} />
         </div>
       )}
-      <section
-        className="mt-7 rounded-panel border bg-surface p-4 map-panel-shadow sm:p-5"
-        aria-labelledby="group-catalog-title"
-      >
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <details className="mt-6 rounded-panel border bg-surface p-4 sm:p-5">
+        <summary className="cursor-pointer text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Quản lý nhóm lớp</summary>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 id="group-catalog-title" className="font-semibold">
-              Nhóm layer
+              Nhóm lớp
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Lưu trữ nhóm sẽ đưa layer con về trạng thái không thuộc nhóm.
+              Sắp xếp các nhóm. Khi lưu trữ một nhóm, các lớp bên trong vẫn được giữ lại và chuyển thành không thuộc nhóm.
             </p>
           </div>
           <Badge className="bg-surface-subtle text-muted-foreground">
@@ -347,9 +345,6 @@ export function LayerCatalogManager({
                     <h3 className="truncate text-sm font-medium">
                       {group.title}
                     </h3>
-                    <p className="mt-1 truncate text-xs text-muted-foreground">
-                      {group.slug}
-                    </p>
                   </div>
                   {group.archivedAt && (
                     <Badge className="bg-surface-subtle text-muted-foreground">
@@ -406,7 +401,7 @@ export function LayerCatalogManager({
             );
           })}
         </div>
-      </section>
+      </details>
       <section className="mt-5 rounded-panel border bg-surface">
         <div className="flex flex-col gap-4 border-b p-4 sm:flex-row sm:items-center">
           <div className="relative flex-1">
@@ -438,7 +433,7 @@ export function LayerCatalogManager({
             className="p-8 text-center text-sm text-muted-foreground"
             role="status"
           >
-            Đang tải catalog...
+            Đang tải lớp dữ liệu...
           </p>
         ) : visible.length === 0 ? (
           <p className="p-8 text-center text-sm text-muted-foreground">
@@ -451,7 +446,7 @@ export function LayerCatalogManager({
                 <thead className="bg-surface-subtle text-xs text-muted-foreground">
                   <tr>
                     <th className="px-5 py-3 font-medium">Tên lớp</th>
-                    <th className="px-5 py-3 font-medium">Geometry</th>
+                    <th className="px-5 py-3 font-medium">Loại dữ liệu</th>
                     <th className="px-5 py-3 font-medium">Trạng thái</th>
                     <th className="px-5 py-3 font-medium">Cập nhật</th>
                     <th className="w-80 px-5 py-3">
@@ -480,12 +475,9 @@ export function LayerCatalogManager({
                               </Badge>
                             )}
                           </div>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            danang:{layer.slug}
-                          </p>
                         </td>
                         <td className="px-5 py-4 capitalize">
-                          {layer.geometryMode}
+                          {geometryLabel(layer.geometryMode)}
                         </td>
                         <td className="px-5 py-4">
                           <Status value={layer.status} />
@@ -503,7 +495,7 @@ export function LayerCatalogManager({
                                   type="button"
                                   variant="ghost"
                                   size="icon-sm"
-                                  aria-label={`Đưa layer ${layer.title} lên`}
+                                  aria-label={`Đưa lớp ${layer.title} lên`}
                                   disabled={
                                     requiresReload ||
                                     pending !== null ||
@@ -519,7 +511,7 @@ export function LayerCatalogManager({
                                   type="button"
                                   variant="ghost"
                                   size="icon-sm"
-                                  aria-label={`Đưa layer ${layer.title} xuống`}
+                                  aria-label={`Đưa lớp ${layer.title} xuống`}
                                   disabled={
                                     requiresReload ||
                                     pending !== null ||
@@ -546,7 +538,7 @@ export function LayerCatalogManager({
                                   href={`/admin/layers/${layer.revisionId}/import`}
                                 >
                                   <IconFileImport />
-                                  Nhập
+                                  Nhập dữ liệu
                                 </Link>
                               </Button>
                             )}
@@ -579,7 +571,7 @@ export function LayerCatalogManager({
                     <div>
                       <h2 className="font-medium">{layer.title}</h2>
                       <p className="mt-1 text-xs capitalize text-muted-foreground">
-                        {layer.geometryMode}, {layer.slug}
+                        {geometryLabel(layer.geometryMode)}
                       </p>
                     </div>
                     <Status value={layer.status} />
@@ -610,7 +602,7 @@ export function LayerCatalogManager({
         <footer className="flex items-center justify-between border-t px-5 py-4 text-sm text-muted-foreground">
           <span>{visible.length} lớp dữ liệu</span>
           <span>
-            {includeArchived ? "Gồm mục đã lưu trữ" : "Catalog hiện hành"}
+            {includeArchived ? "Gồm mục đã lưu trữ" : "Đang sử dụng"}
           </span>
         </footer>
       </section>

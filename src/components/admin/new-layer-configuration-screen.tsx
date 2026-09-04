@@ -104,7 +104,7 @@ export function NewLayerConfigurationScreen({
       <main
         className="mx-auto max-w-[1440px] p-4 sm:p-6 md:p-8"
         role="status"
-        aria-label="Đang tải cấu hình layer"
+        aria-label="Đang tải cấu hình lớp"
       >
         <div className="flex flex-col gap-3">
           <Skeleton className="h-8 w-56" />

@@ -76,7 +76,7 @@ test("enrolled account uses public and preauth CSRF before entering admin", asyn
   await totp.fill("123456");
   await page.getByRole("button", { name: "Xác nhận" }).click();
   await expect(page).toHaveURL(/\/admin$/);
-  await expect(page.getByRole("heading", { name: "Tổng quan hệ thống" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tổng quan" })).toBeVisible();
   expect(auth.csrfReads()).toEqual([csrfTokens.public, csrfTokens.preauth]);
   expect(auth.mutationTokens()).toEqual([csrfTokens.public, csrfTokens.preauth]);
 });
@@ -85,12 +85,12 @@ test("new account explicitly enrolls once and acknowledges ten one-time recovery
   const auth = await mockAuth(page, true);
   await passwordLogin(page);
   await expect(page).toHaveURL(/\/login\/mfa\?enrollment=required$/);
-  const start = page.getByRole("button", { name: "Bắt đầu thiết lập MFA" });
+  const start = page.getByRole("button", { name: "Thiết lập xác thực hai bước" });
   await expect(start).toBeVisible();
   expect(auth.enrollCalls()).toBe(0);
   await start.focus();
   await start.press("Enter");
-  await expect(page.getByRole("img", { name: "Mã QR thiết lập MFA DanangMap" })).toBeVisible();
+  await expect(page.getByRole("img", { name: "Mã QR thiết lập xác thực hai bước DanangMap" })).toBeVisible();
   await expect(page.getByTestId("manual-mfa-secret")).toHaveText("JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP");
   expect(auth.enrollCalls()).toBe(1);
 

@@ -32,8 +32,8 @@ import {
 
 const roleLabels: Record<InviteInspection["role"], string> = {
   editor: "Biên tập viên",
-  reviewer: "Kiểm duyệt viên",
-  publisher: "Xuất bản viên",
+  reviewer: "Người kiểm duyệt",
+  publisher: "Người công bố",
   system_admin: "Quản trị hệ thống",
 };
 
@@ -294,7 +294,7 @@ export function InviteAcceptForm() {
 
       <Alert className="border-primary/20 bg-accent-subtle text-foreground" role="note">
         <IconShieldCheck className="text-primary" size={18} stroke={1.75} />
-        <AlertTitle>{stage.inspection.requiresMfaEnrollment ? "Thiết lập MFA" : "Xác thực bằng mật khẩu"}</AlertTitle>
+        <AlertTitle>{stage.inspection.requiresMfaEnrollment ? "Thiết lập xác thực hai bước" : "Xác thực bằng mật khẩu"}</AlertTitle>
         <AlertDescription>
           {stage.inspection.requiresMfaEnrollment
             ? "Sau khi tạo mật khẩu, bạn sẽ được chuyển tới bước đăng ký ứng dụng xác thực."

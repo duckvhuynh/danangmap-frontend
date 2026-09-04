@@ -21,15 +21,17 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import { AdminApiError } from "@/lib/api/admin";
 import { userImportActions, type UserImportActions, type UserImportIssue, type UserImportIssuePage, type UserImportJob, type UserImportReportPage } from "@/lib/api/user-imports";
+import { adminUserRoleLabels } from "@/lib/users/user-admin-state";
 import { pollUserImport } from "@/lib/user-imports/user-import-polling";
 import {
-  MAX_USER_IMPORT_BYTES,
-  MAX_USER_IMPORT_ROWS,
   USER_IMPORT_COLUMNS,
   USER_IMPORT_ROLES,
+  USER_IMPORT_ISSUE_LABELS,
+  userImportIssueLabel,
+  userImportFieldLabel,
+  userImportReportCsv,
   normalizeIssueCode,
   userImportStage,
   userImportStatusLabel,
@@ -48,9 +50,9 @@ const getAuthoring = () => window.matchMedia(authoringQuery).matches;
 const getServerAuthoring = () => false;
 
 const steps: Array<{ id: UserImportStage; label: string }> = [
-  { id: "upload", label: "Tải file" },
+  { id: "upload", label: "Chọn tệp" },
   { id: "inspect", label: "Kiểm tra" },
-  { id: "issues", label: "Xem lỗi" },
+  { id: "issues", label: "Xem kết quả" },
   { id: "complete", label: "Tạo lời mời" },
 ];
 
@@ -68,7 +70,7 @@ function Stepper({ stage }: { stage: UserImportStage }) {
   const current = visualStage(stage);
   const currentIndex = steps.findIndex((step) => step.id === current);
   return (
-    <ol className="grid gap-2 sm:grid-cols-4" aria-label="Tiến trình import người dùng">
+    <ol className="grid gap-2 sm:grid-cols-4" aria-label="Tiến trình nhập danh sách người dùng">
       {steps.map((step, index) => (
         <li
           key={step.id}
@@ -91,37 +93,37 @@ function ImportPolicyNote() {
   return (
     <Alert role="note" className="bg-surface-subtle">
       <IconShieldLock stroke={1.75} />
-      <AlertTitle>Chỉ tạo tài khoản ở trạng thái lời mời</AlertTitle>
+      <AlertTitle>Bạn sẽ kiểm tra trước khi gửi lời mời</AlertTitle>
       <AlertDescription>
-        Kiểm tra thử không tạo tài khoản. Khi áp dụng, mỗi dòng hợp lệ tạo một lời mời để người dùng tự đặt mật khẩu và thiết lập MFA; tài khoản hiện có không bị cập nhật.
+        Bước kiểm tra chưa tạo tài khoản. Sau khi bạn xác nhận, người dùng hợp lệ sẽ nhận email mời tự đặt mật khẩu. Tài khoản hiện có không bị thay đổi.
       </AlertDescription>
     </Alert>
   );
 }
 
 function UserImportErrorNotice({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
-  let message = error instanceof Error ? error.message : "Không thể hoàn tất yêu cầu import.";
-  let requestId: string | undefined;
+  let message = "Không thể nhập danh sách lúc này. Hãy kiểm tra kết nối và thử lại.";
+
   if (error instanceof AdminApiError) {
     const prefix = ({
       401: "Phiên đăng nhập đã hết hạn.",
-      403: "Bạn không có quyền import người dùng.",
-      409: "Phiên import đang ở trạng thái khác hoặc lệnh cùng mã chống trùng đang được xử lý.",
-      412: "Dữ liệu import trên máy chủ đã thay đổi.",
-      413: "File vượt quá giới hạn dung lượng của máy chủ.",
-      415: "Định dạng hoặc nội dung file không được hỗ trợ.",
-      422: "Nội dung file hoặc worksheet chưa hợp lệ.",
-      429: "Đang có quá nhiều phiên import. Hãy chờ trước khi thử lại.",
-      503: "Dịch vụ import tạm thời chưa sẵn sàng.",
+      403: "Bạn không có quyền nhập danh sách người dùng.",
+      409: "Yêu cầu đang được xử lý hoặc đã hoàn tất. Hãy cập nhật trạng thái.",
+      412: "Kết quả nhập danh sách vừa thay đổi. Hãy cập nhật trạng thái.",
+      413: "Tệp vượt quá giới hạn dung lượng cho phép.",
+      415: "Định dạng hoặc nội dung tệp không được hỗ trợ.",
+      422: "Nội dung tệp hoặc trang tính chưa hợp lệ.",
+      429: "Đang có nhiều danh sách được xử lý. Hãy chờ trước khi thử lại.",
+      503: "Chức năng nhập danh sách tạm gián đoạn. Hãy thử lại sau.",
     } as Record<number, string>)[error.status];
-    message = `${prefix ?? error.message}${prefix && prefix !== error.message ? ` ${error.message}` : ""}`;
-    requestId = error.requestId;
+    message = USER_IMPORT_ISSUE_LABELS[error.code] ?? prefix ?? message;
+
   }
   return (
     <Alert variant="destructive">
       <IconAlertTriangle stroke={1.75} />
       <AlertTitle>Không thể hoàn tất yêu cầu</AlertTitle>
-      <AlertDescription><p>{message}{requestId ? ` Mã yêu cầu: ${requestId}.` : ""}</p>{onRetry && <Button className="mt-3" type="button" variant="outline" size="sm" onClick={onRetry}><IconRefresh data-icon="inline-start" />Cập nhật trạng thái</Button>}</AlertDescription>
+      <AlertDescription><p>{message}</p>{onRetry && <Button className="mt-3" type="button" variant="outline" size="sm" onClick={onRetry}><IconRefresh data-icon="inline-start" />Cập nhật trạng thái</Button>}</AlertDescription>
     </Alert>
   );
 }
@@ -145,18 +147,18 @@ function UploadStep({
         <IconFileSpreadsheet className="mt-0.5 text-primary" stroke={1.75} />
         <div>
           <h2 id="user-import-upload-heading" className="font-semibold">1. Chọn danh sách người dùng</h2>
-          <p className="mt-1 text-sm leading-6 text-muted-foreground">File chỉ tồn tại trong bộ nhớ của tab cho tới khi API nhận thành công; DanangMap không lưu file vào IndexedDB hay Web Storage.</p>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">Chọn tệp danh sách tài khoản. Bạn sẽ xem kết quả kiểm tra trước khi gửi lời mời.</p>
         </div>
       </div>
 
       <FieldGroup className="mt-6">
         <Field data-invalid={Boolean(fileError)}>
-          <div className="rounded-panel border-2 border-dashed bg-surface-subtle p-6 text-center">
+          <div className="rounded-panel border-2 border-dashed bg-surface-subtle p-6 text-center focus-within:ring-2 focus-within:ring-ring">
             <IconUpload className="mx-auto text-primary" size={30} stroke={1.6} />
             <FieldLabel htmlFor="user-import-file" className="mx-auto mt-3 cursor-pointer text-primary underline-offset-4 hover:underline">
-              Chọn file CSV hoặc XLSX
+              Chọn tệp CSV hoặc XLSX
             </FieldLabel>
-            <Input
+            <input
               id="user-import-file"
               className="sr-only"
               type="file"
@@ -164,7 +166,7 @@ function UploadStep({
               aria-invalid={Boolean(fileError)}
               onChange={(event) => onFile(event.target.files?.[0] ?? null)}
             />
-            <FieldDescription>Tối đa 5 MiB (5.242.880 byte) · tối đa 5.000 dòng · CSV UTF-8 hoặc XLSX values-only</FieldDescription>
+            <FieldDescription>Tối đa 5 MB · 5.000 dòng · Tệp Excel không chứa công thức</FieldDescription>
             {fileError && <FieldError className="mt-3">{fileError}</FieldError>}
             {file && (
               <div className="mx-auto mt-4 max-w-lg rounded-control border bg-surface px-4 py-3 text-left">
@@ -176,18 +178,18 @@ function UploadStep({
         </Field>
       </FieldGroup>
 
-      <div className="mt-5 grid gap-4 lg:grid-cols-2">
+      <details className="mt-5 rounded-control border p-4"><summary className="cursor-pointer text-sm font-medium">Xem hướng dẫn định dạng tệp</summary><div className="mt-4 grid gap-4 lg:grid-cols-2">
         <div className="rounded-control border p-4">
           <p className="text-sm font-medium">Bốn cột bắt buộc, đúng thứ tự</p>
           <div className="mt-3 flex flex-wrap gap-2">{USER_IMPORT_COLUMNS.map((column) => <Badge key={column}>{column}</Badge>)}</div>
-          <p className="mt-3 text-xs leading-5 text-muted-foreground">Cột password, MFA, secret, recovery code hoặc cột đặc quyền không xác định sẽ bị từ chối.</p>
+          <p className="mt-3 text-xs leading-5 text-muted-foreground">Chỉ dùng bốn cột trên. Không thêm mật khẩu, mã xác thực hoặc mã khôi phục. Với CSV, lưu tệp bằng mã hóa UTF-8.</p>
         </div>
         <div className="rounded-control border p-4">
-          <p className="text-sm font-medium">Role được phép</p>
-          <div className="mt-3 flex flex-wrap gap-2">{USER_IMPORT_ROLES.map((role) => <Badge key={role}>{role}</Badge>)}</div>
-          <p className="mt-3 text-xs leading-5 text-muted-foreground">Role không tạo quyền theo layer và không bypass workflow nội dung.</p>
+          <p className="text-sm font-medium">Giá trị cho cột vai trò</p>
+          <div className="mt-3 flex flex-wrap gap-2">{USER_IMPORT_ROLES.map((role) => <span key={role} className="text-xs">{adminUserRoleLabels[role]}: <code>{role}</code></span>)}</div>
+          <p className="mt-3 text-xs leading-5 text-muted-foreground">Nhập đúng giá trị bên cạnh tên vai trò trong cột role.</p>
         </div>
-      </div>
+      </div></details>
 
       <div className="mt-5"><ImportPolicyNote /></div>
       <div className="mt-6 flex justify-end">
@@ -221,27 +223,27 @@ function InspectStep({ job, sheet, busy, onSheet, onValidate }: { job: UserImpor
     <section className="rounded-panel border bg-surface p-5 map-panel-shadow sm:p-6" aria-labelledby="user-import-inspect-heading">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 id="user-import-inspect-heading" className="font-semibold">2. Xác nhận cấu trúc trước khi kiểm tra thử</h2>
-          <p className="mt-1 text-sm leading-6 text-muted-foreground">Máy chủ đã nhận diện {job.format.toUpperCase()}. Không có bước ánh xạ cột vì schema tài khoản là cố định.</p>
+          <h2 id="user-import-inspect-heading" className="font-semibold">2. Kiểm tra danh sách đã tải lên</h2>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">Tệp {job.format.toUpperCase()} đã được tải lên. Kiểm tra thông tin và chọn trang tính nếu cần.</p>
         </div>
         <Badge>{job.format.toUpperCase()}</Badge>
       </div>
 
       <dl className="mt-5 grid gap-3 sm:grid-cols-3">
-        <div className="rounded-control border bg-surface-subtle p-3"><dt className="text-xs text-muted-foreground">File</dt><dd className="mt-1 truncate text-sm font-medium">{job.file.name}</dd></div>
+        <div className="rounded-control border bg-surface-subtle p-3"><dt className="text-xs text-muted-foreground">Tệp</dt><dd className="mt-1 truncate text-sm font-medium">{job.file.name}</dd></div>
         <div className="rounded-control border bg-surface-subtle p-3"><dt className="text-xs text-muted-foreground">Dung lượng</dt><dd className="mt-1 text-sm font-medium">{(job.file.sizeBytes / 1024).toLocaleString("vi-VN", { maximumFractionDigits: 1 })} KiB</dd></div>
-        <div className="rounded-control border bg-surface-subtle p-3"><dt className="text-xs text-muted-foreground">Chính sách</dt><dd className="mt-1 text-sm font-medium">Invite only</dd></div>
+        <div className="rounded-control border bg-surface-subtle p-3"><dt className="text-xs text-muted-foreground">Chính sách</dt><dd className="mt-1 text-sm font-medium">Gửi lời mời</dd></div>
       </dl>
 
       {job.format === "xlsx" && (
         <Field className="mt-6" data-invalid={!canValidate}>
-          <FieldLabel htmlFor="user-import-sheet">Worksheet cần nhập</FieldLabel>
+          <FieldLabel htmlFor="user-import-sheet">Trang tính cần nhập</FieldLabel>
           <select id="user-import-sheet" className={selectClass} value={sheet} onChange={(event) => onSheet(event.target.value)} aria-invalid={!canValidate}>
-            <option value="">Chọn worksheet đã được kiểm tra</option>
+            <option value="">Chọn một trang tính</option>
             {job.inspection.sheets.map((name) => <option key={name} value={name}>{name}</option>)}
           </select>
-          <FieldDescription>Chỉ worksheet do backend trả về mới được chọn. File tối đa {job.inspection.limits.maxSheets} sheet.</FieldDescription>
-          {!canValidate && <FieldError>Hãy chọn đúng một worksheet trước khi kiểm tra thử.</FieldError>}
+          <FieldDescription>Tệp có thể chứa tối đa {job.inspection.limits.maxSheets} trang tính. Mỗi lần chỉ nhập một trang.</FieldDescription>
+          {!canValidate && <FieldError>Hãy chọn một trang tính trước khi kiểm tra.</FieldError>}
         </Field>
       )}
 
@@ -261,9 +263,9 @@ function IssueTable({ issues }: { issues: UserImportIssue[] }) {
   return (
     <div className="overflow-x-auto rounded-control border">
       <table className="w-full text-left text-sm">
-        <caption className="sr-only">Các lỗi kiểm tra thử của file import người dùng</caption>
-        <thead className="bg-surface-subtle text-xs text-muted-foreground"><tr><th className="px-3 py-2 font-medium" scope="col">Dòng</th><th className="px-3 py-2 font-medium" scope="col">Mã lỗi</th><th className="px-3 py-2 font-medium" scope="col">Trường</th></tr></thead>
-        <tbody className="divide-y">{issues.map((issue) => <tr key={issue.id}><td className="px-3 py-2">{issue.rowNumber}</td><td className="px-3 py-2 font-mono text-xs text-destructive">{issue.code}</td><td className="px-3 py-2">{issue.field ?? "Cấu trúc file"}</td></tr>)}</tbody>
+        <caption className="sr-only">Các dòng cần sửa trong danh sách người dùng</caption>
+        <thead className="bg-surface-subtle text-xs text-muted-foreground"><tr><th className="px-3 py-2 font-medium" scope="col">Dòng</th><th className="px-3 py-2 font-medium" scope="col">Nội dung cần sửa</th><th className="px-3 py-2 font-medium" scope="col">Cột</th></tr></thead>
+        <tbody className="divide-y">{issues.map((issue) => <tr key={issue.id}><td className="px-3 py-2">{issue.rowNumber}</td><td className="px-3 py-2 text-destructive">{userImportIssueLabel(issue.code)}</td><td className="px-3 py-2">{userImportFieldLabel(issue.field)}</td></tr>)}</tbody>
       </table>
     </div>
   );
@@ -305,7 +307,7 @@ function IssuesStep({
   return (
     <section className="rounded-panel border bg-surface p-5 map-panel-shadow sm:p-6" aria-labelledby="user-import-issues-heading">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div><h2 id="user-import-issues-heading" className="font-semibold">3. Xem kết quả kiểm tra thử</h2><p className="mt-1 text-sm leading-6 text-muted-foreground">Dòng lỗi không tạo tài khoản. Dòng hợp lệ chỉ được áp dụng sau xác nhận của bạn.</p></div>
+        <div><h2 id="user-import-issues-heading" className="font-semibold">3. Xem kết quả kiểm tra</h2><p className="mt-1 text-sm leading-6 text-muted-foreground">Dòng lỗi không tạo tài khoản. Dòng hợp lệ chỉ được áp dụng sau xác nhận của bạn.</p></div>
         <Badge className={job.counts.invalid ? "bg-red-50 text-destructive" : undefined}>{job.counts.invalid ? `${job.counts.invalid} lỗi` : "Không có lỗi"}</Badge>
       </div>
       <div className="mt-5"><Counts job={job} /></div>
@@ -313,11 +315,11 @@ function IssuesStep({
       <FieldGroup className="mt-5">
         <Field orientation="responsive">
           <FieldContent>
-            <FieldLabel htmlFor="user-import-issue-code">Lọc theo mã lỗi</FieldLabel>
-            <FieldDescription>Ví dụ USER_IMPORT_EMAIL_INVALID</FieldDescription>
+            <FieldLabel htmlFor="user-import-issue-code">Lọc nội dung cần sửa</FieldLabel>
+            <FieldDescription>Chọn nhóm lỗi cần xem.</FieldDescription>
           </FieldContent>
           <div className="flex w-full gap-2 sm:max-w-lg">
-            <Input id="user-import-issue-code" value={filter} onChange={(event) => onFilter(event.target.value)} pattern="[A-Z][A-Z0-9_]{2,99}" />
+            <select id="user-import-issue-code" className={selectClass} value={filter} onChange={(event) => onFilter(event.target.value)}><option value="">Tất cả lỗi</option>{Object.entries(USER_IMPORT_ISSUE_LABELS).map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select>
             <Button type="button" variant="outline" onClick={onSearch} disabled={busy}>Lọc</Button>
           </div>
         </Field>
@@ -330,11 +332,11 @@ function IssuesStep({
         <Checkbox id="user-import-confirm" checked={acknowledged} onCheckedChange={(checked) => onAcknowledged(checked === true)} aria-invalid={!acknowledged} />
         <FieldContent>
           <FieldLabel htmlFor="user-import-confirm">Tôi hiểu đây là thao tác tạo lời mời</FieldLabel>
-          <FieldDescription>{job.counts.valid.toLocaleString("vi-VN")} dòng hợp lệ sẽ trở thành invite/inactive; {job.counts.invalid.toLocaleString("vi-VN")} dòng lỗi bị bỏ qua và tài khoản hiện có không được cập nhật.</FieldDescription>
+          <FieldDescription>{job.counts.valid.toLocaleString("vi-VN")} dòng hợp lệ sẽ nhận lời mời; {job.counts.invalid.toLocaleString("vi-VN")} dòng lỗi bị bỏ qua và tài khoản hiện có không được cập nhật.</FieldDescription>
         </FieldContent>
       </Field>
 
-      {job.counts.valid < 1 && <Alert variant="destructive" className="mt-5"><IconAlertTriangle stroke={1.75} /><AlertTitle>Không có dòng hợp lệ</AlertTitle><AlertDescription>Hãy sửa file và bắt đầu một phiên import mới.</AlertDescription></Alert>}
+      {job.counts.valid < 1 && <Alert variant="destructive" className="mt-5"><IconAlertTriangle stroke={1.75} /><AlertTitle>Không có dòng hợp lệ</AlertTitle><AlertDescription>Hãy sửa tệp rồi nhập lại danh sách.</AlertDescription></Alert>}
       <div className="mt-6 flex justify-end">
         <Button type="button" disabled={!acknowledged || job.counts.valid < 1 || busy} onClick={onApply}>
           <IconUsersPlus data-icon="inline-start" stroke={1.75} />
@@ -350,21 +352,21 @@ function CompleteStep({ job, report, filter, busy, onFilter, onSearch, onMore, o
     <section className="rounded-panel border bg-surface p-6 map-panel-shadow sm:p-8">
       <div className="text-center">
         <span className="mx-auto grid size-12 place-items-center rounded-full bg-emerald-50 text-success"><IconCircleCheck stroke={1.75} /></span>
-        <h2 className="mt-4 text-lg font-semibold">Import người dùng hoàn tất</h2>
-        <p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Đã tạo {job.counts.applied.toLocaleString("vi-VN")} lời mời đang chờ chấp nhận; chưa có tài khoản hoạt động nào được tạo trực tiếp. Người nhận vẫn phải đặt mật khẩu và thiết lập MFA trước khi có phiên quản trị.</p>
+        <h2 className="mt-4 text-lg font-semibold">Đã nhập danh sách người dùng</h2>
+        <p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Đã tạo {job.counts.applied.toLocaleString("vi-VN")} lời mời. Người nhận cần mở email và đặt mật khẩu để bắt đầu sử dụng tài khoản.</p>
       </div>
       <div className="mt-6"><Counts job={job} /></div>
       <FieldGroup className="mt-5">
         <Field orientation="responsive">
-          <FieldContent><FieldLabel htmlFor="user-import-report-code">Lọc báo cáo theo mã lỗi</FieldLabel><FieldDescription>Bộ lọc được gửi tới report endpoint; không lọc file ở trình duyệt.</FieldDescription></FieldContent>
-          <div className="flex w-full gap-2 sm:max-w-lg"><Input id="user-import-report-code" value={filter} onChange={(event) => onFilter(event.target.value)} /><Button type="button" variant="outline" onClick={onSearch} disabled={busy}>Lọc</Button></div>
+          <FieldContent><FieldLabel htmlFor="user-import-report-code">Lọc nội dung cần sửa trong báo cáo</FieldLabel><FieldDescription>Chọn nhóm lỗi cần xem trong báo cáo.</FieldDescription></FieldContent>
+          <div className="flex w-full gap-2 sm:max-w-lg"><select id="user-import-report-code" className={selectClass} value={filter} onChange={(event) => onFilter(event.target.value)}><option value="">Tất cả lỗi</option>{Object.entries(USER_IMPORT_ISSUE_LABELS).map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select><Button type="button" variant="outline" onClick={onSearch} disabled={busy}>Lọc</Button></div>
         </Field>
       </FieldGroup>
       <div className="mt-5"><IssueTable issues={report?.issues ?? []} /></div>
       {report?.meta.hasMore && <Button className="mt-3" type="button" variant="outline" onClick={onMore} disabled={busy}>Xem thêm báo cáo</Button>}
       <div className="mt-6 flex flex-wrap justify-center gap-3">
-        <Button type="button" variant="outline" onClick={onDownload} disabled={!report}><IconDownload data-icon="inline-start" stroke={1.75} />Tải trang báo cáo JSON</Button>
-        <Button type="button" onClick={onRestart}><IconRefresh data-icon="inline-start" stroke={1.75} />Import danh sách khác</Button>
+        <Button type="button" variant="outline" onClick={onDownload} disabled={!report}><IconDownload data-icon="inline-start" stroke={1.75} />Tải báo cáo đang xem</Button>
+        <Button type="button" onClick={onRestart}><IconRefresh data-icon="inline-start" stroke={1.75} />Nhập danh sách khác</Button>
       </div>
     </section>
   );
@@ -376,8 +378,8 @@ function MobileReadOnly() {
       <Button asChild variant="ghost" size="sm"><Link href="/admin/users"><IconArrowLeft data-icon="inline-start" />Người dùng</Link></Button>
       <section className="mt-4 rounded-panel border bg-surface p-6 map-panel-shadow">
         <span className="grid size-11 place-items-center rounded-map-control bg-accent-subtle text-primary"><IconInfoCircle stroke={1.75} /></span>
-        <h1 className="mt-4 text-xl font-semibold">Import người dùng cần máy tính</h1>
-        <p className="mt-2 text-sm leading-6 text-muted-foreground">Trên điện thoại, System Admin chỉ được xem thông tin. Tải file, kiểm tra dữ liệu và áp dụng cần màn hình từ 1024 px cùng chuột hoặc trackpad để giảm thao tác nhầm.</p>
+        <h1 className="mt-4 text-xl font-semibold">Nhập danh sách cần dùng máy tính</h1>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">Bạn có thể xem tài khoản trên điện thoại. Để nhập danh sách, hãy dùng máy tính có bàn phím và chuột.</p>
       </section>
     </main>
   );
@@ -543,10 +545,10 @@ export function UserImportWizard({ actions, pollIntervalMs = 800 }: { actions: U
 
   function downloadReport() {
     if (!report) return;
-    const url = URL.createObjectURL(new Blob([JSON.stringify({ data: { job: report.job, issues: report.issues }, meta: report.meta }, null, 2)], { type: "application/json" }));
+    const url = URL.createObjectURL(new Blob([userImportReportCsv(report.issues)], { type: "text/csv;charset=utf-8" }));
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `user-import-${report.job.id}.json`;
+    anchor.download = "bao-cao-nhap-nguoi-dung.csv";
     document.body.append(anchor);
     anchor.click();
     anchor.remove();
@@ -554,7 +556,7 @@ export function UserImportWizard({ actions, pollIntervalMs = 800 }: { actions: U
   }
 
   if (principal.role !== "system_admin") {
-    return <main className="mx-auto max-w-3xl p-4 pb-24 sm:p-6"><section className="rounded-panel border bg-surface p-6 map-panel-shadow"><IconShieldLock className="text-destructive" stroke={1.75} /><h1 className="mt-4 text-xl font-semibold">Không có quyền import người dùng</h1><p className="mt-2 text-sm leading-6 text-muted-foreground">Chỉ System Admin được tải, kiểm tra thử và áp dụng danh sách tài khoản. Backend vẫn là lớp kiểm soát quyền bắt buộc.</p></section></main>;
+    return <main className="mx-auto max-w-3xl p-4 pb-24 sm:p-6"><section className="rounded-panel border bg-surface p-6 map-panel-shadow"><IconShieldLock className="text-destructive" stroke={1.75} /><h1 className="mt-4 text-xl font-semibold">Không có quyền nhập danh sách người dùng</h1><p className="mt-2 text-sm leading-6 text-muted-foreground">Chỉ quản trị hệ thống được nhập danh sách tài khoản. Hãy liên hệ người phụ trách nếu bạn cần được cấp quyền.</p></section></main>;
   }
   if (!canAuthor) return <MobileReadOnly />;
 
@@ -562,8 +564,7 @@ export function UserImportWizard({ actions, pollIntervalMs = 800 }: { actions: U
     <main className="mx-auto max-w-[1120px] p-4 pb-24 sm:p-6 md:p-8">
       <Button asChild variant="ghost" size="sm"><Link href="/admin/users"><IconArrowLeft data-icon="inline-start" />Người dùng</Link></Button>
       <header className="mt-4 flex flex-wrap items-end justify-between gap-4">
-        <div><p className="text-sm text-muted-foreground">Quản trị truy cập</p><h1 className="mt-1 text-2xl font-semibold">Import người dùng nội bộ</h1><p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">Kiểm tra danh sách trước khi tạo lời mời. Không import mật khẩu, MFA hay cập nhật tài khoản hiện có.</p></div>
-        <Badge>System Admin</Badge>
+        <div><p className="text-sm text-muted-foreground">Quản trị truy cập</p><h1 className="mt-1 text-2xl font-semibold">Nhập danh sách người dùng</h1><p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">Thêm nhiều tài khoản bằng tệp CSV hoặc Excel, sau đó gửi lời mời qua email.</p></div>
       </header>
       <div className="mt-6"><Stepper stage={stage} /></div>
 
@@ -571,16 +572,15 @@ export function UserImportWizard({ actions, pollIntervalMs = 800 }: { actions: U
 
       <div className="mt-5">
         {stage === "upload" && <UploadStep file={file} fileError={fileError} busy={busy} onFile={chooseFile} onSubmit={upload} />}
-        {stage === "inspecting" && job && <ProcessingStep job={job} title="Đang kiểm tra file" />}
+        {stage === "inspecting" && job && <ProcessingStep job={job} title="Đang kiểm tra tệp" />}
         {stage === "inspect" && job && <InspectStep job={job} sheet={sheet} busy={busy} onSheet={setSheet} onValidate={validate} />}
-        {stage === "validating" && job && <ProcessingStep job={job} title="Đang kiểm tra thử danh sách" />}
+        {stage === "validating" && job && <ProcessingStep job={job} title="Đang kiểm tra danh sách" />}
         {stage === "issues" && job && <IssuesStep job={job} page={issues} filter={filter} acknowledged={acknowledged} busy={busy} onFilter={setFilter} onSearch={searchIssues} onMore={() => { if (issues?.meta.nextCursor) void loadIssues(job, issues.meta.nextCursor, true).catch(setError); }} onAcknowledged={setAcknowledged} onApply={apply} />}
         {stage === "applying" && job && <ProcessingStep job={job} title="Đang tạo lời mời" />}
         {stage === "complete" && job && <CompleteStep job={job} report={report} filter={filter} busy={busy} onFilter={setFilter} onSearch={searchReport} onMore={() => { if (report?.meta.nextCursor) void loadReport(job, report.meta.nextCursor, true).catch(setError); }} onDownload={downloadReport} onRestart={restart} />}
-        {stage === "failed" && job && <section className="rounded-panel border bg-surface p-8 text-center map-panel-shadow"><span className="mx-auto grid size-12 place-items-center rounded-full bg-red-50 text-destructive"><IconAlertTriangle stroke={1.75} /></span><h2 className="mt-4 text-lg font-semibold">Phiên import không thể hoàn tất</h2><p className="mt-2 text-sm text-muted-foreground">Mã lỗi: {job.failureCode ?? "USER_IMPORT_FAILED"}. Không có tài khoản hoạt động nào được tạo trực tiếp từ file.</p><div className="mt-6 flex flex-wrap justify-center gap-3">{job.failureCode === "USER_IMPORT_VALIDATE_FAILED" && <Button type="button" onClick={validate} disabled={busy}><IconRefresh data-icon="inline-start" />Thử kiểm tra lại</Button>}{job.failureCode === "USER_IMPORT_APPLY_FAILED" && <Button type="button" onClick={apply} disabled={busy}><IconRefresh data-icon="inline-start" />Thử gửi lời mời lại</Button>}<Button type="button" variant="outline" onClick={retryStatus} disabled={busy}>Cập nhật trạng thái</Button><Button type="button" variant={job.failureCode === "USER_IMPORT_VALIDATE_FAILED" || job.failureCode === "USER_IMPORT_APPLY_FAILED" ? "outline" : "default"} onClick={restart}>Bắt đầu phiên mới</Button></div></section>}
+        {stage === "failed" && job && <section className="rounded-panel border bg-surface p-8 text-center map-panel-shadow"><span className="mx-auto grid size-12 place-items-center rounded-full bg-red-50 text-destructive"><IconAlertTriangle stroke={1.75} /></span><h2 className="mt-4 text-lg font-semibold">Chưa thể nhập danh sách</h2><p className="mt-2 text-sm text-muted-foreground">{userImportIssueLabel(job.failureCode)}.</p><div className="mt-6 flex flex-wrap justify-center gap-3">{job.failureCode === "USER_IMPORT_VALIDATE_FAILED" && <Button type="button" onClick={validate} disabled={busy}><IconRefresh data-icon="inline-start" />Thử kiểm tra lại</Button>}{job.failureCode === "USER_IMPORT_APPLY_FAILED" && <Button type="button" onClick={apply} disabled={busy}><IconRefresh data-icon="inline-start" />Thử gửi lời mời lại</Button>}<Button type="button" variant="outline" onClick={retryStatus} disabled={busy}>Cập nhật trạng thái</Button><Button type="button" variant={job.failureCode === "USER_IMPORT_VALIDATE_FAILED" || job.failureCode === "USER_IMPORT_APPLY_FAILED" ? "outline" : "default"} onClick={restart}>Nhập danh sách khác</Button></div></section>}
       </div>
 
-      <footer className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground"><span>Giới hạn client: {MAX_USER_IMPORT_BYTES.toLocaleString("vi-VN")} byte</span><span>Tối đa {MAX_USER_IMPORT_ROWS.toLocaleString("vi-VN")} dòng</span><span>Server kiểm tra lại MIME, cấu trúc và quyền</span></footer>
     </main>
   );
 }

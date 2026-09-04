@@ -203,9 +203,7 @@ export async function bootstrapSystemAdmin(
 
 export function bootstrapErrorMessage(error: unknown, context: "status" | "create") {
   if (!(error instanceof BootstrapApiError)) {
-    return error instanceof Error
-      ? error.message
-      : "Không thể khởi tạo quản trị hệ thống lúc này.";
+    return "Không thể khởi tạo quản trị hệ thống. Hãy kiểm tra kết nối và thử lại.";
   }
   if (error.status === 401 || error.code === "BOOTSTRAP_TOKEN_INVALID") {
     return "Mã khởi tạo không đúng. Hãy kiểm tra mã do người vận hành máy chủ cung cấp.";
@@ -228,7 +226,7 @@ export function bootstrapErrorMessage(error: unknown, context: "status" | "creat
         : " Vui lòng chờ rồi thử lại."
     }`;
   }
-  if (error.status === 503) {
+  if (error.status >= 500) {
     return "Khởi tạo quản trị chưa được bật hoặc dịch vụ bảo vệ đang tạm gián đoạn.";
   }
   if (error.ambiguous && context === "create") {
@@ -239,5 +237,5 @@ export function bootstrapErrorMessage(error: unknown, context: "status" | "creat
       ? "Không thể kiểm tra trạng thái khởi tạo. Kiểm tra kết nối và thử lại."
       : "Không thể kết nối dịch vụ khởi tạo quản trị.";
   }
-  return error.message;
+  return "Không thể tạo tài khoản quản trị lúc này. Vui lòng thử lại sau.";
 }

@@ -56,7 +56,7 @@ describe("publication job status", () => {
       phase: "switching",
       progress: { completedUnits: 0, totalUnits: 0, unit: "features", percent: null },
     })}/>);
-    expect(screen.getByText("Revision không có đối tượng cần dựng.")).toBeInTheDocument();
+    expect(screen.getByText("Phiên bản này không có đối tượng.")).toBeInTheDocument();
     expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
     expect(screen.queryByText("100%", { exact: false })).not.toBeInTheDocument();
   });
@@ -69,7 +69,7 @@ describe("publication job status", () => {
     })}/>);
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "45");
     expect(screen.queryByText(/99%|100%/u)).not.toBeInTheDocument();
-    expect(screen.getByText(/vẫn dùng publication hiện hành/u)).toBeInTheDocument();
+    expect(screen.getByText(/vẫn hiển thị dữ liệu cũ/u)).toBeInTheDocument();
   });
 
   it("renders only the redacted failure contract", () => {
@@ -107,7 +107,7 @@ describe("publication job status", () => {
       }}
     />);
     expect(screen.getByRole("status")).toHaveTextContent("không nối tiếp trạng thái đã xác nhận");
-    expect(screen.getByRole("status")).toHaveTextContent("PUBLICATION_JOB_REPRESENTATION_REJECTED");
+    expect(screen.queryByText("PUBLICATION_JOB_REPRESENTATION_REJECTED")).not.toBeInTheDocument();
     expect(screen.getByText("0 đối tượng đã xử lý. Tổng số đang được đo.")).toBeInTheDocument();
   });
 
@@ -133,6 +133,6 @@ describe("publication job status", () => {
     const compactJob = job();
     const { container } = render(<PublicationJobStatus job={compactJob} compact/>);
     expect(container.querySelector("[aria-live]")).not.toBeInTheDocument();
-    expect(screen.getByRole("region", { name: `Publication job ${compactJob.id}` })).toHaveTextContent("Đang chờ xử lý");
+    expect(screen.getByRole("region", { name: "Trạng thái yêu cầu công bố" })).toHaveTextContent("Đang chờ xử lý");
   });
 });

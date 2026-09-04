@@ -69,20 +69,20 @@ describe("revision diff view", () => {
     expect(screen.getByText("quyet-dinh-cu.pdf")).toBeInTheDocument();
     expect(screen.getByText("ban-do.pdf")).toBeInTheDocument();
     expect(screen.getByText(/vị trí 1 → 2/u)).toBeInTheDocument();
-    expect(screen.getByText(/attachment private hoặc nhạy cảm đã được ẩn/u)).toBeInTheDocument();
+    expect(screen.getByText(/thay đổi tệp riêng tư đã được ẩn/u)).toBeInTheDocument();
     expect(screen.queryByText(/objectKey|checksum|ownerId/u)).not.toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Hình học trước thay đổi" })).toHaveTextContent("Khung giới hạn");
     expect(screen.getByRole("region", { name: "Hình học sau thay đổi" })).toHaveTextContent("Hình học chính xác");
     expect(screen.getByRole("region", { name: "Hình học sau thay đổi" })).toHaveTextContent("Bán kính 125 m");
-    expect(screen.getByLabelText("Preview geometry trước thay đổi")).toHaveTextContent('"type": "BBox"');
-    expect(screen.getByLabelText("Preview geometry trước thay đổi")).toHaveTextContent("108.1");
-    expect(screen.getByLabelText("Preview geometry sau thay đổi")).toHaveTextContent('"type": "Point"');
-    expect(screen.getByLabelText("Preview geometry sau thay đổi")).toHaveTextContent("108.15");
+    expect(screen.getByLabelText("Tọa độ trước thay đổi")).toHaveTextContent('"type": "BBox"');
+    expect(screen.getByLabelText("Tọa độ trước thay đổi")).toHaveTextContent("108.1");
+    expect(screen.getByLabelText("Tọa độ sau thay đổi")).toHaveTextContent('"type": "Point"');
+    expect(screen.getByLabelText("Tọa độ sau thay đổi")).toHaveTextContent("108.15");
     expect(screen.queryByText(/không được hiển thị/u)).not.toBeInTheDocument();
     expect(screen.getByText("Có thay đổi đã ẩn")).toBeInTheDocument();
-    expect(screen.getByText("Thuộc tính public sau")).toBeInTheDocument();
+    expect(screen.getByText("Thông tin công khai sau")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Tải thêm feature thay đổi" }));
+    fireEvent.click(screen.getByRole("button", { name: "Xem thêm đối tượng thay đổi" }));
     await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
     expect(load.mock.calls[0]![1].compareTo).toBe("parent");
     expect(load.mock.calls[1]![1].cursor).toBe("opaque:diff:page:2/+==");
@@ -92,17 +92,18 @@ describe("revision diff view", () => {
   it("renders an explicit feature empty state with zero attachment summary", async () => {
     const load = vi.fn().mockResolvedValue(diffResource({ entries: [], nextCursor: null, hasMore: false }));
     render(<RevisionDiffView revisionId={revisionId} transport={{ load } as RevisionDiffTransport}/>);
-    expect(await screen.findByText("Không có thay đổi feature")).toBeInTheDocument();
+    expect(await screen.findByText("Không có thay đổi đối tượng")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Thay đổi tệp đính kèm" })).toBeInTheDocument();
   });
 
-  it("wraps an opaque history ETag instead of widening the mobile review viewport", async () => {
+  it("does not expose technical history tokens in the review UI", async () => {
     const resource = diffResource({ entries: [], nextCursor: null, hasMore: false });
     resource.historyEtag = `"history-${"a".repeat(64)}"`;
     const load = vi.fn().mockResolvedValue(resource);
     render(<RevisionDiffView revisionId={revisionId} transport={{ load } as RevisionDiffTransport}/>);
 
-    expect(await screen.findByText(resource.historyEtag)).toHaveClass("break-all");
+    await screen.findByText("Không có thay đổi đối tượng");
+    expect(screen.queryByText(resource.historyEtag)).not.toBeInTheDocument();
   });
 
   it("renders only public schema keys and an aggregate redaction count independent of entry flags", async () => {
@@ -118,12 +119,12 @@ describe("revision diff view", () => {
       nextCursor: null,
       hasMore: false,
     }));
-    render(<RevisionDiffView revisionId={revisionId} transport={{ load } as RevisionDiffTransport}/>);
+    render(<RevisionDiffView revisionId={revisionId} fieldLabels={{ address: "Địa chỉ", name: "Tên" }} transport={{ load } as RevisionDiffTransport}/>);
 
-    const schema = (await screen.findByText("Thay đổi schema public")).closest("section")!;
-    expect(within(schema).getByText("address")).toBeInTheDocument();
+    const schema = (await screen.findByText("Thay đổi trường thông tin công khai")).closest("section")!;
+    expect(within(schema).getByText("Địa chỉ")).toBeInTheDocument();
     expect(within(schema).getByText("legacy_code")).toBeInTheDocument();
-    expect(within(schema).getByText("name")).toBeInTheDocument();
+    expect(within(schema).getByText("Tên")).toBeInTheDocument();
     expect(schema).toHaveTextContent("3 thay đổi đã ẩn");
     expect(screen.queryByText("Có thay đổi đã ẩn")).not.toBeInTheDocument();
   });
@@ -150,7 +151,7 @@ describe("revision diff view", () => {
 
     expect((await screen.findAllByText("Có thay đổi đã ẩn")).length).toBeGreaterThan(0);
     expect(screen.getByText(/Dùng phím mũi tên lên và xuống/u)).toBeInTheDocument();
-    expect(screen.getByText("Đã tải 2 feature thay đổi so với revision trước.")).toHaveAttribute("aria-live", "polite");
+    expect(screen.getByText("Đã tải 2 đối tượng thay đổi so với phiên bản trước.")).toHaveAttribute("aria-live", "polite");
 
     const entries = screen.getAllByRole("article");
     expect(entries[0]).toHaveAccessibleName(/mục 1 trên 2/u);
@@ -182,8 +183,9 @@ describe("revision diff view", () => {
   it("preserves bounded DIFF_TOO_LARGE details in the typed error state", async () => {
     const load = vi.fn().mockRejectedValue(new AdminApiError(422, "DIFF_TOO_LARGE", "Diff too large.", "request-diff", { maxFeatures: 5000, currentFeatures: 6200 }));
     render(<RevisionDiffView revisionId={revisionId} transport={{ load } as RevisionDiffTransport}/>);
-    expect(await screen.findByText("Diff vượt giới hạn xử lý đồng bộ")).toBeInTheDocument();
-    expect(screen.getByText(/6200/u)).toBeInTheDocument();
+    expect(await screen.findByText("Có quá nhiều thay đổi để so sánh cùng lúc")).toBeInTheDocument();
+    expect(screen.queryByText(/maxFeatures|currentFeatures/u)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Thử lại" })).toBeInTheDocument();
     expect(screen.queryByText("50%")).not.toBeInTheDocument();
   });
 });

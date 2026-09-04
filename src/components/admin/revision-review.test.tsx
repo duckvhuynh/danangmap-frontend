@@ -166,16 +166,16 @@ describe("revision review publication capability", () => {
   ] as const)("does not render publish form or action on %s", async (_name, capability) => {
     setCapability(capability);
     render(<RevisionReview revisionId="22222222-2222-4222-8222-222222222222"/>);
-    expect(await screen.findByText(/chế độ chỉ đọc/u)).toBeInTheDocument();
+    expect(await screen.findByText(/Dữ liệu đã được duyệt/u)).toBeInTheDocument();
     expect(screen.queryByLabelText("Ghi chú công bố")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Công bố revision" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Công bố dữ liệu" })).not.toBeInTheDocument();
   });
 
   it("renders the durable publish action on a keyboard-oriented desktop", async () => {
     setCapability({ mediaMatches: true, userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", platform: "Win32", maxTouchPoints: 0 });
     render(<RevisionReview revisionId="22222222-2222-4222-8222-222222222222"/>);
     const releaseNote = await screen.findByLabelText("Ghi chú công bố");
-    const publish = screen.getByRole("button", { name: "Công bố revision" });
+    const publish = screen.getByRole("button", { name: "Công bố dữ liệu" });
     expect(publish).toBeDisabled();
     fireEvent.change(releaseNote, { target: { value: "Công bố dữ liệu đã được duyệt" } });
     expect(publish).toBeEnabled();
@@ -185,7 +185,7 @@ describe("revision review publication capability", () => {
     setCapability({ mediaMatches: true, userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", platform: "Win32", maxTouchPoints: 0 });
     vi.mocked(useAdminSession).mockReturnValue({ principal: { ...principal, role: "reviewer" }, csrfToken: "csrf-fixed", refreshCsrf: vi.fn(), clearClientPrincipal: vi.fn() });
     render(<RevisionReview revisionId={revisionId}/>);
-    expect(await screen.findByText(/chế độ chỉ đọc/u)).toBeInTheDocument();
+    expect(await screen.findByText(/Dữ liệu đã được duyệt/u)).toBeInTheDocument();
     expect(screen.queryByLabelText("Ghi chú công bố")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Công bố|Thử công bố/u })).not.toBeInTheDocument();
   });
@@ -196,7 +196,7 @@ describe("revision review publication capability", () => {
     render(<RevisionReview revisionId={revisionId}/>);
 
     expect(await screen.findByLabelText("Ghi chú công bố")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Công bố revision" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Công bố dữ liệu" })).toBeInTheDocument();
   });
 
   it("allows a System Admin to use reviewer decisions for an in-review revision", async () => {
@@ -235,8 +235,8 @@ describe("revision review publication capability", () => {
     render(<RevisionReview revisionId={revisionId} layerId={layerId} transport={transport}/>);
 
     expect(await screen.findByRole("heading", { name: "Duyệt Ranh giới phường, xã" })).toBeInTheDocument();
-    expect(screen.getByText("Chờ duyệt")).toBeInTheDocument();
-    expect(screen.getByText("18 đối tượng thay đổi")).toBeInTheDocument();
+    expect(screen.getAllByText("Chờ duyệt")).toHaveLength(2);
+    expect(screen.getByText("18 đối tượng trong phiên bản")).toBeInTheDocument();
     const mapTab = screen.getByRole("tab", { name: "Bản đồ" });
     const changesTab = screen.getByRole("tab", { name: "Thay đổi" });
     const commentsTab = screen.getByRole("tab", { name: "Nhận xét" });
@@ -264,11 +264,11 @@ describe("revision review publication capability", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Duyệt thay đổi" }));
     await waitFor(() => expect(approve).toHaveBeenCalledWith(revisionId, "", expect.any(String), { csrfToken: "csrf-fixed" }));
-    const workflowFeedback = (await screen.findByText("Đã duyệt revision.")).closest('[tabindex="-1"]');
+    const workflowFeedback = (await screen.findByText("Đã phê duyệt dữ liệu.")).closest('[tabindex="-1"]');
     expect(workflowFeedback).not.toBeNull();
     await waitFor(() => expect(workflowFeedback).toHaveFocus());
 
-    fireEvent.click(screen.getByRole("button", { name: "Xem thay đổi của 18 đối tượng" }));
+    fireEvent.click(screen.getByRole("button", { name: "Xem phiên bản có 18 đối tượng" }));
     expect(changesTab).toHaveAttribute("aria-selected", "true");
     expect(mapPanel).toHaveClass("hidden");
     expect(changesPanel).toHaveClass("flex", "flex-col", "gap-8");
@@ -277,7 +277,7 @@ describe("revision review publication capability", () => {
     fireEvent.click(commentsTab);
     expect(commentsTab).toHaveAttribute("aria-selected", "true");
     expect(commentsPanel).toHaveClass("flex");
-    fireEvent.change(screen.getByLabelText("Bình luận review"), { target: { value: "Cần chỉnh lại ranh giới phía bắc" } });
+    fireEvent.change(screen.getByLabelText("Ý kiến kiểm duyệt"), { target: { value: "Cần chỉnh lại ranh giới phía bắc" } });
     const requestChangesButton = screen.getByRole("button", { name: "Yêu cầu chỉnh sửa" });
     expect(requestChangesButton).toBeEnabled();
     fireEvent.click(requestChangesButton);
@@ -291,7 +291,7 @@ describe("revision review publication capability", () => {
     const transport = realTransport({ jobs: [active] });
     render(<RevisionReview revisionId={revisionId} layerId={layerId} transport={transport}/>);
 
-    const publicationRegionName = `Publication job ${active.id}`;
+    const publicationRegionName = "Trạng thái yêu cầu công bố";
     const compactStatus = await screen.findByRole("region", { name: publicationRegionName });
     const mapTab = screen.getByRole("tab", { name: "Bản đồ" });
     const mapPanel = screen.getByRole("tabpanel", { name: "Bản đồ" });
@@ -306,7 +306,7 @@ describe("revision review publication capability", () => {
     fireEvent.click(commentsTab);
     expect(commentsTab).toHaveAttribute("aria-selected", "true");
     expect(within(mapPanel).queryByRole("region", { name: publicationRegionName })).not.toBeInTheDocument();
-    expect(within(commentsPanel).getByRole("region", { name: publicationRegionName })).toHaveTextContent(`Job ${active.id}`);
+    expect(within(commentsPanel).getByRole("region", { name: publicationRegionName })).toHaveTextContent("Đang chờ xử lý");
     expect(screen.getAllByRole("region", { name: publicationRegionName })).toHaveLength(1);
     expect(screen.queryByLabelText("Ghi chú công bố")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Công bố|Thử công bố/u })).not.toBeInTheDocument();
@@ -325,13 +325,13 @@ describe("revision review publication capability", () => {
     const active = job("abababab-abab-4bab-8bab-abababababab");
     render(<RevisionReview revisionId={revisionId} layerId={layerId} transport={realTransport({ jobs: [active] })}/>);
 
-    const publicationRegionName = `Publication job ${active.id}`;
+    const publicationRegionName = "Trạng thái yêu cầu công bố";
     const status = await screen.findByRole("region", { name: publicationRegionName });
     const commentsPanel = screen.getByRole("tabpanel", { name: "Nhận xét" });
     expect(screen.getByRole("tab", { name: "Bản đồ" })).toHaveAttribute("aria-selected", "true");
     expect(commentsPanel).toHaveClass("md:flex");
     expect(within(commentsPanel).getByRole("region", { name: publicationRegionName })).toBe(status);
-    expect(status).toHaveTextContent(`Job ${active.id}`);
+    expect(status).toHaveTextContent("Đang chờ xử lý");
     expect(screen.getAllByRole("region", { name: publicationRegionName })).toHaveLength(1);
     expect(screen.queryByLabelText("Ghi chú công bố")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Công bố|Thử công bố/u })).not.toBeInTheDocument();
@@ -354,13 +354,13 @@ describe("revision review publication capability", () => {
       data: { items: query.revisionId === revisionId ? [activeA] : [], nextCursor: null, hasMore: false, limit: 25 },
     })) as RevisionReviewTransport["jobs"];
     const view = render(<RevisionReview revisionId={revisionId} layerId={layerId} transport={api}/>);
-    expect(await screen.findByRole("region", { name: `Publication job ${activeA.id}` })).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "Trạng thái yêu cầu công bố" })).toBeInTheDocument();
 
     view.rerender(<RevisionReview revisionId={revisionB} layerId={layerId} transport={api}/>);
     expect(await screen.findByText("Revision B")).toBeInTheDocument();
-    await waitFor(() => expect(screen.queryByRole("region", { name: `Publication job ${activeA.id}` })).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByRole("region", { name: "Trạng thái yêu cầu công bố" })).not.toBeInTheDocument());
     expect(screen.getByLabelText("Ghi chú công bố")).toHaveValue("");
-    expect(screen.getByRole("button", { name: "Công bố revision" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Công bố dữ liệu" })).toBeDisabled();
     expect(api.jobs).toHaveBeenCalledWith(layerId, { revisionId: revisionB, limit: 25 }, { signal: expect.any(AbortSignal) });
   });
 
@@ -384,25 +384,25 @@ describe("revision review publication capability", () => {
     const view = render(<RevisionReview revisionId={revisionId} layerId={layerId} transport={api}/>);
     const noteA = await screen.findByLabelText("Ghi chú công bố");
     fireEvent.change(noteA, { target: { value: "Ghi chú chỉ thuộc revision A" } });
-    fireEvent.click(screen.getByRole("button", { name: "Công bố revision" }));
+    fireEvent.click(screen.getByRole("button", { name: "Công bố dữ liệu" }));
     await waitFor(() => expect(publish).toHaveBeenCalledOnce());
 
     view.rerender(<RevisionReview revisionId={revisionB} layerId={layerId} transport={api}/>);
     expect(await screen.findByText("Revision B")).toBeInTheDocument();
     const noteB = screen.getByLabelText("Ghi chú công bố");
     expect(noteB).toHaveValue("");
-    expect(screen.getByRole("button", { name: "Công bố revision" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Công bố dữ liệu" })).toBeDisabled();
 
     await act(async () => {
       pendingA.resolve(acceptedA);
       await pendingA.promise;
     });
-    expect(screen.queryByRole("region", { name: `Publication job ${acceptedA.data.id}` })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Trạng thái yêu cầu công bố" })).not.toBeInTheDocument();
     expect(screen.queryByText("Yêu cầu công bố đã được nhận. Trạng thái dưới đây lấy trực tiếp từ máy chủ.")).not.toBeInTheDocument();
 
     fireEvent.change(noteB, { target: { value: "Ghi chú mới cho revision B" } });
-    fireEvent.click(screen.getByRole("button", { name: "Công bố revision" }));
-    expect(await screen.findByRole("region", { name: `Publication job ${acceptedB.data.id}` })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Công bố dữ liệu" }));
+    expect(await screen.findByRole("region", { name: "Trạng thái yêu cầu công bố" })).toBeInTheDocument();
     expect(publish).toHaveBeenCalledTimes(2);
     expect(publish.mock.calls[0]?.[0]).toBe(revisionId);
     expect(publish.mock.calls[1]?.[0]).toBe(revisionB);
@@ -423,12 +423,12 @@ describe("revision review publication capability", () => {
     const view = render(<RevisionReview revisionId={revisionId} layerId={layerId} transport={api}/>);
     const noteA = await screen.findByLabelText("Ghi chú công bố");
     fireEvent.change(noteA, { target: { value: "Ghi chú chỉ thuộc revision A" } });
-    const staleAction = screen.getByRole("button", { name: "Công bố revision" });
+    const staleAction = screen.getByRole("button", { name: "Công bố dữ liệu" });
 
     view.rerender(<RevisionReview revisionId={revisionB} layerId={layerId} transport={api}/>);
-    expect(screen.getByRole("status", { name: "Đang tải revision" })).toBeInTheDocument();
+    expect(screen.getByRole("status", { name: "Đang tải phiên bản" })).toBeInTheDocument();
     expect(screen.queryByDisplayValue("Ghi chú chỉ thuộc revision A")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Công bố revision" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Công bố dữ liệu" })).not.toBeInTheDocument();
     fireEvent.click(staleAction);
     await act(async () => { await Promise.resolve(); });
     expect(publish).not.toHaveBeenCalled();
@@ -439,7 +439,7 @@ describe("revision review publication capability", () => {
     });
     expect(await screen.findByText("Revision B")).toBeInTheDocument();
     expect(screen.getByLabelText("Ghi chú công bố")).toHaveValue("");
-    expect(screen.getByRole("button", { name: "Công bố revision" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Công bố dữ liệu" })).toBeDisabled();
     expect(publish).not.toHaveBeenCalled();
   });
 
@@ -503,12 +503,12 @@ describe("revision review publication capability", () => {
     api.workflow = workflow as RevisionReviewTransport["workflow"];
     const view = render(<RevisionReview revisionId={revisionId} layerId={layerId} transport={api}/>);
     expect(await screen.findByText("Workflow A ban đầu")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Tải thêm workflow" }));
+    fireEvent.click(screen.getByRole("button", { name: "Xem thêm lịch sử duyệt" }));
     await waitFor(() => expect(workflow).toHaveBeenCalledTimes(2));
 
     view.rerender(<RevisionReview revisionId={revisionB} layerId={layerId} transport={api}/>);
     expect(await screen.findByText("Revision B")).toBeInTheDocument();
-    expect(await screen.findByText("Chưa có chuyển trạng thái")).toBeInTheDocument();
+    expect(await screen.findByText("Chưa có thao tác duyệt")).toBeInTheDocument();
     await act(async () => {
       pendingPage.resolve(lateWorkflow);
       await pendingPage.promise;
@@ -572,8 +572,8 @@ describe("revision review publication capability", () => {
     render(<RevisionReview revisionId={revisionId} layerId={layerId} transport={api}/>);
     expect(await screen.findByText("Workflow ban đầu")).toBeInTheDocument();
     expect(screen.getByText("audit.initial")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Tải thêm workflow" }));
-    fireEvent.click(screen.getByRole("button", { name: "Tải thêm sự kiện" }));
+    fireEvent.click(screen.getByRole("button", { name: "Xem thêm lịch sử duyệt" }));
+    fireEvent.click(screen.getByRole("button", { name: "Xem thêm hoạt động" }));
     fireEvent.click(screen.getByRole("button", { name: "Thử kết nối lại" }));
 
     expect(await screen.findByText("Workflow refreshed authoritative")).toBeInTheDocument();
@@ -620,15 +620,15 @@ describe("revision review publication capability", () => {
 
     const note = await screen.findByLabelText("Ghi chú công bố");
     fireEvent.change(note, { target: { value: "Công bố dữ liệu đã duyệt" } });
-    fireEvent.click(screen.getByRole("button", { name: "Công bố revision" }));
-    expect(await screen.findByText("network disconnected")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Công bố revision" }));
+    fireEvent.click(screen.getByRole("button", { name: "Công bố dữ liệu" }));
+    expect(await screen.findByText("Chưa thể kết nối hoặc hoàn tất thao tác. Kiểm tra kết nối rồi thử lại.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Công bố dữ liệu" }));
 
-    const status = await screen.findByRole("region", { name: `Publication job ${accepted.data.id}` });
+    const status = await screen.findByRole("region", { name: "Trạng thái yêu cầu công bố" });
     await waitFor(() => expect(status).toHaveFocus());
     expect(publish).toHaveBeenCalledTimes(2);
     expect(publish.mock.calls[0]?.[2]).toBe(publish.mock.calls[1]?.[2]);
-    const backLink = screen.getByRole("link", { name: "Quay lại lịch sử layer" });
+    const backLink = screen.getByRole("link", { name: "Quay lại lịch sử lớp" });
     backLink.focus();
     fireEvent.focus(window);
     expect(backLink).toHaveFocus();
@@ -644,8 +644,8 @@ describe("revision review publication capability", () => {
     expect(await screen.findByText("Chưa thể khôi phục trạng thái công bố")).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Ghi chú công bố"), { target: { value: "Công bố sau recovery warning" } });
-    fireEvent.click(screen.getByRole("button", { name: "Công bố revision" }));
-    expect(await screen.findByRole("region", { name: `Publication job ${accepted.data.id}` })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Công bố dữ liệu" }));
+    expect(await screen.findByRole("region", { name: "Trạng thái yêu cầu công bố" })).toBeInTheDocument();
     expect(screen.queryByText("Chưa thể khôi phục trạng thái công bố")).not.toBeInTheDocument();
   });
 
@@ -664,12 +664,12 @@ describe("revision review publication capability", () => {
     render(<RevisionReview revisionId={revisionId} layerId={layerId} transport={api}/>);
 
     fireEvent.change(await screen.findByLabelText("Ghi chú công bố"), { target: { value: "Công bố bằng rollout mặc định" } });
-    fireEvent.click(screen.getByRole("button", { name: "Công bố revision" }));
+    fireEvent.click(screen.getByRole("button", { name: "Công bố dữ liệu" }));
 
-    expect(await screen.findByText(/đã được công bố ở generation 8/iu)).toBeInTheDocument();
-    expect(screen.getByText("published", { exact: true })).toBeInTheDocument();
+    expect(await screen.findByText(/mới đã được công bố trên bản đồ/iu)).toBeInTheDocument();
+    expect(screen.getAllByText("Đã công bố", { exact: true })).toHaveLength(2);
     expect(bundleLoader).toHaveBeenCalledTimes(2);
-    expect(screen.queryByRole("region", { name: /Publication job/u })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: /Trạng thái yêu cầu công bố/u })).not.toBeInTheDocument();
     expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
     expect(screen.queryByText(/Đang chờ xử lý|Tổng số đang được đo/u)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Công bố|Thử công bố/u })).not.toBeInTheDocument();
@@ -683,10 +683,10 @@ describe("revision review publication capability", () => {
     render(<RevisionReview revisionId={revisionId} layerId={layerId} transport={api}/>);
 
     fireEvent.change(await screen.findByLabelText("Ghi chú công bố"), { target: { value: "Công bố đồng bộ và giữ kết quả" } });
-    fireEvent.click(screen.getByRole("button", { name: "Công bố revision" }));
+    fireEvent.click(screen.getByRole("button", { name: "Công bố dữ liệu" }));
 
-    expect(await screen.findByText("sync refresh unavailable")).toBeInTheDocument();
-    expect(screen.getByText(/đã được công bố ở generation 11/iu)).toBeInTheDocument();
+    expect(await screen.findByText("Chưa thể kết nối hoặc hoàn tất thao tác. Kiểm tra kết nối rồi thử lại.")).toBeInTheDocument();
+    expect(screen.getByText(/mới đã được công bố trên bản đồ/iu)).toBeInTheDocument();
     expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Công bố|Thử công bố/u })).not.toBeInTheDocument();
   });
@@ -701,14 +701,14 @@ describe("revision review publication capability", () => {
     render(<RevisionReview revisionId={revisionId} layerId={layerId} transport={api}/>);
 
     fireEvent.change(await screen.findByLabelText("Ghi chú công bố"), { target: { value: "Kiểm tra trạng thái chờ" } });
-    fireEvent.click(screen.getByRole("button", { name: "Công bố revision" }));
+    fireEvent.click(screen.getByRole("button", { name: "Công bố dữ liệu" }));
     expect(await screen.findByText("Đang gửi...")).toBeInTheDocument();
 
     await act(async () => {
       pendingPost.resolve(synchronousResource(12));
       await pendingPost.promise;
     });
-    expect(await screen.findByText(/đã được công bố ở generation 12/iu)).toBeInTheDocument();
+    expect(await screen.findByText(/mới đã được công bố trên bản đồ/iu)).toBeInTheDocument();
     expect(screen.queryByText("Đang gửi...")).not.toBeInTheDocument();
     expect(bundleLoader).toHaveBeenCalledTimes(2);
 
@@ -737,11 +737,11 @@ describe("revision review publication capability", () => {
     render(<RevisionReview revisionId={revisionId} layerId={layerId} transport={transport}/>);
 
     fireEvent.change(await screen.findByLabelText("Ghi chú công bố"), { target: { value: "Công bố lần đầu" } });
-    fireEvent.click(screen.getByRole("button", { name: "Công bố revision" }));
+    fireEvent.click(screen.getByRole("button", { name: "Công bố dữ liệu" }));
     expect(await screen.findByText("Không thể dựng snapshot.")).toBeInTheDocument();
     const retry = await screen.findByRole("button", { name: "Thử công bố lại" });
     fireEvent.click(retry);
-    expect(await screen.findByRole("region", { name: `Publication job ${second.id}` })).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "Trạng thái yêu cầu công bố" })).toBeInTheDocument();
     expect(publish.mock.calls[0]?.[2]).not.toBe(publish.mock.calls[1]?.[2]);
   });
 
@@ -777,9 +777,9 @@ describe("revision review publication capability", () => {
     });
     render(<RevisionReview revisionId={revisionId} layerId={layerId} transport={transport}/>);
 
-    expect(await screen.findByText("Đã tạo generation 9.")).toBeInTheDocument();
-    expect(await screen.findByText("refresh unavailable")).toBeInTheDocument();
-    expect(screen.getByText("Dữ liệu đã được công bố sau khi publication job hoàn tất.")).toBeInTheDocument();
-    expect(screen.getByText("Đã tạo generation 9.")).toBeInTheDocument();
+    expect(await screen.findByText("Dữ liệu mới đã hiển thị trên bản đồ.")).toBeInTheDocument();
+    expect(await screen.findByText("Chưa thể kết nối hoặc hoàn tất thao tác. Kiểm tra kết nối rồi thử lại.")).toBeInTheDocument();
+    expect(screen.getByText("Dữ liệu mới đã được công bố trên bản đồ.")).toBeInTheDocument();
+    expect(screen.getByText("Dữ liệu mới đã hiển thị trên bản đồ.")).toBeInTheDocument();
   });
 });

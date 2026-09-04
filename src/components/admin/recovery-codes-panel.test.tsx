@@ -39,7 +39,7 @@ afterEach(() => {
 
 function fillForm() {
   fireEvent.change(screen.getByLabelText("Mật khẩu hiện tại"), { target: { value: password } });
-  fireEvent.change(screen.getByLabelText("Mã MFA hoặc mã khôi phục"), { target: { value: "123456" } });
+  fireEvent.change(screen.getByLabelText("Mã xác thực hoặc mã khôi phục"), { target: { value: "123456" } });
   fireEvent.click(screen.getByRole("checkbox", { name: /toàn bộ mã cũ sẽ mất hiệu lực/iu }));
 }
 
@@ -51,7 +51,7 @@ describe("self-service recovery-code regeneration", () => {
   it("keeps the mutation unavailable on a mobile/read-only capability", () => {
     canAuthor = false;
     render(<RecoveryCodesPanel regenerateRecoveryCodes={vi.fn()} />);
-    expect(screen.getByText("Chỉ thực hiện trên desktop")).toBeInTheDocument();
+    expect(screen.getByText("Cần dùng máy tính")).toBeInTheDocument();
     expect(screen.queryByLabelText("Mật khẩu hiện tại")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Tạo lại 10 mã khôi phục" })).not.toBeInTheDocument();
   });
@@ -111,6 +111,6 @@ describe("self-service recovery-code regeneration", () => {
     expect(regenerateRecoveryCodes).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole("button", { name: "Bắt đầu lượt tạo mới" }));
     await waitFor(() => expect(screen.getByLabelText("Mật khẩu hiện tại")).toHaveValue(""));
-    expect(screen.getByLabelText("Mã MFA hoặc mã khôi phục")).toHaveValue("");
+    expect(screen.getByLabelText("Mã xác thực hoặc mã khôi phục")).toHaveValue("");
   });
 });

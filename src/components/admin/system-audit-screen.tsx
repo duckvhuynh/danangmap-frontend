@@ -53,20 +53,19 @@ export function SystemAuditScreen({ transport = defaultTransport }: { transport?
   }
 
   if (principal.role !== "system_admin") return <main className="mx-auto max-w-2xl p-4 sm:p-6 md:p-8" aria-labelledby="system-audit-title">
-    <h1 id="system-audit-title" className="sr-only">Audit toàn hệ thống</h1>
+    <h1 id="system-audit-title" className="sr-only">Nhật ký hoạt động</h1>
     <Alert>
       <IconShieldLock aria-hidden="true" stroke={1.75}/>
-      <AlertTitle>Chỉ System Admin được xem audit toàn hệ thống</AlertTitle>
-      <AlertDescription>Editor, Reviewer và Publisher chỉ xem audit theo layer cùng workflow theo revision.</AlertDescription>
+      <AlertTitle>Bạn không có quyền xem nhật ký toàn hệ thống</AlertTitle>
+      <AlertDescription>Bạn có thể xem lịch sử thao tác trong từng lớp dữ liệu.</AlertDescription>
     </Alert>
   </main>;
 
   return <main className="mx-auto max-w-6xl p-4 pb-24 sm:p-6 md:p-8" aria-labelledby="system-audit-title" aria-busy={loading}>
     <header className="flex flex-wrap items-start justify-between gap-4">
-      <div><h1 id="system-audit-title" className="text-2xl font-semibold tracking-[-0.02em]">Audit toàn hệ thống</h1><p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">Read model append-only dành cho System Admin. Metadata đã được backend lọc theo allowlist.</p></div>
+      <div><h1 id="system-audit-title" className="text-2xl font-semibold tracking-[-0.02em]">Nhật ký hoạt động</h1><p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">Tra cứu ai đã thực hiện thao tác nào và vào lúc nào. Nhật ký được lưu tự động, không thể chỉnh sửa.</p></div>
       <Button type="button" variant="outline" aria-controls="system-audit-feed" aria-busy={loading} disabled={loading} onClick={reload}><IconRefresh aria-hidden="true" data-icon="inline-start" stroke={1.75}/>{loading ? "Đang làm mới..." : "Làm mới"}</Button>
     </header>
-    {resource && <p className="mt-5 text-xs text-muted-foreground">History ETag: <code>{resource.historyEtag}</code></p>}
     <div id="system-audit-feed" className="mt-5">
       <AuditEventList events={resource?.data ?? null} loading={loading} loadingMore={loadingMore} error={resource ? null : error} onRetry={reload} onLoadMore={resource?.data.hasMore ? loadMore : undefined}/>
     </div>

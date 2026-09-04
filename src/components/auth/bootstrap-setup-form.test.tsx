@@ -128,7 +128,7 @@ describe("first System Admin setup privacy and continuation", () => {
     fillAccount();
 
     const submit = screen.getByRole("button", {
-      name: "Tạo System Admin và tiếp tục",
+      name: "Tạo tài khoản và tiếp tục",
     });
     fireEvent.click(submit);
     fireEvent.click(submit);
@@ -146,7 +146,7 @@ describe("first System Admin setup privacy and continuation", () => {
       }),
     );
     expect(
-      await screen.findByText("System Admin đã được tạo"),
+      await screen.findByText("Đã tạo tài khoản quản trị"),
     ).toBeInTheDocument();
     expect(screen.queryByDisplayValue(password)).not.toBeInTheDocument();
     expect(screen.queryByDisplayValue(bootstrapToken)).not.toBeInTheDocument();
@@ -179,7 +179,7 @@ describe("first System Admin setup privacy and continuation", () => {
     await renderAvailable();
     fillAccount();
     fireEvent.click(
-      screen.getByRole("button", { name: "Tạo System Admin và tiếp tục" }),
+      screen.getByRole("button", { name: "Tạo tài khoản và tiếp tục" }),
     );
 
     expect(
@@ -202,7 +202,7 @@ describe("first System Admin setup privacy and continuation", () => {
     await renderAvailable();
     fillAccount();
     fireEvent.click(
-      screen.getByRole("button", { name: "Tạo System Admin và tiếp tục" }),
+      screen.getByRole("button", { name: "Tạo tài khoản và tiếp tục" }),
     );
 
     expect(
@@ -215,7 +215,7 @@ describe("first System Admin setup privacy and continuation", () => {
     expect(document.body).not.toHaveTextContent(bootstrapToken);
     expect(vi.mocked(bootstrapSystemAdmin)).toHaveBeenCalledTimes(1);
     expect(
-      screen.queryByRole("button", { name: "Tạo System Admin và tiếp tục" }),
+      screen.queryByRole("button", { name: "Tạo tài khoản và tiếp tục" }),
     ).not.toBeInTheDocument();
     await screen.getByRole("button", { name: "Đi đến đăng nhập" }).click();
     expect(router.replace).toHaveBeenCalledWith("/login");
@@ -267,7 +267,7 @@ describe("first System Admin setup validation and operational states", () => {
     await renderAvailable();
     fillAccount();
     fireEvent.click(
-      screen.getByRole("button", { name: "Tạo System Admin và tiếp tục" }),
+      screen.getByRole("button", { name: "Tạo tài khoản và tiếp tục" }),
     );
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Mã khởi tạo không đúng");
@@ -294,13 +294,13 @@ describe("first System Admin setup validation and operational states", () => {
       await renderAvailable();
       fillAccount();
       fireEvent.click(
-        screen.getByRole("button", { name: "Tạo System Admin và tiếp tục" }),
+        screen.getByRole("button", { name: "Tạo tài khoản và tiếp tục" }),
       );
       const alert = await screen.findByRole("alert");
       expect(alert).toHaveTextContent(message);
       expect(alert).toHaveFocus();
       const retry = screen.getByRole("button", {
-        name: "Tạo System Admin và tiếp tục",
+        name: "Tạo tài khoản và tiếp tục",
       });
       expect(retry).toBeEnabled();
       retry.focus();
@@ -320,7 +320,7 @@ describe("first System Admin setup validation and operational states", () => {
       await renderAvailable();
       fillAccount();
       fireEvent.click(
-        screen.getByRole("button", { name: "Tạo System Admin và tiếp tục" }),
+        screen.getByRole("button", { name: "Tạo tài khoản và tiếp tục" }),
       );
       expect(
         await screen.findByText(message, { exact: false }),

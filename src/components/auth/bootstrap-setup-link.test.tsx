@@ -18,7 +18,7 @@ describe("login bootstrap discovery", () => {
   it("links to setup only while the backend reports bootstrap available", async () => {
     vi.mocked(getBootstrapStatus).mockResolvedValue({ available: true });
     render(<BootstrapSetupLink />);
-    const link = await screen.findByRole("link", { name: "Tạo System Admin" });
+    const link = await screen.findByRole("link", { name: "Tạo tài khoản quản trị đầu tiên" });
     expect(link).toHaveAttribute("href", "/setup");
   });
 
@@ -31,7 +31,7 @@ describe("login bootstrap discovery", () => {
     render(<BootstrapSetupLink />);
     await vi.waitFor(() => expect(getBootstrapStatus).toHaveBeenCalledOnce());
     expect(
-      screen.queryByRole("link", { name: "Tạo System Admin" }),
+      screen.queryByRole("link", { name: "Tạo tài khoản quản trị đầu tiên" }),
     ).not.toBeInTheDocument();
   });
 });

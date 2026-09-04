@@ -108,7 +108,7 @@ export function RollbackDialog({
 
   return <Dialog open={open} onOpenChange={close}>
     <DialogTrigger asChild>
-      <Button type="button" variant="outline" size="sm" disabled={disabled} aria-label={`Khôi phục bản này, generation ${publication.generation}`}>
+      <Button type="button" variant="outline" size="sm" disabled={disabled} aria-label={`Khôi phục bản này, lần công bố ${publication.generation}`}>
         <IconRotateClockwise aria-hidden="true" data-icon="inline-start" stroke={1.75}/>
         Khôi phục bản này
       </Button>
@@ -121,15 +121,15 @@ export function RollbackDialog({
       restoreTriggerFocusRef.current = true;
     }}>
       <DialogHeader>
-        <DialogTitle>Khôi phục publication generation {publication.generation}</DialogTitle>
-        <DialogDescription>Thao tác tạo một publication mới và chuyển active pointer sau khi transaction hoàn tất. Snapshot cũ không bị xóa.</DialogDescription>
+        <DialogTitle>Khôi phục lần công bố {publication.generation}</DialogTitle>
+        <DialogDescription>Bản đồ công khai sẽ sử dụng lại dữ liệu của lần công bố này. Các phiên bản khác vẫn được giữ lại.</DialogDescription>
       </DialogHeader>
 
       <Alert role="note">
         <IconHistory aria-hidden="true" stroke={1.75}/>
-        <AlertTitle>Snapshot được chọn</AlertTitle>
+        <AlertTitle>Bản công bố được chọn</AlertTitle>
         <AlertDescription>
-          Revision {publication.revisionNo}, {publication.featureCount.toLocaleString("vi-VN")} đối tượng, kích hoạt lúc {historyDate(publication.activatedAt)}.
+          Phiên bản {publication.revisionNo}, {publication.featureCount.toLocaleString("vi-VN")} đối tượng, kích hoạt lúc {historyDate(publication.activatedAt)}.
         </AlertDescription>
       </Alert>
 
@@ -154,7 +154,7 @@ export function RollbackDialog({
             placeholder="Ít nhất 10 ký tự"
             autoComplete="off"
           />
-          <FieldDescription id={reasonDescriptionId}>Lý do được ghi vào workflow và audit, không dùng để lưu dữ liệu riêng tư.</FieldDescription>
+          <FieldDescription id={reasonDescriptionId}>Lý do được lưu trong nhật ký. Không nhập thông tin riêng tư.</FieldDescription>
           {reasonInvalid && <FieldError id={reasonErrorId}>Lý do cần ít nhất 10 ký tự.</FieldError>}
         </Field>
         <Field data-invalid={confirmationInvalid || undefined}>
@@ -167,7 +167,7 @@ export function RollbackDialog({
             aria-describedby={`${confirmationDescriptionId}${confirmationInvalid ? ` ${confirmationErrorId}` : ""}`}
             autoComplete="off"
           />
-          <FieldDescription id={confirmationDescriptionId}>Cụm từ xác nhận phải khớp chính xác để tránh rollback ngoài ý muốn.</FieldDescription>
+          <FieldDescription id={confirmationDescriptionId}>Cụm từ xác nhận phải khớp chính xác để tránh khôi phục ngoài ý muốn.</FieldDescription>
           {confirmationInvalid && <FieldError id={confirmationErrorId}>Cụm từ xác nhận chưa chính xác.</FieldError>}
         </Field>
         </FieldGroup>

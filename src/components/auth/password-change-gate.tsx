@@ -8,7 +8,7 @@ import { PasswordChangeForm } from "@/components/auth/password-change-form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { getPasswordChangePrincipal } from "@/lib/api/account-security";
-import { AccountSecurityError, accountSecurityErrorMessage } from "@/lib/auth/account-security-model";
+import { accountSecurityErrorMessage } from "@/lib/auth/account-security-model";
 
 export function PasswordChangeGate() {
   const router = useRouter();
@@ -50,9 +50,6 @@ export function PasswordChangeGate() {
           <AlertTitle>Không thể xác minh phiên đăng nhập</AlertTitle>
           <AlertDescription>
             {accountSecurityErrorMessage(state.error, "change")}
-            {state.error instanceof AccountSecurityError && state.error.requestId
-              ? ` Mã yêu cầu: ${state.error.requestId}.`
-              : ""}
           </AlertDescription>
         </Alert>
         <Button asChild variant="outline"><Link href="/login">Đăng nhập lại</Link></Button>

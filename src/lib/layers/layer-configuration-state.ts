@@ -320,37 +320,37 @@ export function validateLayerConfiguration(draft: LayerConfigurationDraft): Laye
   const errors: LayerConfigurationErrors = {};
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(draft.slug)) errors.slug = "Mã lớp dùng chữ thường, số và dấu gạch ngang.";
   if (!draft.title.trim()) errors.title = "Nhập tên lớp bằng tiếng Việt.";
-  if (draft.allowedGeometryKinds.length === 0) errors.allowedGeometryKinds = "Chọn ít nhất một kiểu geometry.";
+  if (draft.allowedGeometryKinds.length === 0) errors.allowedGeometryKinds = "Chọn ít nhất một loại đối tượng.";
   const compatibleGeometryKinds = defaultAllowedGeometryKinds(draft.geometryMode);
   if (draft.geometryMode !== "mixed" && draft.allowedGeometryKinds.some((kind) => !compatibleGeometryKinds.includes(kind))) {
-    errors.allowedGeometryKinds = "Kiểu geometry không phù hợp với chế độ lớp.";
+    errors.allowedGeometryKinds = "Loại đối tượng không phù hợp với loại lớp đã chọn.";
   }
-  if (draft.fields.length === 0) errors.fields = "Layer cần ít nhất một trường schema.";
+  if (draft.fields.length === 0) errors.fields = "Lớp cần ít nhất một trường dữ liệu.";
 
   const seen = new Set<string>();
   draft.fields.forEach((field, index) => {
     const path = `fields.${field.clientId}`;
-    if (!/^[a-z][a-z0-9_]{1,63}$/u.test(field.key)) errors[`${path}.key`] = `Trường ${index + 1}: key không hợp lệ.`;
-    else if (seen.has(field.key)) errors[`${path}.key`] = `Key “${field.key}” bị trùng.`;
+    if (!/^[a-z][a-z0-9_]{1,63}$/u.test(field.key)) errors[`${path}.key`] = `Trường ${index + 1}: mã trường cần bắt đầu bằng chữ thường không dấu, dài 2–64 ký tự, chỉ gồm chữ, số hoặc dấu gạch dưới.`;
+    else if (seen.has(field.key)) errors[`${path}.key`] = `Mã trường “${field.key}” bị trùng. Hãy chọn mã khác.`;
     seen.add(field.key);
-    if (!field.label.trim()) errors[`${path}.label`] = `Trường ${index + 1}: nhập nhãn hiển thị.`;
-    if (field.sensitive && field.offlineCache) errors[`${path}.offlineCache`] = "Field nhạy cảm không được lưu trong recovery cache.";
-    if (field.sensitive && field.public) errors[`${path}.public`] = "Field nhạy cảm không được công khai.";
+    if (!field.label.trim()) errors[`${path}.label`] = `Trường ${index + 1}: nhập tên hiển thị.`;
+    if (field.sensitive && field.offlineCache) errors[`${path}.offlineCache`] = "Thông tin nhạy cảm không được lưu nháp trên thiết bị.";
+    if (field.sensitive && field.public) errors[`${path}.public`] = "Thông tin nhạy cảm không được công khai.";
     if ((field.type === "enum" || field.type === "multi_enum") && field.options.filter((option) => option.trim()).length === 0) {
-      errors[`${path}.options`] = "Enum cần ít nhất một lựa chọn.";
+      errors[`${path}.options`] = "Thêm ít nhất một lựa chọn.";
     }
   });
 
   const publicKeys = new Set(draft.fields.filter((field) => field.public && !field.sensitive).map((field) => field.key));
-  if (!publicKeys.has(draft.popupConfig.titleField)) errors["popupConfig.titleField"] = "Tiêu đề popup phải là field công khai.";
-  if (draft.popupConfig.subtitleField && !publicKeys.has(draft.popupConfig.subtitleField)) errors["popupConfig.subtitleField"] = "Phụ đề popup phải là field công khai.";
+  if (!publicKeys.has(draft.popupConfig.titleField)) errors["popupConfig.titleField"] = "Chọn một trường công khai làm tiêu đề bảng chi tiết.";
+  if (draft.popupConfig.subtitleField && !publicKeys.has(draft.popupConfig.subtitleField)) errors["popupConfig.subtitleField"] = "Chọn một trường công khai làm phụ đề bảng chi tiết.";
   const invalidPopupKey = draft.popupConfig.fieldKeys.find((key) => !publicKeys.has(key));
-  if (invalidPopupKey) errors["popupConfig.fieldKeys"] = `Field “${invalidPopupKey}” không thể xuất hiện trong popup công khai.`;
+  if (invalidPopupKey) errors["popupConfig.fieldKeys"] = "Bảng chi tiết chỉ được chứa các trường công khai.";
   if (draft.renderConfig.minZoom < 0 || draft.renderConfig.maxZoom > 24 || draft.renderConfig.minZoom >= draft.renderConfig.maxZoom) {
-    errors.renderZoom = "Zoom tối thiểu phải nhỏ hơn zoom tối đa trong khoảng 0-24.";
+    errors.renderZoom = "Mức thu phóng tối thiểu phải nhỏ hơn mức tối đa, trong khoảng 0–24.";
   }
   const colors = [draft.style.pointColor, draft.style.pointStrokeColor, draft.style.lineColor, draft.style.polygonFillColor, draft.style.polygonStrokeColor];
-  if (colors.some((color) => !/^#[0-9A-F]{6}$/iu.test(color))) errors.styleColor = "Màu style phải dùng mã hex 6 ký tự.";
+  if (colors.some((color) => !/^#[0-9A-F]{6}$/iu.test(color))) errors.styleColor = "Chọn màu hợp lệ bằng ô chọn màu, hoặc nhập mã màu như #1A73E8.";
   return errors;
 }
 

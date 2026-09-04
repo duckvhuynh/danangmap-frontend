@@ -32,7 +32,7 @@ vi.mock("@/lib/editor/draft-db", () => ({ clearPrincipalRecovery: vi.fn() }));
 const operationKey = "22222222-2222-4222-8222-222222222222";
 
 function openConfirmation() {
-  fireEvent.click(screen.getByRole("button", { name: "Thu hồi toàn bộ phiên" }));
+  fireEvent.click(screen.getByRole("button", { name: "Đăng xuất trên mọi thiết bị" }));
 }
 
 beforeEach(() => {
@@ -62,8 +62,8 @@ describe("revoke-all session security", () => {
       </StrictMode>,
     );
     openConfirmation();
-    expect(screen.getByRole("note")).toHaveTextContent("Thao tác này không thể hoàn tác");
-    const confirm = screen.getByRole("button", { name: "Xác nhận thu hồi" });
+    expect(screen.getByRole("note")).toHaveTextContent("Bản nháp chỉ lưu trong trình duyệt này sẽ bị xóa");
+    const confirm = screen.getByRole("button", { name: "Xác nhận đăng xuất" });
     expect(confirm).toHaveFocus();
     fireEvent.click(confirm);
     fireEvent.click(confirm);
@@ -92,15 +92,15 @@ describe("revoke-all session security", () => {
       .mockRejectedValueOnce(new AccountSecurityError(409, "COMMAND_IN_PROGRESS", "processing"))
       .mockRejectedValueOnce(new AccountSecurityError(503, "SERVICE_UNAVAILABLE", "down"));
     render(<SessionSecurityPanel revokeAllSessions={revokeAllSessions} />);
-    const trigger = screen.getByRole("button", { name: "Thu hồi toàn bộ phiên" });
+    const trigger = screen.getByRole("button", { name: "Đăng xuất trên mọi thiết bị" });
     trigger.focus();
     openConfirmation();
-    expect(screen.getByRole("button", { name: "Xác nhận thu hồi" })).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Xác nhận đăng xuất" })).toHaveFocus();
     fireEvent.click(screen.getByRole("button", { name: "Hủy" }));
-    await waitFor(() => expect(screen.getByRole("button", { name: "Thu hồi toàn bộ phiên" })).toHaveFocus());
+    await waitFor(() => expect(screen.getByRole("button", { name: "Đăng xuất trên mọi thiết bị" })).toHaveFocus());
 
     openConfirmation();
-    const confirm = screen.getByRole("button", { name: "Xác nhận thu hồi" });
+    const confirm = screen.getByRole("button", { name: "Xác nhận đăng xuất" });
     fireEvent.click(confirm);
     await screen.findByRole("alert");
     fireEvent.click(confirm);
@@ -118,12 +118,12 @@ describe("revoke-all session security", () => {
       .mockRejectedValue(failure);
     render(<SessionSecurityPanel revokeAllSessions={revokeAllSessions} />);
     openConfirmation();
-    fireEvent.click(screen.getByRole("button", { name: "Xác nhận thu hồi" }));
+    fireEvent.click(screen.getByRole("button", { name: "Xác nhận đăng xuất" }));
     await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/login"));
     expect(revokeAllSessions).toHaveBeenCalledTimes(1);
     expect(clearPrincipalRecovery).toHaveBeenCalledWith(session.principal.id);
     expect(session.clearClientPrincipal).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByRole("button", { name: "Xác nhận thu hồi" }));
+    fireEvent.click(screen.getByRole("button", { name: "Xác nhận đăng xuất" }));
     expect(revokeAllSessions).toHaveBeenCalledTimes(1);
   });
 
@@ -147,11 +147,11 @@ describe("revoke-all session security", () => {
       );
     render(<SessionSecurityPanel revokeAllSessions={revokeAllSessions} />);
     openConfirmation();
-    fireEvent.click(screen.getByRole("button", { name: "Xác nhận thu hồi" }));
+    fireEvent.click(screen.getByRole("button", { name: "Xác nhận đăng xuất" }));
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent(expected);
     expect(alert).toHaveFocus();
-    expect(screen.getByRole("button", { name: "Xác nhận thu hồi" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Xác nhận đăng xuất" })).toBeEnabled();
     expect(clearPrincipalRecovery).not.toHaveBeenCalled();
   });
 });

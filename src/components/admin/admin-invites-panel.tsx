@@ -15,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { AdminApiError, adminErrorMessage } from "@/lib/api/admin";
 import { listAdminInvites, resendAdminInvite, revokeInvite, type AdminInvite, type AdminInvitePage } from "@/lib/api/users";
-import { adminUserRoleLabels, adminUserRoles } from "@/lib/users/user-admin-state";
+import { mailStatusLabel, adminUserRoleLabels, adminUserRoles } from "@/lib/users/user-admin-state";
 
 type InviteAction = { kind: "resend" | "revoke"; invite: AdminInvite };
 const inviteStatusLabels: Record<AdminInvite["status"], string> = { pending: "Đang chờ", expired: "Hết hạn", revoked: "Đã thu hồi", accepted: "Đã chấp nhận" };
@@ -25,8 +25,8 @@ function formatDate(value: string) {
 }
 
 function inviteErrorMessage(error: unknown) {
-  if (error instanceof AdminApiError && error.status === 412) return `Lời mời đã thay đổi trên máy chủ. Hãy tải lại danh sách.${error.requestId ? ` Mã yêu cầu: ${error.requestId}.` : ""}`;
-  if (error instanceof AdminApiError && error.status === 409) return `Lời mời không còn ở trạng thái có thể thao tác.${error.requestId ? ` Mã yêu cầu: ${error.requestId}.` : ""}`;
+  if (error instanceof AdminApiError && error.status === 412) return "Lời mời vừa thay đổi. Hãy tải lại danh sách.";
+  if (error instanceof AdminApiError && error.status === 409) return "Lời mời này không còn sử dụng được. Hãy tải lại danh sách.";
   return adminErrorMessage(error);
 }
 
@@ -58,7 +58,7 @@ function InviteActionDialog({ action, onClose, onSuccess }: { action: InviteActi
     try {
       if (action.kind === "resend") {
         await resendAdminInvite(action.invite.id, { reason: reason.trim(), expiresInHours: hours }, action.invite.etag, operationKey.current, { csrfToken });
-        onSuccess(`Đã thay lời mời cũ và xếp mail mới cho ${action.invite.email}.`);
+        onSuccess(`Đã tạo lời mời mới, đang chờ gửi email tới ${action.invite.email}.`);
       } else {
         await revokeInvite(action.invite.id, operationKey.current, { csrfToken });
         onSuccess(`Đã thu hồi lời mời của ${action.invite.email}.`);
@@ -78,12 +78,12 @@ function InviteActionDialog({ action, onClose, onSuccess }: { action: InviteActi
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{action?.kind === "resend" ? "Gửi lại lời mời" : "Thu hồi lời mời"}</DialogTitle>
-          <DialogDescription>{action?.kind === "resend" ? "Credential cũ sẽ bị vô hiệu, credential mới chỉ được gửi qua mail adapter." : "Credential lời mời sẽ bị vô hiệu ngay và không thể dùng lại."}</DialogDescription>
+          <DialogDescription>{action?.kind === "resend" ? "Lời mời cũ sẽ hết hiệu lực. Người nhận sẽ nhận một email mời mới." : "Người nhận sẽ không thể dùng lời mời này để tạo tài khoản."}</DialogDescription>
         </DialogHeader>
         <form className="grid gap-5" onSubmit={submit}>
           {error ? <Alert variant="destructive"><IconAlertCircle stroke={1.75} /><AlertTitle>Không thể hoàn tất yêu cầu</AlertTitle><AlertDescription>{inviteErrorMessage(error)}</AlertDescription></Alert> : null}
           {action?.kind === "resend" ? <>
-            <Field data-invalid={reason.length > 0 && reason.trim().length < 8}><FieldLabel htmlFor="invite-resend-reason">Lý do gửi lại</FieldLabel><Input id="invite-resend-reason" value={reason} onChange={(event) => { setReason(event.target.value); setError(null); operationKey.current = null; }} disabled={pending} maxLength={500} autoFocus /><FieldDescription>Ít nhất 8 ký tự, được lưu trong audit.</FieldDescription><FieldError>{reason.length > 0 && reason.trim().length < 8 ? "Lý do cần ít nhất 8 ký tự." : undefined}</FieldError></Field>
+            <Field data-invalid={reason.length > 0 && reason.trim().length < 8}><FieldLabel htmlFor="invite-resend-reason">Lý do gửi lại</FieldLabel><Input id="invite-resend-reason" value={reason} onChange={(event) => { setReason(event.target.value); setError(null); operationKey.current = null; }} disabled={pending} maxLength={500} autoFocus /><FieldDescription>Ít nhất 8 ký tự để ghi lại lý do trong lịch sử hoạt động.</FieldDescription><FieldError>{reason.length > 0 && reason.trim().length < 8 ? "Lý do cần ít nhất 8 ký tự." : undefined}</FieldError></Field>
             <Field data-invalid={invalidHours}><FieldLabel htmlFor="invite-resend-expiry">Thời hạn mới (giờ)</FieldLabel><Input id="invite-resend-expiry" type="number" min={1} max={168} value={expiresInHours} onChange={(event) => { setExpiresInHours(event.target.value); setError(null); operationKey.current = null; }} disabled={pending} /><FieldError>{invalidHours ? "Thời hạn cần từ 1 đến 168 giờ." : undefined}</FieldError></Field>
           </> : <Alert className="border-destructive/20 bg-red-50 text-destructive"><IconX stroke={1.75} /><AlertTitle>Xác nhận thu hồi</AlertTitle><AlertDescription>{action?.invite.email}. Thao tác này không thể hoàn tác.</AlertDescription></Alert>}
           <DialogFooter><Button type="button" variant="outline" onClick={close} disabled={pending}>Hủy</Button><Button type="submit" variant={action?.kind === "revoke" ? "destructive" : "default"} disabled={pending || (action?.kind === "resend" && (reason.trim().length < 8 || invalidHours))}>{pending ? <><Spinner />Đang xử lý...</> : action?.kind === "resend" ? "Gửi lời mời mới" : "Thu hồi lời mời"}</Button></DialogFooter>
@@ -149,11 +149,11 @@ export function AdminInvitesPanel({ canMutate, refreshToken, onChanged }: { canM
         <Select value={role} onValueChange={(value: AdminInvite["role"] | "all") => setRole(value)}><SelectTrigger aria-label="Lọc vai trò lời mời"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">Tất cả vai trò</SelectItem>{adminUserRoles.map((item) => <SelectItem key={item} value={item}>{adminUserRoleLabels[item]}</SelectItem>)}</SelectGroup></SelectContent></Select>
         <Select value={status} onValueChange={(value: AdminInvite["status"] | "all") => setStatus(value)}><SelectTrigger aria-label="Lọc trạng thái lời mời"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">Tất cả trạng thái</SelectItem><SelectItem value="pending">Đang chờ</SelectItem><SelectItem value="expired">Hết hạn</SelectItem><SelectItem value="revoked">Đã thu hồi</SelectItem><SelectItem value="accepted">Đã chấp nhận</SelectItem></SelectGroup></SelectContent></Select>
       </div>
-      <div className="flex items-center justify-between gap-3 border-b px-4 py-3"><div><h2 id="invite-list-title" className="font-medium">Hàng đợi lời mời</h2><p className="mt-1 text-xs text-muted-foreground">{page ? `${page.data.length} lời mời đã tải` : "Trạng thái an toàn từ mail outbox"}</p></div>{!canMutate ? <Badge><IconDeviceDesktop stroke={1.75} />Chỉ xem</Badge> : null}</div>
+      <div className="flex items-center justify-between gap-3 border-b px-4 py-3"><div><h2 id="invite-list-title" className="font-medium">Danh sách lời mời</h2><p className="mt-1 text-xs text-muted-foreground">{page ? `${page.data.length} lời mời đã tải` : "Đang tải danh sách lời mời"}</p></div>{!canMutate ? <Badge><IconDeviceDesktop stroke={1.75} />Chỉ xem</Badge> : null}</div>
       {error && !page ? <div className="p-4"><Alert variant="destructive"><IconAlertCircle stroke={1.75} /><AlertTitle>Không tải được lời mời</AlertTitle><AlertDescription><p>{inviteErrorMessage(error)}</p><Button className="mt-3" type="button" variant="outline" size="sm" onClick={() => setReloadVersion((value) => value + 1)}><IconRefresh stroke={1.75} />Thử lại</Button></AlertDescription></Alert></div> : null}
       {loading && !page ? <div className="grid gap-3 p-4" role="status"><Skeleton className="h-20" /><Skeleton className="h-20" /><Skeleton className="h-20" /></div> : null}
       {page && !page.data.length ? <Empty className="min-h-64 border-0"><EmptyHeader><EmptyMedia variant="icon"><IconMailForward stroke={1.75} /></EmptyMedia><EmptyTitle>Không có lời mời phù hợp</EmptyTitle><EmptyDescription>Thay đổi bộ lọc hoặc tạo lời mời mới từ thanh thao tác phía trên.</EmptyDescription></EmptyHeader></Empty> : null}
-      {page?.data.map((invite) => <article key={invite.id} className="flex flex-wrap items-center gap-4 border-b p-4 last:border-b-0"><span className="grid size-10 place-items-center rounded-full bg-accent-subtle text-primary"><IconMailForward stroke={1.75} /></span><div className="min-w-0 flex-1"><p className="truncate font-medium">{invite.displayName}</p><p className="mt-1 truncate text-xs text-muted-foreground">{invite.email} · @{invite.username}</p><div className="mt-2 flex flex-wrap gap-2"><Badge>{adminUserRoleLabels[invite.role]}</Badge><Badge>{inviteStatusLabels[invite.status]}</Badge><span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><IconClock size={14} stroke={1.75} />Hết hạn {formatDate(invite.expiresAt)}</span></div><p className="mt-2 text-xs text-muted-foreground">Mail: {invite.mailStatus ?? "chưa có trạng thái"}</p></div>{canMutate && invite.status === "pending" ? <div className="flex gap-2"><Button type="button" variant="outline" size="sm" onClick={() => setAction({ kind: "resend", invite })}>Gửi lại</Button><Button type="button" variant="ghost" size="sm" onClick={() => setAction({ kind: "revoke", invite })}>Thu hồi</Button></div> : null}</article>)}
+      {page?.data.map((invite) => <article key={invite.id} className="flex flex-wrap items-center gap-4 border-b p-4 last:border-b-0"><span className="grid size-10 place-items-center rounded-full bg-accent-subtle text-primary"><IconMailForward stroke={1.75} /></span><div className="min-w-0 flex-1"><p className="truncate font-medium">{invite.displayName}</p><p className="mt-1 truncate text-xs text-muted-foreground">{invite.email} · @{invite.username}</p><div className="mt-2 flex flex-wrap gap-2"><Badge>{adminUserRoleLabels[invite.role]}</Badge><Badge>{inviteStatusLabels[invite.status]}</Badge><span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><IconClock size={14} stroke={1.75} />Hết hạn {formatDate(invite.expiresAt)}</span></div><p className="mt-2 text-xs text-muted-foreground">Email: {mailStatusLabel(invite.mailStatus)}</p></div>{canMutate && invite.status === "pending" ? <div className="flex gap-2"><Button type="button" variant="outline" size="sm" onClick={() => setAction({ kind: "resend", invite })}>Gửi lại</Button><Button type="button" variant="ghost" size="sm" onClick={() => setAction({ kind: "revoke", invite })}>Thu hồi</Button></div> : null}</article>)}
       {page?.meta.hasMore ? <div className="flex justify-center border-t p-4"><Button type="button" variant="outline" onClick={() => void loadMore()} disabled={loadingMore}>{loadingMore ? <><Spinner />Đang tải...</> : "Tải thêm lời mời"}</Button></div> : null}
       {error && page ? <div className="border-t p-4"><Alert variant="destructive"><IconAlertCircle stroke={1.75} /><AlertTitle>Danh sách hiện tại chưa được làm mới</AlertTitle><AlertDescription>{inviteErrorMessage(error)}</AlertDescription></Alert></div> : null}
     </section>

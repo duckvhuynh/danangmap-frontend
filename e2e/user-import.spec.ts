@@ -76,30 +76,32 @@ test("System Admin completes a CSV import that creates pending invitations", asy
   const mutationHeaders = await mockUserImportApi(page);
 
   await page.goto("/admin/users/import");
-  await expect(page.getByRole("heading", { name: "Import người dùng nội bộ" })).toBeVisible();
-  await expect(page.getByText("Demo · không phải dữ liệu thật")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Nhập danh sách người dùng" })).toBeVisible();
+  await expect(page.getByText("Bản dùng thử · dữ liệu minh họa")).toBeVisible();
+  await page.getByText("Xem hướng dẫn định dạng tệp", { exact: true }).click();
   for (const column of ["email", "username", "displayName", "role"]) {
     await expect(page.getByText(column, { exact: true })).toBeVisible();
   }
 
-  await page.getByLabel("Chọn file CSV hoặc XLSX").setInputFiles({
+  await page.getByLabel("Chọn tệp CSV hoặc XLSX").setInputFiles({
     name: "users.csv",
     mimeType: "text/csv",
     buffer: Buffer.from("email,username,displayName,role\na@danang.gov.vn,a,Nguyen A,editor"),
   });
   await page.getByRole("button", { name: "Tải lên và kiểm tra" }).click();
-  await expect(page.getByRole("heading", { name: /Xác nhận cấu trúc/ })).toBeVisible();
-  await expect(page.getByText("Không có bước ánh xạ cột")).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Kiểm tra danh sách đã tải lên/ })).toBeVisible();
+  await expect(page.getByRole("note")).toContainText("Tài khoản hiện có không bị thay đổi");
 
   await page.getByRole("button", { name: "Kiểm tra dữ liệu" }).click();
-  await expect(page.getByRole("heading", { name: /Xem kết quả kiểm tra thử/ })).toBeVisible();
-  await expect(page.getByRole("cell", { name: "USER_IMPORT_EMAIL_INVALID" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Xem kết quả kiểm tra/ })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Email chưa đúng định dạng" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "USER_IMPORT_EMAIL_INVALID" })).not.toBeAttached();
   await page.getByRole("checkbox", { name: /Tôi hiểu đây là thao tác tạo lời mời/ }).check();
   await page.getByRole("button", { name: /Gửi 2 lời mời/ }).click();
 
-  await expect(page.getByRole("heading", { name: "Import người dùng hoàn tất" })).toBeVisible();
-  await expect(page.getByText(/2 lời mời đang chờ chấp nhận/)).toBeVisible();
-  await expect(page.getByText(/chưa có tài khoản hoạt động nào được tạo trực tiếp/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Đã nhập danh sách người dùng" })).toBeVisible();
+  await expect(page.getByText(/Đã tạo 2 lời mời/)).toBeVisible();
+  await expect(page.getByText(/Người nhận cần mở email và đặt mật khẩu để bắt đầu sử dụng tài khoản/)).toBeVisible();
   expect(mutationHeaders).toHaveLength(3);
   expect(mutationHeaders.every((headers) => headers.csrf === "demo-csrf-token")).toBe(true);
   expect(mutationHeaders[0].key).toMatch(/^[0-9a-f-]{36}$/i);
@@ -111,7 +113,7 @@ test("mobile exposes read-only guidance without upload controls", async ({ page 
   test.skip(testInfo.project.name.includes("desktop"), "Mobile capability gate");
   await page.addInitScript(() => window.sessionStorage.setItem("danangmap-demo-role", "system_admin"));
   await page.goto("/admin/users/import");
-  await expect(page.getByRole("heading", { name: "Import người dùng cần máy tính" })).toBeVisible();
-  await expect(page.getByLabel("Chọn file CSV hoặc XLSX")).toBeHidden();
+  await expect(page.getByRole("heading", { name: "Nhập danh sách cần dùng máy tính" })).toBeVisible();
+  await expect(page.getByLabel("Chọn tệp CSV hoặc XLSX")).toBeHidden();
   await expect(page.getByRole("button", { name: "Tải lên và kiểm tra" })).toBeHidden();
 });

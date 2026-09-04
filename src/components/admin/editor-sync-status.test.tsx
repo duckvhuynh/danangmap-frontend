@@ -44,6 +44,12 @@ function conflict(): FeatureMutationLedgerEntry {
 }
 
 describe("EditorSyncStatus", () => {
+  it("does not claim an unsaved edit has reached the server", () => {
+    render(<EditorSyncStatus phase="idle" hasLocalChanges pendingCount={0} issues={[]} remoteChanges={0} onKeepServer={vi.fn()} onRetryLocal={vi.fn()} />);
+    expect(screen.getByText("Có thay đổi chưa lưu")).toBeInTheDocument();
+    expect(screen.queryByText("Đã lưu lên hệ thống")).not.toBeInTheDocument();
+  });
+
   it("shows partial conflict diagnostics and both explicit resolution choices", () => {
     const onKeepServer = vi.fn();
     const onRetryLocal = vi.fn();
@@ -60,10 +66,11 @@ describe("EditorSyncStatus", () => {
     );
 
     expect(screen.getByText("1 thay đổi cần xử lý")).toBeInTheDocument();
-    expect(screen.getByText(/properties.name/)).toBeInTheDocument();
-    expect(screen.getByText("Mã yêu cầu: req-123")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Giữ bản máy chủ" }));
-    fireEvent.click(screen.getByRole("button", { name: "Dùng bản cục bộ" }));
+    expect(screen.getByText(/Đối tượng này đã có thay đổi mới/)).toBeInTheDocument();
+    expect(screen.queryByText(/properties.name/)).not.toBeInTheDocument();
+    expect(screen.getByText("Mã hỗ trợ: req-123").closest("details")).not.toHaveAttribute("open");
+    fireEvent.click(screen.getByRole("button", { name: "Giữ bản đã lưu" }));
+    fireEvent.click(screen.getByRole("button", { name: "Giữ thay đổi của tôi" }));
     expect(onKeepServer).toHaveBeenCalledWith(issue);
     expect(onRetryLocal).toHaveBeenCalledWith(issue);
   });

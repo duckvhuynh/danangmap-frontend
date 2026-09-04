@@ -117,14 +117,14 @@ test("publication history and rollback preserve keyboard focus and spoken status
   await page.goto(`/admin/layers/${layerId}/history`);
 
   await expect(page.getByRole("main", { name: "Lịch sử Ranh giới phường xã" })).toBeVisible();
-  await expect(page.getByRole("status").filter({ hasText: "Đã tải 1 publication, 1 revision và 1 sự kiện kiểm toán." })).toBeAttached();
-  await expect(page.getByRole("table", { name: /Các publication snapshot/u })).toBeVisible();
-  const metadata = page.getByLabel(/Metadata đã lọc cho publication\.rolled_back/u);
+  await expect(page.getByRole("status").filter({ hasText: "Đã tải 1 lần công bố, 1 phiên bản và 1 hoạt động." })).toBeAttached();
+  await expect(page.getByRole("table", { name: /Các lần công bố/u })).toBeVisible();
+  const metadata = page.getByLabel(/Thông tin hỗ trợ: Khôi phục bản công bố trước/u);
   await metadata.focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByLabel(/Nội dung metadata đã lọc cho publication\.rolled_back/u)).toBeVisible();
+  await expect(page.getByLabel(/Mã tham chiếu: Khôi phục bản công bố trước/u)).toBeVisible();
 
-  const trigger = page.getByRole("button", { name: "Khôi phục bản này, generation 6" });
+  const trigger = page.getByRole("button", { name: "Khôi phục bản này, lần công bố 6" });
   await trigger.focus();
   await page.keyboard.press("Enter");
   const reason = page.getByLabel("Lý do khôi phục");
@@ -138,7 +138,7 @@ test("publication history and rollback preserve keyboard focus and spoken status
   await confirmation.fill("KHÔI PHỤC");
   await confirmation.press("Enter");
   const result = page.getByRole("status").filter({ hasText: "Khôi phục hoàn tất" });
-  await expect(result).toContainText("Generation 8 đã được tạo");
+  await expect(result).toContainText("Bản đồ công khai đã được cập nhật theo bản bạn chọn.");
   await expect(result).toBeFocused();
 });
 
@@ -158,12 +158,12 @@ test("mobile revision review supports roving tabs and focuses workflow feedback"
   await expect(commentsTab).toBeFocused();
   await expect(commentsTab).toHaveAttribute("aria-selected", "true");
 
-  const comment = page.getByLabel("Bình luận review");
+  const comment = page.getByLabel("Ý kiến kiểm duyệt");
   await expect(comment).toHaveAttribute("aria-describedby", "review-comment-description");
   const approve = page.getByRole("button", { name: "Duyệt thay đổi" });
   await approve.focus();
   await page.keyboard.press("Enter");
-  const feedback = page.locator('div[tabindex="-1"]').filter({ hasText: "Đã duyệt revision." });
+  const feedback = page.locator('div[tabindex="-1"]').filter({ hasText: "Đã phê duyệt dữ liệu." });
   await expect(feedback).toBeFocused();
-  await expect(page.getByRole("status").filter({ hasText: "Đã duyệt revision." })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Đã phê duyệt dữ liệu." })).toBeVisible();
 });

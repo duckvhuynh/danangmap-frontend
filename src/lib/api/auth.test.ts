@@ -27,6 +27,12 @@ const principal = {
 afterEach(() => vi.unstubAllEnvs());
 
 describe("session authentication transport", () => {
+  it("does not expose server internals or unknown browser errors in auth feedback", () => {
+    expect(authErrorMessage(new AuthApiError(502, "CONTRACT_INVALID", "CSRF envelope principal.id"), "login")).toBe("Dịch vụ đăng nhập đang tạm gián đoạn. Vui lòng thử lại sau.");
+    expect(authErrorMessage(new TypeError("Failed to fetch internal /api/auth"), "verify")).toBe("Không thể hoàn tất xác thực. Hãy kiểm tra kết nối và thử lại.");
+    expect(authErrorMessage(new AuthApiError(409, "MFA_DISABLED", "MFA_ENABLED=false"), "verify")).toContain("đăng nhập lại bằng mật khẩu");
+  });
+
   it("acquires public CSRF then logs in with typed header and credentialed cookies", async () => {
     vi.stubEnv("NEXT_PUBLIC_DANANGMAP_DEMO_MODE", "false");
     const requests: Request[] = [];

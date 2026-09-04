@@ -183,11 +183,11 @@ export async function acceptInvite(
 }
 
 const GENERIC_INVALID_INVITE =
-  "Lời mời không hợp lệ hoặc đã hết hiệu lực. Vui lòng yêu cầu System Admin gửi lời mời mới.";
+  "Lời mời không hợp lệ hoặc đã hết hiệu lực. Vui lòng yêu cầu quản trị hệ thống gửi lời mời mới.";
 
 export function inviteErrorMessage(error: unknown, context: "inspect" | "accept") {
   if (!(error instanceof InviteApiError)) {
-    return error instanceof Error ? error.message : "Không thể xử lý lời mời lúc này.";
+    return "Không thể xử lý lời mời. Hãy kiểm tra kết nối và thử lại.";
   }
   if (error.code === "INVITE_INVALID_OR_EXPIRED" || error.status === 400) {
     return GENERIC_INVALID_INVITE;
@@ -196,7 +196,7 @@ export function inviteErrorMessage(error: unknown, context: "inspect" | "accept"
     return "Phiên bảo mật không hợp lệ. Hãy tải lại trang và thử lại từ đầu.";
   }
   if (error.status === 409) {
-    return "Không thể tạo tài khoản vì thông tin lời mời xung đột với tài khoản hiện có. Vui lòng liên hệ System Admin.";
+    return "Không thể tạo tài khoản vì thông tin lời mời xung đột với tài khoản hiện có. Vui lòng liên hệ quản trị hệ thống.";
   }
   if (error.status === 422) {
     return "Mật khẩu chưa đáp ứng yêu cầu hoặc hai ô mật khẩu chưa trùng khớp.";
@@ -208,7 +208,7 @@ export function inviteErrorMessage(error: unknown, context: "inspect" | "accept"
         : " Vui lòng chờ rồi thử lại."
     }`;
   }
-  if (error.status === 503) {
+  if (error.status >= 500) {
     return "Dịch vụ lời mời đang tạm gián đoạn. Vui lòng thử lại sau.";
   }
   if (error.ambiguous && context === "accept") {
@@ -217,5 +217,5 @@ export function inviteErrorMessage(error: unknown, context: "inspect" | "accept"
   if (error.status === 0) {
     return "Không thể kết nối dịch vụ lời mời. Kiểm tra mạng và thử lại.";
   }
-  return error.message;
+  return "Không thể xử lý lời mời lúc này. Vui lòng thử lại sau.";
 }

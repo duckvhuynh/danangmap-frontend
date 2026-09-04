@@ -95,30 +95,34 @@ describe("System Admin user import wizard", () => {
     });
     render(<UserImportWizard actions={api} pollIntervalMs={0} />);
 
+    const fileInput = screen.getByLabelText("Chọn tệp CSV hoặc XLSX");
+    expect(fileInput).toHaveClass("sr-only");
+    expect(fileInput).not.toHaveClass("w-full", "h-11");
     const file = new File(["email,username,displayName,role\na@danang.gov.vn,a01,A,editor"], "users.csv", { type: "text/csv" });
-    fireEvent.change(screen.getByLabelText("Chọn file CSV hoặc XLSX"), { target: { files: [file] } });
+    fireEvent.change(screen.getByLabelText("Chọn tệp CSV hoặc XLSX"), { target: { files: [file] } });
     fireEvent.click(screen.getByRole("button", { name: "Tải lên và kiểm tra" }));
 
-    expect(await screen.findByRole("heading", { name: "2. Xác nhận cấu trúc trước khi kiểm tra thử" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "2. Kiểm tra danh sách đã tải lên" })).toBeInTheDocument();
     expect(screen.queryByText(/Ánh xạ/)).not.toBeInTheDocument();
     expect(api.create).toHaveBeenCalledWith(file, expect.any(String), "csrf-user-import");
 
     fireEvent.click(screen.getByRole("button", { name: "Kiểm tra dữ liệu" }));
-    expect(await screen.findByRole("heading", { name: "3. Xem kết quả kiểm tra thử" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "3. Xem kết quả kiểm tra" })).toBeInTheDocument();
     expect(api.validate).toHaveBeenCalledWith(job("ready").id, undefined, "csrf-user-import");
-    expect(screen.getByText("USER_IMPORT_EMAIL_INVALID")).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "Email chưa đúng định dạng" })).toBeInTheDocument();
+    expect(document.body).not.toHaveTextContent("USER_IMPORT_EMAIL_INVALID");
 
     fireEvent.click(screen.getByRole("checkbox", { name: /Tôi hiểu đây là thao tác tạo lời mời/ }));
     fireEvent.click(screen.getByRole("button", { name: "Gửi 2 lời mời" }));
-    expect(await screen.findByRole("heading", { name: "Import người dùng hoàn tất" })).toBeInTheDocument();
-    expect(screen.getByText(/chưa có tài khoản hoạt động nào/)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Đã nhập danh sách người dùng" })).toBeInTheDocument();
+    expect(screen.getByText(/cần mở email và đặt mật khẩu/)).toBeInTheDocument();
     expect(api.apply).toHaveBeenCalledWith(job("ready").id, expect.any(String), "csrf-user-import");
     expect(api.report).toHaveBeenCalledWith(job("completed").id, { limit: 100 });
     fireEvent.click(screen.getByRole("button", { name: "Xem thêm báo cáo" }));
-    await screen.findByText("USER_IMPORT_ROLE_INVALID");
+    await screen.findByRole("cell", { name: "Vai trò chưa hợp lệ" });
     expect(api.report).toHaveBeenLastCalledWith(job("completed").id, { limit: 100, cursor: "1" });
 
-    fireEvent.change(screen.getByLabelText("Lọc báo cáo theo mã lỗi"), { target: { value: "user_import_email_invalid" } });
+    fireEvent.change(screen.getByLabelText("Lọc nội dung cần sửa trong báo cáo"), { target: { value: "USER_IMPORT_EMAIL_INVALID" } });
     fireEvent.click(screen.getAllByRole("button", { name: "Lọc" }).at(-1)!);
     await waitFor(() => expect(api.report).toHaveBeenLastCalledWith(job("completed").id, { limit: 100, code: "USER_IMPORT_EMAIL_INVALID" }));
   });
@@ -130,14 +134,14 @@ describe("System Admin user import wizard", () => {
       get: vi.fn().mockResolvedValueOnce(xlsx).mockResolvedValueOnce(job("ready", { format: "xlsx", inspection: { ...xlsx.inspection, selectedSheet: "Accounts" } })),
     });
     render(<UserImportWizard actions={api} pollIntervalMs={0} />);
-    fireEvent.change(screen.getByLabelText("Chọn file CSV hoặc XLSX"), { target: { files: [new File(["xlsx"], "users.xlsx")] } });
+    fireEvent.change(screen.getByLabelText("Chọn tệp CSV hoặc XLSX"), { target: { files: [new File(["xlsx"], "users.xlsx")] } });
     fireEvent.click(screen.getByRole("button", { name: "Tải lên và kiểm tra" }));
 
-    const select = await screen.findByLabelText("Worksheet cần nhập") as HTMLSelectElement;
+    const select = await screen.findByLabelText("Trang tính cần nhập") as HTMLSelectElement;
     expect(Array.from(select.options).map((option) => option.value)).toEqual(["", "Accounts", "Archive"]);
     fireEvent.change(select, { target: { value: "Accounts" } });
     fireEvent.click(screen.getByRole("button", { name: "Kiểm tra dữ liệu" }));
-    await screen.findByRole("heading", { name: "3. Xem kết quả kiểm tra thử" });
+    await screen.findByRole("heading", { name: "3. Xem kết quả kiểm tra" });
     expect(api.validate).toHaveBeenCalledWith(xlsx.id, "Accounts", "csrf-user-import");
   });
 
@@ -149,11 +153,11 @@ describe("System Admin user import wizard", () => {
     });
     render(<UserImportWizard actions={api} pollIntervalMs={0} />);
     const file = new File(["email,username,displayName,role"], "retry.csv", { type: "text/csv" });
-    fireEvent.change(screen.getByLabelText("Chọn file CSV hoặc XLSX"), { target: { files: [file] } });
+    fireEvent.change(screen.getByLabelText("Chọn tệp CSV hoặc XLSX"), { target: { files: [file] } });
     fireEvent.click(screen.getByRole("button", { name: "Tải lên và kiểm tra" }));
     expect(await screen.findByRole("alert")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Tải lên và kiểm tra" }));
-    await screen.findByRole("heading", { name: "2. Xác nhận cấu trúc trước khi kiểm tra thử" });
+    await screen.findByRole("heading", { name: "2. Kiểm tra danh sách đã tải lên" });
 
     const calls = vi.mocked(api.create).mock.calls;
     expect(calls).toHaveLength(2);
@@ -170,13 +174,13 @@ describe("System Admin user import wizard", () => {
     const create = vi.fn().mockReturnValue(pendingCreate);
     const doubleApi = actions({ create });
     const { unmount } = render(<UserImportWizard actions={doubleApi} pollIntervalMs={0} />);
-    fireEvent.change(screen.getByLabelText("Chọn file CSV hoặc XLSX"), { target: { files: [new File(["csv"], "users.csv")] } });
+    fireEvent.change(screen.getByLabelText("Chọn tệp CSV hoặc XLSX"), { target: { files: [new File(["csv"], "users.csv")] } });
     const upload = screen.getByRole("button", { name: "Tải lên và kiểm tra" });
     fireEvent.click(upload);
     fireEvent.click(upload);
     expect(create).toHaveBeenCalledTimes(1);
     resolveCreate?.(job("uploaded"));
-    await screen.findByRole("heading", { name: "2. Xác nhận cấu trúc trước khi kiểm tra thử" });
+    await screen.findByRole("heading", { name: "2. Kiểm tra danh sách đã tải lên" });
     unmount();
 
     const api = actions({
@@ -185,11 +189,11 @@ describe("System Admin user import wizard", () => {
       report: vi.fn().mockResolvedValue({ job: job("completed"), issues: [], meta: { requestId: "r", nextCursor: null, hasMore: false, limit: 100 } }),
     });
     render(<UserImportWizard actions={api} pollIntervalMs={0} />);
-    fireEvent.change(screen.getByLabelText("Chọn file CSV hoặc XLSX"), { target: { files: [new File(["csv"], "users.csv")] } });
+    fireEvent.change(screen.getByLabelText("Chọn tệp CSV hoặc XLSX"), { target: { files: [new File(["csv"], "users.csv")] } });
     fireEvent.click(screen.getByRole("button", { name: "Tải lên và kiểm tra" }));
-    await screen.findByRole("heading", { name: "2. Xác nhận cấu trúc trước khi kiểm tra thử" });
+    await screen.findByRole("heading", { name: "2. Kiểm tra danh sách đã tải lên" });
     fireEvent.click(screen.getByRole("button", { name: "Kiểm tra dữ liệu" }));
-    await screen.findByRole("heading", { name: "3. Xem kết quả kiểm tra thử" });
+    await screen.findByRole("heading", { name: "3. Xem kết quả kiểm tra" });
     fireEvent.click(screen.getByRole("checkbox", { name: /Tôi hiểu đây là thao tác tạo lời mời/ }));
     fireEvent.click(screen.getByRole("button", { name: "Gửi 2 lời mời" }));
     await screen.findByRole("alert");
@@ -209,16 +213,16 @@ describe("System Admin user import wizard", () => {
       apply: vi.fn().mockResolvedValue(job("applying")),
     });
     render(<UserImportWizard actions={api} pollIntervalMs={0} />);
-    fireEvent.change(screen.getByLabelText("Chọn file CSV hoặc XLSX"), { target: { files: [new File(["csv"], "users.csv")] } });
+    fireEvent.change(screen.getByLabelText("Chọn tệp CSV hoặc XLSX"), { target: { files: [new File(["csv"], "users.csv")] } });
     fireEvent.click(screen.getByRole("button", { name: "Tải lên và kiểm tra" }));
-    await screen.findByRole("heading", { name: "2. Xác nhận cấu trúc trước khi kiểm tra thử" });
+    await screen.findByRole("heading", { name: "2. Kiểm tra danh sách đã tải lên" });
     fireEvent.click(screen.getByRole("button", { name: "Kiểm tra dữ liệu" }));
-    await screen.findByRole("heading", { name: "3. Xem kết quả kiểm tra thử" });
+    await screen.findByRole("heading", { name: "3. Xem kết quả kiểm tra" });
     fireEvent.click(screen.getByRole("checkbox", { name: /Tôi hiểu đây là thao tác tạo lời mời/ }));
     fireEvent.click(screen.getByRole("button", { name: "Gửi 2 lời mời" }));
     expect(await screen.findByRole("button", { name: "Thử gửi lời mời lại" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Thử gửi lời mời lại" }));
-    expect(await screen.findByRole("heading", { name: "Import người dùng hoàn tất" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Đã nhập danh sách người dùng" })).toBeInTheDocument();
 
     const applyCalls = vi.mocked(api.apply).mock.calls;
     expect(applyCalls).toHaveLength(2);
@@ -235,13 +239,13 @@ describe("System Admin user import wizard", () => {
         .mockResolvedValueOnce(job("ready", { format: "xlsx", inspection: { ...xlsx.inspection, selectedSheet: "Accounts" } })),
     });
     render(<UserImportWizard actions={api} pollIntervalMs={0} />);
-    fireEvent.change(screen.getByLabelText("Chọn file CSV hoặc XLSX"), { target: { files: [new File(["xlsx"], "users.xlsx")] } });
+    fireEvent.change(screen.getByLabelText("Chọn tệp CSV hoặc XLSX"), { target: { files: [new File(["xlsx"], "users.xlsx")] } });
     fireEvent.click(screen.getByRole("button", { name: "Tải lên và kiểm tra" }));
-    fireEvent.change(await screen.findByLabelText("Worksheet cần nhập"), { target: { value: "Accounts" } });
+    fireEvent.change(await screen.findByLabelText("Trang tính cần nhập"), { target: { value: "Accounts" } });
     fireEvent.click(screen.getByRole("button", { name: "Kiểm tra dữ liệu" }));
     expect(await screen.findByRole("button", { name: "Thử kiểm tra lại" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Thử kiểm tra lại" }));
-    await screen.findByRole("heading", { name: "3. Xem kết quả kiểm tra thử" });
+    await screen.findByRole("heading", { name: "3. Xem kết quả kiểm tra" });
 
     expect(api.validate).toHaveBeenCalledTimes(2);
     expect(vi.mocked(api.validate).mock.calls.map((call) => call[1])).toEqual(["Accounts", "Accounts"]);
@@ -256,8 +260,8 @@ describe("System Admin user import wizard", () => {
       clearClientPrincipal: vi.fn(),
     });
     const { unmount } = render(<UserImportWizard actions={api} />);
-    expect(screen.getByRole("heading", { name: "Không có quyền import người dùng" })).toBeInTheDocument();
-    expect(screen.queryByLabelText("Chọn file CSV hoặc XLSX")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Không có quyền nhập danh sách người dùng" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Chọn tệp CSV hoặc XLSX")).not.toBeInTheDocument();
     unmount();
 
     vi.mocked(useAdminSession).mockReturnValue({
@@ -268,17 +272,17 @@ describe("System Admin user import wizard", () => {
     });
     desktop = false;
     render(<UserImportWizard actions={api} />);
-    expect(screen.getByRole("heading", { name: "Import người dùng cần máy tính" })).toBeInTheDocument();
-    expect(screen.queryByLabelText("Chọn file CSV hoặc XLSX")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Nhập danh sách cần dùng máy tính" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Chọn tệp CSV hoặc XLSX")).not.toBeInTheDocument();
   });
 
   it.each([401, 403, 409, 412, 422, 429, 503])("focuses typed %s errors and preserves the selected file for a safe retry", async (status) => {
     const api = actions({ create: vi.fn().mockRejectedValue(new AdminApiError(status, `HTTP_${status}`, `Lỗi ${status}`, `request-${status}`)) });
     render(<UserImportWizard actions={api} pollIntervalMs={0} />);
-    fireEvent.change(screen.getByLabelText("Chọn file CSV hoặc XLSX"), { target: { files: [new File(["csv"], "users.csv")] } });
+    fireEvent.change(screen.getByLabelText("Chọn tệp CSV hoặc XLSX"), { target: { files: [new File(["csv"], "users.csv")] } });
     fireEvent.click(screen.getByRole("button", { name: "Tải lên và kiểm tra" }));
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent(`request-${status}`);
+    expect(alert).not.toHaveTextContent(`request-${status}`);
     await waitFor(() => expect(alert.parentElement).toHaveFocus());
     expect(screen.getByText("users.csv")).toBeInTheDocument();
   });

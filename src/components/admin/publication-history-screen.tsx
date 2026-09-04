@@ -14,7 +14,6 @@ import {
   IconDatabase,
   IconHistory,
   IconRefresh,
-  IconServer,
   IconShieldLock,
 } from "@tabler/icons-react";
 import {
@@ -23,7 +22,6 @@ import {
 } from "@/components/admin/admin-session";
 import { AuditEventList } from "@/components/admin/audit-event-list";
 import {
-  compactIdentifier,
   historyDate,
   historyStatusLabel,
 } from "@/components/admin/history-format";
@@ -119,14 +117,14 @@ function eligibilityText(
   reason: LayerPublicationHistory["items"][number]["rollbackEligibility"]["reasonCode"],
 ) {
   if (reason === "ROLE_FORBIDDEN")
-    return "Vai trò hiện tại không được rollback.";
+    return "Bạn không có quyền khôi phục bản công bố.";
   if (reason === "ROLLBACK_TARGET_ACTIVE")
-    return "Publication này đang active.";
+    return "Bản này đang hiển thị trên bản đồ.";
   if (reason === "SEPARATION_OF_DUTIES")
-    return "Separation of duties không cho phép rollback bản này.";
+    return "Bản này cần một người công bố khác thực hiện khôi phục.";
   if (reason === "ROLLBACK_TARGET_INVALID")
-    return "Publication này chưa từng active hoặc không hợp lệ.";
-  return "Publication không đủ điều kiện rollback.";
+    return "Bản này chưa được công bố thành công nên không thể khôi phục.";
+  return "Không thể khôi phục bản công bố này.";
 }
 
 export function PublicationHistoryScreen({
@@ -344,8 +342,7 @@ export function PublicationHistoryScreen({
             Lịch sử {title}
           </h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-            Theo dõi revision, publication, active pointer và sự kiện audit
-            trong phạm vi vai trò hiện tại.
+            Xem các phiên bản, các lần công bố và lịch sử thao tác của lớp dữ liệu.
           </p>
         </div>
         <Button
@@ -374,7 +371,7 @@ export function PublicationHistoryScreen({
         >
           {loadingMore
             ? "Đang tải thêm dữ liệu lịch sử."
-            : `Đã tải ${publications.data.items.length.toLocaleString("vi-VN")} publication, ${revisions.data.items.length.toLocaleString("vi-VN")} revision và ${audit.data.items.length.toLocaleString("vi-VN")} sự kiện kiểm toán.`}
+            : `Đã tải ${publications.data.items.length.toLocaleString("vi-VN")} lần công bố, ${revisions.data.items.length.toLocaleString("vi-VN")} phiên bản và ${audit.data.items.length.toLocaleString("vi-VN")} hoạt động.`}
         </p>
         <div className="mt-6 flex flex-col gap-4">
           {success && (
@@ -388,8 +385,7 @@ export function PublicationHistoryScreen({
               <IconHistory aria-hidden="true" stroke={1.75} />
               <AlertTitle>Khôi phục hoàn tất</AlertTitle>
               <AlertDescription>
-                Generation {success.generation} đã được tạo. Publication pointer
-                và lịch sử đã được tải lại.
+                Bản đồ công khai đã được cập nhật theo bản bạn chọn.
               </AlertDescription>
             </Alert>
           )}
@@ -399,17 +395,15 @@ export function PublicationHistoryScreen({
           {publisherOnMobile && (
             <Alert>
               <IconShieldLock aria-hidden="true" stroke={1.75} />
-              <AlertTitle>Rollback chỉ dùng trên desktop</AlertTitle>
+              <AlertTitle>Dùng máy tính để khôi phục dữ liệu</AlertTitle>
               <AlertDescription>
-                Mobile admin vẫn có thể xem lịch sử và review. Hành động thay
-                đổi active pointer cần viewport desktop và thiết bị trỏ chính
-                xác.
+                Bạn có thể xem lịch sử và kiểm duyệt trên điện thoại. Việc khôi phục dữ liệu công khai cần thực hiện trên máy tính.
               </AlertDescription>
             </Alert>
           )}
         </div>
 
-        <section
+        {(jobsError !== null || (jobs?.data.items.length ?? 0) > 0) && <section
           className="mt-8"
           aria-labelledby="publication-job-history-heading"
         >
@@ -419,27 +413,20 @@ export function PublicationHistoryScreen({
                 id="publication-job-history-heading"
                 className="text-lg font-semibold"
               >
-                Publication jobs
+                Tiến độ công bố
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Tiến độ được đo theo đối tượng. Job đang chờ không có phần trăm
-                giả.
+                Theo dõi các yêu cầu công bố đang xử lý và kết quả hoàn tất.
               </p>
             </div>
-            {jobs && (
-              <p className="text-xs text-muted-foreground">
-                Job list ETag: <code>{jobs.etag}</code>
-              </p>
-            )}
           </div>
           {jobsError !== null && (
             <Alert className="mt-4" role="status">
               <IconRefresh aria-hidden="true" stroke={1.75} />
-              <AlertTitle>Chưa thể tải publication jobs</AlertTitle>
+              <AlertTitle>Chưa thể tải tiến độ công bố</AlertTitle>
               <AlertDescription>
                 <p>
-                  Lịch sử revision, snapshot và audit vẫn dùng được. Hãy thử tải
-                  lại danh sách job từ máy chủ.
+                  Các phiên bản và lịch sử công bố vẫn xem được. Hãy thử tải lại tiến độ.
                 </p>
                 <Button
                   type="button"
@@ -453,32 +440,18 @@ export function PublicationHistoryScreen({
                     data-icon="inline-start"
                     stroke={1.75}
                   />
-                  Thử tải lại job
+                  Tải lại tiến độ
                 </Button>
               </AlertDescription>
             </Alert>
           )}
-          {jobs &&
-            (jobs.data.items.length === 0 ? (
-              <Empty className="mt-4 border">
-                <EmptyHeader>
-                  <EmptyMedia variant="icon">
-                    <IconServer stroke={1.75} />
-                  </EmptyMedia>
-                  <EmptyTitle>Chưa có publication job</EmptyTitle>
-                  <EmptyDescription>
-                    Job sẽ xuất hiện khi Publisher gửi một revision đã duyệt để
-                    công bố.
-                  </EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            ) : (
+          {jobs && (
               <div className="mt-4 grid gap-3 md:grid-cols-2">
                 {jobs.data.items.map((job) => (
                   <PublicationJobStatus key={job.id} job={job} compact />
                 ))}
               </div>
-            ))}
+            )}
           {jobs?.data.hasMore && (
             <Button
               type="button"
@@ -489,10 +462,10 @@ export function PublicationHistoryScreen({
             >
               {loadingMore === "jobs"
                 ? "Đang tải thêm..."
-                : "Tải thêm publication job"}
+                : "Xem thêm yêu cầu công bố"}
             </Button>
           )}
-        </section>
+        </section>}
 
         <section
           className="mt-10"
@@ -504,19 +477,10 @@ export function PublicationHistoryScreen({
                 id="publication-history-heading"
                 className="text-lg font-semibold"
               >
-                Publication snapshots
+                Các lần công bố
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Chỉ snapshot đã commit xuất hiện ở đây. Tiến độ không có số đo
-                vẫn giữ trạng thái chưa xác định.
-              </p>
-            </div>
-            <div className="text-right text-xs text-muted-foreground">
-              <p>
-                History ETag: <code>{publications.historyEtag}</code>
-              </p>
-              <p className="mt-1">
-                Pointer ETag: <code>{pointer ?? "Chưa có"}</code>
+                Bản đang hiển thị được đánh dấu bên dưới. Bạn có thể khôi phục một bản công bố trước nếu có quyền.
               </p>
             </div>
           </div>
@@ -526,10 +490,9 @@ export function PublicationHistoryScreen({
                 <EmptyMedia variant="icon">
                   <IconDatabase stroke={1.75} />
                 </EmptyMedia>
-                <EmptyTitle>Chưa có publication</EmptyTitle>
+                <EmptyTitle>Chưa có lần công bố nào</EmptyTitle>
                 <EmptyDescription>
-                  Layer sẽ có lịch sử publication sau lần công bố thành công đầu
-                  tiên.
+                  Lịch sử sẽ xuất hiện sau khi dữ liệu được công bố thành công.
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
@@ -537,13 +500,12 @@ export function PublicationHistoryScreen({
             <div className="mt-4 rounded-panel border bg-surface">
               <Table>
                 <TableCaption className="sr-only">
-                  Các publication snapshot của lớp, sắp xếp từ mới nhất đến cũ
-                  nhất.
+                  Các lần công bố của lớp, từ mới nhất đến cũ nhất.
                 </TableCaption>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Generation</TableHead>
-                    <TableHead>Revision</TableHead>
+                    <TableHead>Lần công bố</TableHead>
+                    <TableHead>Phiên bản</TableHead>
                     <TableHead>Trạng thái</TableHead>
                     <TableHead>Tiến độ</TableHead>
                     <TableHead>Kích hoạt</TableHead>
@@ -564,14 +526,8 @@ export function PublicationHistoryScreen({
                             <span className="font-medium">
                               {publication.generation}
                             </span>
-                            {publication.isActive && <Badge>Đang active</Badge>}
+                            {publication.isActive && <Badge>Đang hiển thị</Badge>}
                           </div>
-                          <p
-                            className="mt-1 font-mono text-xs text-muted-foreground"
-                            title={publication.snapshotId}
-                          >
-                            {compactIdentifier(publication.snapshotId)}
-                          </p>
                         </TableCell>
                         <TableCell>
                           #{publication.revisionNo}
@@ -586,8 +542,7 @@ export function PublicationHistoryScreen({
                           </Badge>
                           {publication.rollbackOf && (
                             <p className="mt-1 text-xs text-muted-foreground">
-                              Rollback từ{" "}
-                              {compactIdentifier(publication.rollbackOf)}
+                              Khôi phục từ bản trước
                             </p>
                           )}
                         </TableCell>
@@ -608,12 +563,12 @@ export function PublicationHistoryScreen({
                             />
                           ) : (
                             <span className="text-xs text-muted-foreground">
-                              {publication.rollbackEligibility.eligible
+                              {publication.isActive ? "Đang sử dụng bản này" : publication.rollbackEligibility.eligible
                                 ? publisherOnMobile
-                                  ? "Cần desktop"
+                                  ? "Cần dùng máy tính"
                                   : !canPublishContent(principal.role)
-                                    ? "Chỉ Publisher hoặc System Admin"
-                                    : "Thiếu pointer ETag"
+                                    ? "Cần quyền công bố dữ liệu"
+                                    : "Hãy tải lại lịch sử trước khi khôi phục"
                                 : eligibilityText(
                                     publication.rollbackEligibility.reasonCode,
                                   )}
@@ -637,7 +592,7 @@ export function PublicationHistoryScreen({
             >
               {loadingMore === "publications"
                 ? "Đang tải thêm..."
-                : "Tải thêm publication"}
+                : "Xem thêm lần công bố"}
             </Button>
           )}
         </section>
@@ -645,10 +600,10 @@ export function PublicationHistoryScreen({
         <section className="mt-10" aria-labelledby="revision-history-heading">
           <div>
             <h2 id="revision-history-heading" className="text-lg font-semibold">
-              Revision history
+              Các phiên bản
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Mở revision để xem validation, feature diff và workflow đầy đủ.
+              Mở một phiên bản để kiểm tra dữ liệu, so sánh thay đổi và xem lịch sử duyệt.
             </p>
           </div>
           {revisions.data.items.length === 0 ? (
@@ -657,16 +612,16 @@ export function PublicationHistoryScreen({
                 <EmptyMedia variant="icon">
                   <IconClock stroke={1.75} />
                 </EmptyMedia>
-                <EmptyTitle>Chưa có revision</EmptyTitle>
+                <EmptyTitle>Chưa có phiên bản</EmptyTitle>
                 <EmptyDescription>
-                  Revision sẽ xuất hiện sau khi layer được tạo.
+                  Phiên bản đầu tiên được tạo cùng với lớp dữ liệu.
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
           ) : (
             <ol
               className="mt-4 divide-y rounded-panel border bg-surface"
-              aria-label="Revision history"
+              aria-label="Các phiên bản"
             >
               {revisions.data.items.map((revision) => (
                 <li
@@ -679,11 +634,11 @@ export function PublicationHistoryScreen({
                         className="font-medium text-primary hover:underline"
                         href={`/admin/layers/${layerId}/revisions/${revision.id}/review`}
                       >
-                        Revision #{revision.revisionNo}
+                        Phiên bản #{revision.revisionNo}
                       </Link>
                       <Badge>{historyStatusLabel(revision.status)}</Badge>
                       {revision.activeSnapshotId && (
-                        <Badge>Generation {revision.activeGeneration}</Badge>
+                        <Badge>Lần công bố {revision.activeGeneration}</Badge>
                       )}
                     </div>
                     <p className="mt-1 text-sm text-muted-foreground">
@@ -713,7 +668,7 @@ export function PublicationHistoryScreen({
             >
               {loadingMore === "revisions"
                 ? "Đang tải thêm..."
-                : "Tải thêm revision"}
+                : "Xem thêm phiên bản"}
             </Button>
           )}
         </section>
@@ -721,11 +676,10 @@ export function PublicationHistoryScreen({
         <section className="mt-10" aria-labelledby="audit-heading">
           <div className="mb-4">
             <h2 id="audit-heading" className="text-lg font-semibold">
-              Audit theo layer
+              Nhật ký của lớp
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Backend áp dụng action allowlist theo vai trò. Filter phía client
-              không thể mở rộng phạm vi này.
+              Các thao tác tạo, sửa, duyệt và công bố dữ liệu trong lớp này.
             </p>
           </div>
           <AuditEventList

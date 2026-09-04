@@ -125,7 +125,7 @@ async function createLayerAndFeature(page: Page, slug: string, title: string) {
 
 async function uploadFromEditor(page: Page, fileName: string, buffer: Buffer) {
   const intentResponse = page.waitForResponse((response) => response.url().endsWith("/api/v1/admin/uploads") && response.request().method() === "POST");
-  await page.getByLabel("Chọn tệp, tối đa 25 MiB").setInputFiles({ name: fileName, mimeType: "image/png", buffer });
+  await page.getByLabel("Chọn tệp, tối đa 25 MB").setInputFiles({ name: fileName, mimeType: "image/png", buffer });
   const response = await intentResponse;
   expect(response.status()).toBe(201);
   const attachment = record(record(await response.json()).data);
@@ -137,14 +137,14 @@ async function approve(page: Page, revisionId: string) {
   const approveButton = page.getByRole("button", { name: "Duyệt thay đổi" });
   await expect(approveButton).toBeVisible();
   await approveButton.click();
-  await expect(page.getByRole("status").filter({ hasText: "Đã duyệt revision." })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Đã phê duyệt dữ liệu." })).toBeVisible();
 }
 
 async function publish(page: Page, revisionId: string) {
   await page.goto(`/admin/layers/${revisionId}/review`);
   await page.getByLabel("Ghi chú công bố").fill("Công bố kiểm thử attachment sạch.");
   const responsePromise = page.waitForResponse((response) => response.url().endsWith(`/api/v1/admin/revisions/${revisionId}:publish`) && response.request().method() === "POST");
-  await page.getByRole("button", { name: "Công bố revision" }).click();
+  await page.getByRole("button", { name: "Công bố dữ liệu" }).click();
   const response = await responsePromise;
   expect(response.status()).toBe(202);
   const accepted = record(record(await response.json()).data);
@@ -157,7 +157,7 @@ async function publish(page: Page, revisionId: string) {
       return typeof data === "object" && data !== null && "status" in data ? String(data.status) : "invalid";
     }, jobId), { timeout: 150_000, intervals: [500, 1_000, 2_000] }).toBe("succeeded");
   }
-  await expect(page.getByText("published", { exact: true })).toBeVisible({ timeout: 150_000 });
+  await expect(page.locator("main > header").getByText("Đã công bố", { exact: true }).filter({ visible: true })).toBeVisible({ timeout: 150_000 });
 }
 
 async function publicFeature(request: APIRequestContext, slug: string, featureId: string) {
@@ -193,7 +193,7 @@ test("clean attachment crosses MinIO and publication while rejected content stay
     const cleanPng = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64");
     const cleanAttachmentId = await uploadFromEditor(editorPage, "tru-so-clean.png", cleanPng);
     await expect(editorPage.getByText("tru-so-clean.png", { exact: true })).toBeVisible();
-    await expect(editorPage.getByText(/Đã quét sạch/u)).toBeVisible();
+    await expect(editorPage.getByText(/Đã kiểm tra an toàn/u)).toBeVisible();
     expect((await publicFeature(request, slug, featureId)).response.status()).toBe(404);
     const baseUrl = requiredEnv("PLAYWRIGHT_BASE_URL").replace(/\/$/u, "");
     expect((await request.get(`${baseUrl}/api/v1/public/attachments/${cleanAttachmentId}`)).status()).toBe(404);
@@ -204,9 +204,9 @@ test("clean attachment crosses MinIO and publication while rejected content stay
     expect((await request.get(`${baseUrl}/api/v1/public/attachments/${rejectedAttachmentId}`)).status()).toBe(404);
 
     await editorPage.getByLabel("Tóm tắt thay đổi").fill("Thêm trụ sở và ảnh đã quét sạch");
-    await editorPage.getByLabel("Ghi chú reviewer").fill("Attachment bị từ chối không được gắn vào feature.");
+    await editorPage.getByLabel("Ghi chú cho người duyệt").fill("Attachment bị từ chối không được gắn vào feature.");
     await editorPage.getByRole("button", { name: "Gửi duyệt" }).click();
-    await expect(editorPage.getByRole("heading", { name: "Revision này được giữ bất biến" })).toBeVisible();
+    await expect(editorPage.getByRole("heading", { name: "Đã gửi duyệt" })).toBeVisible();
 
     const reviewerPage = await reviewerContext.newPage();
     await login(reviewerPage, "REVIEWER");
@@ -216,7 +216,7 @@ test("clean attachment crosses MinIO and publication while rejected content stay
     await login(publisherPage, "PUBLISHER");
     await publish(publisherPage, revisionId);
     const attachmentSummary = publisherPage.getByRole("region", { name: "Thay đổi tệp đính kèm", exact: true });
-    const attachmentEntry = publisherPage.getByRole("region", { name: /Thay đổi tệp đính kèm của feature/u });
+    const attachmentEntry = publisherPage.getByRole("region", { name: /Thay đổi tệp đính kèm của đối tượng/u });
     await expect(attachmentSummary).toBeVisible();
     await expect(attachmentEntry.getByText("tru-so-clean.png", { exact: true })).toBeVisible();
     await expect(attachmentEntry).not.toContainText("tru-so-rejected.png");

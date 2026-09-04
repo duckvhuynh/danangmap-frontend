@@ -8,7 +8,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { LayerConfigurationEditor } from "./layer-configuration-editor";
-import { AdminApiError, type AdminRole } from "@/lib/api/admin";
+import { AdminApiError, adminErrorMessage, type AdminRole } from "@/lib/api/admin";
 import {
   createEmptyLayerConfiguration,
   type LayerConfigurationActions,
@@ -119,6 +119,19 @@ afterEach(() => {
 });
 
 describe("layer configuration editor", () => {
+  it("uses readable configuration labels and lets users choose icons by meaning", () => {
+    renderEditor({});
+    expect(screen.getByText("Bản nháp")).toBeInTheDocument();
+    expect(screen.queryByText("draft")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Trường dữ liệu" }));
+    expect(screen.getByLabelText("Mã trường")).toBeInTheDocument();
+    expect(screen.getByLabelText("Biểu tượng")).toHaveRole("combobox");
+    expect(screen.queryByText("Tabler icon key")).not.toBeInTheDocument();
+    expect(screen.queryByText("Schema metadata")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Hiển thị" }));
+    expect(screen.getByText("Tùy chọn tải dữ liệu nâng cao").closest("details")).not.toHaveAttribute("open");
+  });
+
   it("creates a mixed Point, Polygon and circle draft with grouped catalog, private schema and popup style", async () => {
     const create = vi.fn<NonNullable<LayerConfigurationActions["create"]>>(
       async (configuration) => savedConfiguration(configuration),
@@ -131,19 +144,19 @@ describe("layer configuration editor", () => {
     enterRequiredOverview();
     fireEvent.click(screen.getByLabelText("Nhóm lớp"));
     fireEvent.click(await screen.findByRole("option", { name: "Hành chính" }));
-    fireEvent.change(screen.getByLabelText("Thứ tự catalog"), {
+    fireEvent.change(screen.getByLabelText("Thứ tự hiển thị"), {
       target: { value: "20" },
     });
 
-    fireEvent.click(screen.getByRole("tab", { name: "Geometry" }));
-    fireEvent.click(screen.getByRole("radio", { name: /Mixed/ }));
-    fireEvent.click(screen.getByLabelText("LineString"));
-    fireEvent.click(screen.getByLabelText(/Circle, tâm Point/));
+    fireEvent.click(screen.getByRole("tab", { name: "Loại đối tượng" }));
+    fireEvent.click(screen.getByRole("radio", { name: /Kết hợp/ }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Đường" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Hình tròn" }));
 
-    fireEvent.click(screen.getByRole("tab", { name: "Schema" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Trường dữ liệu" }));
     fireEvent.click(screen.getByRole("button", { name: "Thêm trường" }));
-    const keyInputs = screen.getAllByLabelText("Key");
-    const labelInputs = screen.getAllByLabelText("Nhãn tiếng Việt");
+    const keyInputs = screen.getAllByLabelText("Mã trường");
+    const labelInputs = screen.getAllByLabelText("Tên hiển thị");
     fireEvent.change(keyInputs[1]!, { target: { value: "internal_note" } });
     fireEvent.change(labelInputs[1]!, { target: { value: "Ghi chú nội bộ" } });
     fireEvent.click(screen.getAllByLabelText("Công khai")[1]!);
@@ -153,7 +166,7 @@ describe("layer configuration editor", () => {
       target: { value: "#0B57D0" },
     });
     fireEvent.click(screen.getByLabelText("Hiển thị tọa độ"));
-    fireEvent.click(screen.getByRole("button", { name: "Tạo layer" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tạo lớp" }));
 
     await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
     const configuration = create.mock.calls[0]![0];
@@ -186,7 +199,7 @@ describe("layer configuration editor", () => {
       ]),
     );
     expect(
-      screen.getByText("Đã tạo layer và draft cấu hình."),
+      await screen.findByText("Đã tạo lớp dữ liệu. Bạn có thể bắt đầu biên tập hoặc nhập dữ liệu."),
     ).toBeInTheDocument();
   });
 
@@ -200,11 +213,11 @@ describe("layer configuration editor", () => {
     renderEditor({ create });
     enterRequiredOverview();
 
-    fireEvent.click(screen.getByRole("button", { name: "Tạo layer" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tạo lớp" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "network interrupted",
+      "Kiểm tra kết nối rồi thử lại.",
     );
-    fireEvent.click(screen.getByRole("button", { name: "Tạo layer" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tạo lớp" }));
 
     await waitFor(() => expect(create).toHaveBeenCalledTimes(2));
     expect(create.mock.calls[1]![1].operationKey).toBe(
@@ -242,11 +255,11 @@ describe("layer configuration editor", () => {
         .mockRejectedValue(problem);
       renderEditor({ create });
       enterRequiredOverview();
-      fireEvent.click(screen.getByRole("button", { name: "Tạo layer" }));
+      fireEvent.click(screen.getByRole("button", { name: "Tạo lớp" }));
       const alert = await screen.findByRole("alert");
       expect(within(alert).getByText(heading)).toBeInTheDocument();
-      expect(alert).toHaveTextContent(problem.message);
-      expect(alert).toHaveTextContent(requestId);
+      expect(alert).toHaveTextContent(adminErrorMessage(problem));
+      expect(screen.getByText(`Mã hỗ trợ: ${requestId}`).closest("details")).not.toHaveAttribute("open");
     },
   );
 
@@ -256,10 +269,10 @@ describe("layer configuration editor", () => {
       const create = vi.fn<NonNullable<LayerConfigurationActions["create"]>>();
       renderEditor({ create }, role, true);
       expect(
-        screen.getByRole("heading", { name: "Không có quyền tạo layer" }),
+        screen.getByRole("heading", { name: "Không có quyền tạo lớp" }),
       ).toBeInTheDocument();
       expect(
-        screen.queryByRole("button", { name: "Tạo layer" }),
+        screen.queryByRole("button", { name: "Tạo lớp" }),
       ).not.toBeInTheDocument();
       expect(create).not.toHaveBeenCalled();
     },
@@ -269,7 +282,7 @@ describe("layer configuration editor", () => {
     const create = vi.fn<NonNullable<LayerConfigurationActions["create"]>>();
     renderEditor({ create }, "system_admin", true);
     expect(
-      screen.getByRole("button", { name: "Tạo layer" }),
+      screen.getByRole("button", { name: "Tạo lớp" }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Mã lớp")).toBeEnabled();
   });
@@ -277,10 +290,10 @@ describe("layer configuration editor", () => {
   it("makes an Editor read-only when desktop pointer capability is absent", () => {
     const create = vi.fn<NonNullable<LayerConfigurationActions["create"]>>();
     renderEditor({ create }, "editor", false);
-    expect(screen.getByText("Tạo layer cần máy tính")).toBeInTheDocument();
+    expect(screen.getByText("Tạo lớp cần máy tính")).toBeInTheDocument();
     expect(screen.queryByLabelText("Mã lớp")).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Tạo layer" }),
+      screen.queryByRole("button", { name: "Tạo lớp" }),
     ).not.toBeInTheDocument();
   });
 
@@ -298,7 +311,7 @@ describe("layer configuration editor", () => {
 
     fireEvent.click(screen.getByLabelText("Nhóm lớp"));
     fireEvent.click(await screen.findByRole("option", { name: "Hành chính" }));
-    fireEvent.click(screen.getByRole("button", { name: "Lưu catalog" }));
+    fireEvent.click(screen.getByRole("button", { name: "Lưu sắp xếp lớp" }));
 
     await waitFor(() => expect(updateCatalog).toHaveBeenCalledTimes(1));
     expect(updateCatalog.mock.calls[0]![1]).toMatchObject({
@@ -336,7 +349,7 @@ describe("layer configuration editor", () => {
       await screen.findByText("Không thể áp dụng cấu hình"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Field bị xóa đang có dữ liệu/u),
+      screen.getByText(/Trường cần xóa đang có dữ liệu/u),
     ).toBeInTheDocument();
     expect(previewImpact).toHaveBeenCalledWith(
       expect.objectContaining({ title: "Trụ sở thành phố" }),
@@ -360,12 +373,13 @@ describe("layer configuration editor", () => {
       );
     renderEdit({ updateCatalog }, "draft", onReload);
     fireEvent.click(screen.getByLabelText("Bật lớp mặc định khi mở bản đồ"));
-    fireEvent.click(screen.getByRole("button", { name: "Lưu catalog" }));
+    fireEvent.click(screen.getByRole("button", { name: "Lưu sắp xếp lớp" }));
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("request-stale");
-    fireEvent.click(within(alert).getByText("Chi tiết từ máy chủ"));
-    expect(alert).toHaveTextContent("layer-v8");
+    fireEvent.click(within(alert).getByText("Thông tin hỗ trợ kỹ thuật"));
+    expect(alert).not.toHaveTextContent("layer-v8");
+    expect(alert).toHaveTextContent("ETAG_MISMATCH");
     expect(updateCatalog).toHaveBeenCalledTimes(1);
     expect(onReload).not.toHaveBeenCalled();
     fireEvent.click(
@@ -390,7 +404,7 @@ describe("layer configuration editor", () => {
     }));
     renderEdit({ createSuccessor }, "published");
     fireEvent.click(
-      screen.getByRole("button", { name: "Tạo successor draft" }),
+      screen.getByRole("button", { name: "Tạo bản nháp mới" }),
     );
     await waitFor(() => expect(createSuccessor).toHaveBeenCalledTimes(1));
     expect(createSuccessor.mock.calls[0]![1].etag).toBe('"revision-v4"');
@@ -418,7 +432,7 @@ describe("layer configuration editor", () => {
       target: { value: "Trụ sở thành phố" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Lưu cấu hình" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("response lost");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Kiểm tra kết nối rồi thử lại.");
     fireEvent.click(screen.getByRole("button", { name: "Lưu cấu hình" }));
     await waitFor(() => expect(replaceRevision).toHaveBeenCalledTimes(2));
     expect(previewImpact).toHaveBeenCalledTimes(1);
@@ -447,8 +461,8 @@ describe("layer configuration editor", () => {
     fireEvent.change(screen.getByLabelText("Gõ “LƯU TRỮ” để xác nhận"), {
       target: { value: "LƯU TRỮ" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Lưu trữ layer" }));
+    fireEvent.click(screen.getByRole("button", { name: "Lưu trữ lớp" }));
     await waitFor(() => expect(archive).toHaveBeenCalledTimes(1));
-    expect(screen.getByRole("button", { name: "Lưu catalog" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Lưu sắp xếp lớp" })).toBeEnabled();
   });
 });

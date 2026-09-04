@@ -95,6 +95,7 @@ function ExistingMfaForm() {
         }
         router.replace("/admin");
       } catch (caught) {
+        setCode("");
         setError(authErrorMessage(caught, "verify"));
         globalThis.setTimeout(() => errorRef.current?.focus(), 0);
       } finally {
@@ -102,7 +103,7 @@ function ExistingMfaForm() {
       }
     }}>
       <div className="grid grid-cols-2 rounded-control border bg-surface-subtle p-1" role="group" aria-label="Phương thức xác thực">
-        <button type="button" aria-pressed={method === "totp"} onClick={() => changeMethod("totp")} className={cn("rounded-control px-2 py-2 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring", method === "totp" && "bg-surface text-primary map-control-shadow")}>Ứng dụng MFA</button>
+        <button type="button" aria-pressed={method === "totp"} onClick={() => changeMethod("totp")} className={cn("rounded-control px-2 py-2 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring", method === "totp" && "bg-surface text-primary map-control-shadow")}>Ứng dụng xác thực</button>
         <button type="button" aria-pressed={method === "recovery_code"} onClick={() => changeMethod("recovery_code")} className={cn("rounded-control px-2 py-2 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring", method === "recovery_code" && "bg-surface text-primary map-control-shadow")}>Mã khôi phục</button>
       </div>
       <Field data-invalid={Boolean(error)}>
@@ -189,6 +190,7 @@ function EnrollmentFlow() {
       const terminal = caught instanceof AuthApiError && (caught.ambiguous || caught.status === 403 || caught.status === 409 || (caught.status === 401 && caught.code !== "AUTH_MFA_INVALID"));
       if (terminal) setStage({ name: "restart", message });
       else {
+        setCode("");
         setError(message);
         focusError();
       }
@@ -227,7 +229,7 @@ function EnrollmentFlow() {
       <div className="mt-6 flex flex-col gap-5">
         <Alert className="border-success/30 bg-surface-subtle text-success">
           <IconCheck size={18} stroke={1.75} />
-          <AlertTitle>MFA đã được bật</AlertTitle>
+          <AlertTitle>Đã bật xác thực hai bước</AlertTitle>
           <AlertDescription>10 mã dưới đây chỉ hiển thị trong bước này. Mỗi mã dùng được một lần.</AlertDescription>
         </Alert>
         <ol aria-label="10 mã khôi phục" className="grid grid-cols-1 gap-2 rounded-control border bg-surface-subtle p-3 sm:grid-cols-2">
@@ -262,7 +264,7 @@ function EnrollmentFlow() {
         </div>
         <p className="text-sm leading-6 text-muted-foreground">Mã QR và khóa thủ công chỉ được máy chủ cấp một lần. Nhấn nút khi bạn sẵn sàng quét mã.</p>
         {error && <InlineError errorRef={errorRef} message={error} />}
-        <Button disabled={pending} onClick={() => void start()} type="button"><IconQrcode stroke={1.75} />{pending ? "Đang tạo mã thiết lập..." : "Bắt đầu thiết lập MFA"}</Button>
+        <Button disabled={pending} onClick={() => void start()} type="button"><IconQrcode stroke={1.75} />{pending ? "Đang tạo mã thiết lập..." : "Thiết lập xác thực hai bước"}</Button>
       </div>
     );
   }
@@ -271,7 +273,7 @@ function EnrollmentFlow() {
     <form className="mt-6 flex flex-col gap-5" onSubmit={confirm}>
       <div className="grid justify-items-center gap-3 rounded-control border bg-surface-subtle p-4">
         <div className="rounded-control border bg-white p-2">
-          <QRCodeCanvas aria-label="Mã QR thiết lập MFA DanangMap" bgColor="#FFFFFF" fgColor="#202124" level="M" marginSize={4} role="img" size={192} title="Quét mã QR để thiết lập MFA" value={stage.setup.uri} />
+          <QRCodeCanvas aria-label="Mã QR thiết lập xác thực hai bước DanangMap" bgColor="#FFFFFF" fgColor="#202124" level="M" marginSize={4} role="img" size={192} title="Quét mã QR để thiết lập xác thực hai bước" value={stage.setup.uri} />
         </div>
         <p className="text-center text-sm text-muted-foreground">Quét bằng ứng dụng xác thực cho <span className="font-medium text-foreground">{stage.setup.accountLabel}</span>.</p>
       </div>

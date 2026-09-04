@@ -134,7 +134,7 @@ test("first operator creates the only System Admin and completes mandatory MFA",
   const state = await mockFirstAdminBootstrap(page);
 
   await page.goto("/login");
-  const setupLink = page.getByRole("link", { name: "Tạo System Admin" });
+  const setupLink = page.getByRole("link", { name: "Tạo tài khoản quản trị đầu tiên" });
   await expect(setupLink).toBeVisible();
   await setupLink.focus();
   await setupLink.press("Enter");
@@ -147,7 +147,7 @@ test("first operator creates the only System Admin and completes mandatory MFA",
   await page.getByLabel("Nhập lại mật khẩu").fill(password);
   await page.getByLabel("Mã khởi tạo một lần").fill(bootstrapToken);
   const createButton = page.getByRole("button", {
-    name: "Tạo System Admin và tiếp tục",
+    name: "Tạo tài khoản và tiếp tục",
   });
   await createButton.focus();
   await createButton.press("Enter");
@@ -157,12 +157,12 @@ test("first operator creates the only System Admin and completes mandatory MFA",
   expect(page.url()).not.toContain(bootstrapToken);
   expect(page.url()).not.toContain(password);
 
-  const start = page.getByRole("button", { name: "Bắt đầu thiết lập MFA" });
+  const start = page.getByRole("button", { name: "Thiết lập xác thực hai bước" });
   await expect(start).toBeVisible();
   expect(state.enrollCalls()).toBe(0);
   await start.click();
   await expect(
-    page.getByRole("img", { name: "Mã QR thiết lập MFA DanangMap" }),
+    page.getByRole("img", { name: "Mã QR thiết lập xác thực hai bước DanangMap" }),
   ).toBeVisible();
   expect(state.enrollCalls()).toBe(1);
 
