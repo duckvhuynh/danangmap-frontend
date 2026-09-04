@@ -1,5 +1,8 @@
 import { useEffect, useId, useRef } from "react";
-import { IconClipboardList, IconShieldLock } from "@tabler/icons-react";
+import {
+  ClipboardList as IconClipboardList,
+  Shield as IconShieldLock,
+} from "lucide-react";
 import { AdminErrorNotice } from "@/components/admin/admin-session";
 import { historyDate, historyRoleLabel } from "@/components/admin/history-format";
 import { auditActionLabel, auditResourceLabel } from "@/lib/admin/audit-labels";
@@ -46,7 +49,7 @@ export function AuditEventList({
   if (!events || events.items.length === 0) {
     return <Empty className="border" role="status" aria-live="polite">
       <EmptyHeader>
-        <EmptyMedia variant="icon"><IconClipboardList aria-hidden="true" stroke={1.75}/></EmptyMedia>
+        <EmptyMedia variant="icon"><IconClipboardList aria-hidden="true" strokeWidth={1.75}/></EmptyMedia>
         <EmptyTitle>Chưa có hoạt động</EmptyTitle>
         <EmptyDescription>Các thao tác quản trị sẽ được ghi lại tại đây để bạn tra cứu.</EmptyDescription>
       </EmptyHeader>
@@ -63,7 +66,7 @@ export function AuditEventList({
         return <li key={event.id} className="grid gap-3 p-4 lg:grid-cols-[minmax(0,1fr)_auto]">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <IconShieldLock aria-hidden="true" className="shrink-0 text-muted-foreground" size={18} stroke={1.75}/>
+            <IconShieldLock aria-hidden="true" className="shrink-0 text-muted-foreground" size={18} strokeWidth={1.75}/>
             <p className="break-words text-sm font-medium">{auditActionLabel(event.action)}</p>
             <Badge>{historyRoleLabel(event.actorRole)}</Badge>
           </div>

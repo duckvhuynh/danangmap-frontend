@@ -2,7 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { IconAlertCircle, IconLogout, IconShieldLock } from "@tabler/icons-react";
+import {
+  CircleAlert as IconAlertCircle,
+  LogOut as IconLogout,
+  Shield as IconShieldLock,
+} from "lucide-react";
 import { useAdminSession } from "@/components/admin/admin-session";
 import { SecurityError } from "@/components/auth/security-feedback";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -75,7 +79,7 @@ export function SessionSecurityPanel({
     <section aria-labelledby="session-security-title" className="rounded-panel border bg-surface p-5">
       <div className="flex items-start gap-4">
         <span className="grid size-11 shrink-0 place-items-center rounded-control bg-accent-subtle text-primary">
-          <IconShieldLock stroke={1.75} />
+          <IconShieldLock strokeWidth={1.75} />
         </span>
         <div className="min-w-0 flex-1">
           <h2 className="font-medium" id="session-security-title">Đăng xuất trên mọi thiết bị</h2>
@@ -91,7 +95,7 @@ export function SessionSecurityPanel({
       {confirming ? (
         <div aria-labelledby="session-revoke-confirmation-title" className="mt-4 flex flex-col gap-3" role="group">
           <Alert className="border-warning/30 bg-surface-subtle text-warning" role="note">
-            <IconAlertCircle size={18} stroke={1.75} />
+            <IconAlertCircle size={18} strokeWidth={1.75} />
             <AlertTitle id="session-revoke-confirmation-title">Đăng xuất khỏi tất cả thiết bị?</AlertTitle>
             <AlertDescription>
               Bạn cần đăng nhập lại để tiếp tục làm việc. Bản nháp chỉ lưu trong trình duyệt này sẽ bị xóa.
@@ -107,14 +111,14 @@ export function SessionSecurityPanel({
               Hủy
             </Button>
             <Button disabled={pending} onClick={() => void revoke()} ref={confirmButtonRef} type="button" variant="destructive">
-              <IconLogout data-icon="inline-start" stroke={1.75} />
+              <IconLogout data-icon="inline-start" strokeWidth={1.75} />
               {pending ? "Đang đăng xuất..." : "Xác nhận đăng xuất"}
             </Button>
           </div>
         </div>
       ) : (
         <Button className="mt-4" onClick={() => setConfirming(true)} ref={triggerRef} type="button" variant="outline">
-          <IconLogout data-icon="inline-start" stroke={1.75} />
+          <IconLogout data-icon="inline-start" strokeWidth={1.75} />
           Đăng xuất trên mọi thiết bị
         </Button>
       )}

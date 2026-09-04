@@ -57,7 +57,7 @@ describe("mandatory password-change session gate", () => {
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Phiên đăng nhập đã hết hạn");
     expect(alert).not.toHaveTextContent("request-session");
-    expect(alert).toHaveFocus();
+    await waitFor(() => expect(alert).toHaveFocus());
     expect(screen.getByRole("link", { name: "Đăng nhập lại" })).toHaveAttribute("href", "/login");
   });
 });

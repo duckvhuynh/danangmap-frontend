@@ -34,6 +34,17 @@ async function expectMapReady(page: Page, accessibleName: string | RegExp) {
   await expect(page.getByRole("alert").filter({ hasText: /(?:Không|Chưa) tải được bản đồ/u })).not.toBeAttached();
 }
 
+async function expectCanvasFillsMap(page: Page, accessibleName: string | RegExp) {
+  const map = page.getByLabel(accessibleName);
+  await expect.poll(() => map.evaluate((element) => {
+    const canvas = element.querySelector<HTMLCanvasElement>("canvas.mapboxgl-canvas");
+    if (!canvas) return false;
+    const container = element.getBoundingClientRect();
+    const rendered = canvas.getBoundingClientRect();
+    return Math.abs(rendered.width - container.width) <= 1 && Math.abs(rendered.height - container.height) <= 1;
+  })).toBe(true);
+}
+
 test("live Street and Light render across the approved public and admin target surfaces", async ({ page }) => {
   const styles = observeStyles(page);
 
@@ -68,9 +79,16 @@ test("live Street and Light render across the approved public and admin target s
   await page.goto("/admin/layers/wards/edit");
   await expect(page.getByRole("heading", { name: "Ranh giới phường, xã" })).toBeVisible();
   await expectMapReady(page, "Bản đồ biên tập");
-  await expect(page.getByText("Bán kính tính bằng mét")).toBeVisible();
+  await expectCanvasFillsMap(page, "Bản đồ biên tập");
+  await expect(page.getByText("Bán kính được tính bằng mét")).toBeVisible();
   await page.getByRole("button", { name: "Vẽ vùng" }).click();
   await expect(page.getByRole("button", { name: "Vẽ vùng" })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Mở danh sách đối tượng" }).click();
+  await expect(page.getByRole("complementary", { name: "Danh sách đối tượng" })).toBeVisible();
+  await expectCanvasFillsMap(page, "Bản đồ biên tập");
+  await page.getByRole("button", { name: "Bảng dữ liệu" }).click();
+  await expect(page.getByRole("region", { name: "Bảng dữ liệu đối tượng" })).toBeVisible();
+  await expectCanvasFillsMap(page, "Bản đồ biên tập");
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(() => window.sessionStorage.setItem("danangmap-demo-role", "reviewer"));

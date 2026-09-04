@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
-import { IconBuildingCommunity, IconLoader2, IconMapPin, IconSearch, IconX } from "@tabler/icons-react";
+import {
+  Landmark as IconBuildingCommunity,
+  LoaderCircle as IconLoader2,
+  MapPin as IconMapPin,
+  Search as IconSearch,
+  X as IconX,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { searchPublicMap, type PublicSearchResponse, type PublicSearchResult } from "@/lib/api/public-search";
 import { groupPublicSearchResults, nextActiveSearchIndex } from "@/lib/search/public-search-state";
@@ -95,7 +101,7 @@ export function PublicSearchCombobox({ onSelect, search = searchPublicMap, debou
   let optionIndex = -1;
   return (
     <div className="relative w-full" role="search">
-      <IconSearch className="pointer-events-none absolute left-4 top-6 z-10 -translate-y-1/2 text-muted-foreground" size={21} stroke={1.75} />
+      <IconSearch className="pointer-events-none absolute left-4 top-6 z-10 -translate-y-1/2 text-muted-foreground" size={21} strokeWidth={1.75} />
       <Input
         ref={inputRef}
         value={query}
@@ -124,7 +130,7 @@ export function PublicSearchCombobox({ onSelect, search = searchPublicMap, debou
         onKeyDown={handleKeyDown}
       />
       {status === "loading" ? <IconLoader2 className="pointer-events-none absolute right-4 top-6 z-10 -translate-y-1/2 animate-spin text-primary" size={19} aria-hidden="true" /> : query ? (
-        <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={clear} className="absolute right-1.5 top-1.5 z-10 grid size-9 place-items-center rounded-control text-muted-foreground hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="Xóa tìm kiếm"><IconX size={19} stroke={1.75} /></button>
+        <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={clear} className="absolute right-1.5 top-1.5 z-10 grid size-9 place-items-center rounded-control text-muted-foreground hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="Xóa tìm kiếm"><IconX size={19} strokeWidth={1.75} /></button>
       ) : null}
 
       {popupVisible && (
@@ -156,7 +162,7 @@ export function PublicSearchCombobox({ onSelect, search = searchPublicMap, debou
                     onMouseEnter={() => setActiveIndex(currentIndex)}
                     onClick={() => choose(result)}
                   >
-                    <span className={cn("grid size-9 shrink-0 place-items-center rounded-full", result.source === "internal" ? "bg-accent-subtle text-primary" : "bg-surface-subtle text-foreground")} aria-hidden="true"><Icon size={19} stroke={1.75} /></span>
+                    <span className={cn("grid size-9 shrink-0 place-items-center rounded-full", result.source === "internal" ? "bg-accent-subtle text-primary" : "bg-surface-subtle text-foreground")} aria-hidden="true"><Icon size={19} strokeWidth={1.75} /></span>
                     <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{result.title}</span>{result.subtitle && <span className="mt-0.5 block truncate text-xs text-muted-foreground">{result.subtitle}</span>}</span>
                   </div>
                 );

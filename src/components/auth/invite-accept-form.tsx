@@ -3,15 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  IconAlertCircle,
-  IconArrowRight,
-  IconCheck,
-  IconClock,
-  IconKey,
-  IconMail,
-  IconShieldCheck,
-  IconUserShield,
-} from "@tabler/icons-react";
+  CircleAlert as IconAlertCircle,
+  ArrowRight as IconArrowRight,
+  Check as IconCheck,
+  Clock as IconClock,
+  KeyRound as IconKey,
+  Mail as IconMail,
+  ShieldCheck as IconShieldCheck,
+  ShieldUser as IconUserShield,
+} from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -69,7 +69,7 @@ function InviteAlert({
       tabIndex={-1}
       variant="destructive"
     >
-      <IconAlertCircle size={18} stroke={1.75} />
+      <IconAlertCircle size={18} strokeWidth={1.75} />
       <AlertTitle>{title}</AlertTitle>
       <AlertDescription>{message}</AlertDescription>
     </Alert>
@@ -190,7 +190,7 @@ export function InviteAcceptForm() {
   if (stage.name === "accepted") {
     return (
       <Alert className="mt-6 border-success/30 bg-surface-subtle text-success" role="status">
-        <IconCheck size={18} stroke={1.75} />
+        <IconCheck size={18} strokeWidth={1.75} />
         <AlertTitle>Tài khoản đã được tạo</AlertTitle>
         <AlertDescription>
           {stage.mfaRequired
@@ -205,7 +205,7 @@ export function InviteAcceptForm() {
     return (
       <div className="mt-6 flex flex-col gap-4">
         <Alert aria-live="assertive" className="border-warning/30 bg-surface-subtle text-warning">
-          <IconAlertCircle size={18} stroke={1.75} />
+          <IconAlertCircle size={18} strokeWidth={1.75} />
           <AlertTitle>Trạng thái kích hoạt chưa xác định</AlertTitle>
           <AlertDescription>
             {stage.message} Hãy đăng nhập lại để hệ thống áp dụng đúng chính sách xác thực hiện tại.
@@ -213,7 +213,7 @@ export function InviteAcceptForm() {
         </Alert>
         <Button onClick={() => router.replace("/login")} type="button">
           Đi đến đăng nhập
-          <IconArrowRight data-icon="inline-end" stroke={1.75} />
+          <IconArrowRight data-icon="inline-end" strokeWidth={1.75} />
         </Button>
       </div>
     );
@@ -245,7 +245,7 @@ export function InviteAcceptForm() {
         </Field>
         {error && <InviteAlert errorRef={errorRef} id="invite-error" message={error} />}
         <Button disabled={pending === "inspect"} type="submit">
-          <IconMail data-icon="inline-start" stroke={1.75} />
+          <IconMail data-icon="inline-start" strokeWidth={1.75} />
           {pending === "inspect" ? "Đang kiểm tra..." : "Kiểm tra lời mời"}
         </Button>
       </form>
@@ -278,22 +278,22 @@ export function InviteAcceptForm() {
         </div>
         <dl className="mt-4 grid gap-3 text-sm">
           <div className="flex items-start gap-3">
-            <IconMail className="mt-0.5 shrink-0 text-muted-foreground" size={18} stroke={1.75} />
+            <IconMail className="mt-0.5 shrink-0 text-muted-foreground" size={18} strokeWidth={1.75} />
             <div><dt className="text-muted-foreground">Email</dt><dd className="mt-0.5 font-medium">{stage.inspection.maskedEmail}</dd></div>
           </div>
           <div className="flex items-start gap-3">
-            <IconUserShield className="mt-0.5 shrink-0 text-muted-foreground" size={18} stroke={1.75} />
+            <IconUserShield className="mt-0.5 shrink-0 text-muted-foreground" size={18} strokeWidth={1.75} />
             <div><dt className="text-muted-foreground">Vai trò</dt><dd className="mt-0.5 font-medium">{roleLabels[stage.inspection.role]}</dd></div>
           </div>
           <div className="flex items-start gap-3">
-            <IconClock className="mt-0.5 shrink-0 text-muted-foreground" size={18} stroke={1.75} />
+            <IconClock className="mt-0.5 shrink-0 text-muted-foreground" size={18} strokeWidth={1.75} />
             <div><dt className="text-muted-foreground">Hết hạn</dt><dd className="mt-0.5 font-medium">{formatExpiry(stage.inspection.expiresAt)}</dd></div>
           </div>
         </dl>
       </section>
 
       <Alert className="border-primary/20 bg-accent-subtle text-foreground" role="note">
-        <IconShieldCheck className="text-primary" size={18} stroke={1.75} />
+        <IconShieldCheck className="text-primary" size={18} strokeWidth={1.75} />
         <AlertTitle>{stage.inspection.requiresMfaEnrollment ? "Thiết lập xác thực hai bước" : "Xác thực bằng mật khẩu"}</AlertTitle>
         <AlertDescription>
           {stage.inspection.requiresMfaEnrollment
@@ -340,7 +340,7 @@ export function InviteAcceptForm() {
         </FieldGroup>
         {error && <InviteAlert errorRef={errorRef} id="invite-error" message={error} />}
         <Button disabled={pending === "accept"} type="submit">
-          <IconKey data-icon="inline-start" stroke={1.75} />
+          <IconKey data-icon="inline-start" strokeWidth={1.75} />
           {pending === "accept" ? "Đang tạo tài khoản..." : "Tạo mật khẩu và tiếp tục"}
         </Button>
       </form>

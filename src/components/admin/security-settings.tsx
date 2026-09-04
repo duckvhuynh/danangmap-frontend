@@ -1,6 +1,6 @@
 "use client";
 
-import { IconShieldLock } from "@tabler/icons-react";
+import { Shield as IconShieldLock } from "lucide-react";
 import { useAdminSession } from "@/components/admin/admin-session";
 import { RecoveryCodesPanel } from "@/components/admin/recovery-codes-panel";
 import { SessionSecurityPanel } from "@/components/admin/session-security-panel";
@@ -14,7 +14,7 @@ export function SecuritySettings() {
     <>
       <section className="flex flex-wrap items-center gap-4 rounded-panel border bg-surface p-5">
         <span className="grid size-11 shrink-0 place-items-center rounded-control bg-accent-subtle text-primary">
-          <IconShieldLock stroke={1.75} />
+          <IconShieldLock strokeWidth={1.75} />
         </span>
         <div className="min-w-0 flex-1">
           <h2 className="font-medium">Xác thực hai bước</h2>

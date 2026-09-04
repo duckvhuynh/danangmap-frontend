@@ -1,4 +1,5 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
+import type { AdminUser } from "@/lib/api/users";
 
 const corsHeaders = {
   "access-control-allow-origin": "http://127.0.0.1:3100",
@@ -8,7 +9,7 @@ const corsHeaders = {
   "content-type": "application/json",
 };
 
-const initialUser = {
+const initialUser: AdminUser = {
   id: "11111111-1111-4111-8111-111111111111",
   email: "editor@danang.gov.vn",
   username: "editor01",
@@ -17,6 +18,19 @@ const initialUser = {
   status: "active",
   mfaEnabled: true,
   mustChangePassword: false,
+  disabledAt: null,
+  lockedUntil: null,
+  lockVersion: 1,
+  etag: '"user-v1"',
+  createdAt: "2026-08-24T00:00:00.000Z",
+  updatedAt: "2026-08-24T00:00:00.000Z",
+  security: {
+    activeSessionCount: 1,
+    latestSessionCreatedAt: "2026-08-24T00:00:00.000Z",
+    recoveryCodesRemaining: 8,
+    pendingInviteCount: 0,
+    pendingPasswordReset: false,
+  },
 };
 
 function envelope(data: unknown, meta: Record<string, unknown> = { requestId: "e2e-request" }) {
@@ -39,7 +53,7 @@ test("System Admin creates a manual account and refreshes the real list", async 
   const users = [initialUser];
   let createRequest: { body: Record<string, unknown>; csrf: string | undefined; operationKey: string | undefined } | null = null;
 
-  await page.route("http://localhost:4000/api/v1/admin/users", async (route) => {
+  await page.route("**/api/v1/admin/users**", async (route) => {
     if (await preflight(route)) return;
     const request = route.request();
     if (request.method() === "GET") {
@@ -47,15 +61,28 @@ test("System Admin creates a manual account and refreshes the real list", async 
       return;
     }
     createRequest = { body: request.postDataJSON(), csrf: request.headers()["x-csrf-token"], operationKey: request.headers()["idempotency-key"] };
-    const created = {
+    const created: AdminUser = {
       id: "22222222-2222-4222-8222-222222222222",
       email: String(createRequest.body.email),
       username: String(createRequest.body.username),
       displayName: String(createRequest.body.displayName),
-      role: String(createRequest.body.role),
+      role: createRequest.body.role as AdminUser["role"],
       status: "active",
       mfaEnabled: false,
       mustChangePassword: true,
+      disabledAt: null,
+      lockedUntil: null,
+      lockVersion: 1,
+      etag: '"user-v1"',
+      createdAt: "2026-09-04T00:00:00.000Z",
+      updatedAt: "2026-09-04T00:00:00.000Z",
+      security: {
+        activeSessionCount: 0,
+        latestSessionCreatedAt: null,
+        recoveryCodesRemaining: 0,
+        pendingInviteCount: 0,
+        pendingPasswordReset: false,
+      },
     };
     users.push(created);
     await route.fulfill({ status: 201, headers: corsHeaders, body: envelope(created) });
@@ -87,11 +114,11 @@ test("System Admin invite uses the dedicated route and explains a 409 conflict",
   await installSystemAdmin(page);
   let operationKey = "";
 
-  await page.route("http://localhost:4000/api/v1/admin/users", async (route) => {
+  await page.route("**/api/v1/admin/users**", async (route) => {
     if (await preflight(route)) return;
     await route.fulfill({ status: 200, headers: corsHeaders, body: envelope([initialUser], { requestId: "e2e-list", nextCursor: null, hasMore: false, limit: 50 }) });
   });
-  await page.route("http://localhost:4000/api/v1/admin/invites", async (route) => {
+  await page.route("**/api/v1/admin/invites**", async (route) => {
     if (await preflight(route)) return;
     operationKey = route.request().headers()["idempotency-key"] ?? "";
     await route.fulfill({ status: 409, headers: corsHeaders, body: JSON.stringify({ status: 409, code: "EMAIL_EXISTS", message: "Email đã có tài khoản.", requestId: "e2e-conflict" }) });
@@ -115,7 +142,7 @@ test("System Admin invite uses the dedicated route and explains a 409 conflict",
 test("mobile System Admin can inspect users but cannot author accounts", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name.includes("desktop"), "Mobile capability gate");
   await installSystemAdmin(page);
-  await page.route("http://localhost:4000/api/v1/admin/users", async (route) => {
+  await page.route("**/api/v1/admin/users**", async (route) => {
     if (await preflight(route)) return;
     await route.fulfill({ status: 200, headers: corsHeaders, body: envelope([initialUser], { requestId: "e2e-list", nextCursor: null, hasMore: false, limit: 50 }) });
   });
@@ -130,7 +157,7 @@ test("mobile System Admin can inspect users but cannot author accounts", async (
 test("a direct non-System Admin visit is denied without loading users", async ({ page }) => {
   let userRequests = 0;
   await page.addInitScript(() => window.sessionStorage.setItem("danangmap-demo-role", "reviewer"));
-  await page.route("http://localhost:4000/api/v1/admin/users", async (route) => {
+  await page.route("**/api/v1/admin/users**", async (route) => {
     userRequests += 1;
     await route.abort();
   });

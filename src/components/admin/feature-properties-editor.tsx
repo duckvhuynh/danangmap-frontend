@@ -2,24 +2,24 @@
 
 import { useMemo, useState } from "react";
 import {
-  IconAddressBook,
-  IconCalendar,
-  IconCheck,
-  IconEye,
-  IconEyeOff,
-  IconFilter,
-  IconLink,
-  IconList,
-  IconMail,
-  IconMapPin,
-  IconNumber,
-  IconPaperclip,
-  IconPhone,
-  IconPhoto,
-  IconSearch,
-  IconTextCaption,
-  type Icon,
-} from "@tabler/icons-react";
+  Contact as IconAddressBook,
+  Calendar as IconCalendar,
+  Check as IconCheck,
+  Eye as IconEye,
+  EyeOff as IconEyeOff,
+  Filter as IconFilter,
+  Link as IconLink,
+  List as IconList,
+  Mail as IconMail,
+  MapPin as IconMapPin,
+  Hash as IconNumber,
+  Paperclip as IconPaperclip,
+  Phone as IconPhone,
+  Image as IconPhoto,
+  Search as IconSearch,
+  Type as IconTextCaption,
+  type LucideIcon as Icon,
+} from "lucide-react";
 import type { AdminField } from "@/lib/api/admin";
 import {
   applyFieldDefaults,
@@ -27,6 +27,7 @@ import {
   validateFieldValue,
 } from "@/lib/editor/field-values";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 const fieldIcons: Record<string, Icon> = {
   address: IconMapPin,
@@ -76,6 +77,22 @@ function inputValue(field: AdminField, value: unknown) {
     }
   }
   return String(value);
+}
+
+function fieldPlaceholder(field: AdminField) {
+  const examples: Partial<Record<AdminField["type"], string>> = {
+    text: `Nhập ${field.label.toLocaleLowerCase("vi")}`,
+    long_text: `Nhập nội dung ${field.label.toLocaleLowerCase("vi")}`,
+    number: "Ví dụ: 10.5",
+    integer: "Ví dụ: 10",
+    date: "Chọn ngày",
+    datetime: "Chọn ngày và giờ",
+    url: "Ví dụ: https://danang.gov.vn",
+    email: "Ví dụ: lienhe@danang.gov.vn",
+    phone: "Ví dụ: 0236 123 4567",
+    address: "Ví dụ: 24 Trần Phú, Hải Châu, Đà Nẵng",
+  };
+  return examples[field.type] ?? `Nhập ${field.label.toLocaleLowerCase("vi")}`;
 }
 
 export function FeaturePropertiesEditor({
@@ -143,7 +160,7 @@ export function FeaturePropertiesEditor({
                   aria-hidden="true"
                   className="text-muted-foreground"
                   size={16}
-                  stroke={1.75}
+                  strokeWidth={1.75}
                 />
                 <label htmlFor={inputId} className="text-xs font-medium">
                   {field.label}
@@ -151,9 +168,10 @@ export function FeaturePropertiesEditor({
                 </label>
               </div>
               {field.type === "long_text" ? (
-                <textarea
+                <Textarea
                   id={inputId}
                   value={String(value ?? "")}
+                  placeholder={fieldPlaceholder(field)}
                   onChange={(event) =>
                     setDraft((current) => ({
                       ...current,
@@ -161,7 +179,7 @@ export function FeaturePropertiesEditor({
                     }))
                   }
                   onBlur={(event) => commit(field, event.target.value)}
-                  className="min-h-20 w-full resize-y rounded-control border bg-surface p-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
+                  className="min-h-20 resize-y"
                   aria-invalid={errors.length > 0}
                   aria-describedby={`${inputId}-meta`}
                 />
@@ -257,6 +275,7 @@ export function FeaturePropertiesEditor({
                   minLength={field.validation?.minLength}
                   maxLength={field.validation?.maxLength}
                   value={String(value ?? "")}
+                  placeholder={fieldPlaceholder(field)}
                   onChange={(event) =>
                     setDraft((current) => ({
                       ...current,

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { IconArrowRight } from "@tabler/icons-react";
+import { ArrowRight as IconArrowRight } from "lucide-react";
 import { AdminErrorNotice } from "@/components/admin/admin-session";
 import { RevisionReview } from "@/components/admin/revision-review";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -26,11 +26,11 @@ export function LegacyReviewRedirect({ revisionId }: { revisionId: string }) {
   }, [reloadVersion, revisionId, router]);
 
   if (process.env.NEXT_PUBLIC_DANANGMAP_DEMO_MODE === "true") return <RevisionReview revisionId={revisionId}/>;
-  if (error) return <main className="mx-auto max-w-2xl p-4 sm:p-6"><AdminErrorNotice error={error} onRetry={() => { setError(null); setReloadVersion((value) => value + 1); }}/></main>;
+  if (error) return <main className="mx-auto max-w-2xl p-4 pb-24 sm:p-6 md:pb-6"><AdminErrorNotice error={error} onRetry={() => { setError(null); setReloadVersion((value) => value + 1); }}/></main>;
 
-  return <main className="mx-auto max-w-2xl p-4 sm:p-6">
+  return <main className="mx-auto max-w-2xl p-4 pb-24 sm:p-6 md:pb-6">
     <Alert>
-      <IconArrowRight stroke={1.75}/>
+      <IconArrowRight strokeWidth={1.75}/>
       <AlertTitle>Đang mở route review chuẩn</AlertTitle>
       <AlertDescription>Hệ thống đang xác minh revision và layer trước khi chuyển hướng.</AlertDescription>
     </Alert>

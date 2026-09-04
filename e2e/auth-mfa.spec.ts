@@ -24,6 +24,17 @@ async function mockAuth(page: Page, enrollmentRequired: boolean) {
       return;
     }
     const path = new URL(request.url()).pathname;
+    if (path.endsWith("/auth/bootstrap/status")) {
+      await route.fulfill({
+        status: 200,
+        headers: { ...cors, "cache-control": "no-store" },
+        body: JSON.stringify({
+          data: { enabled: false, reason: "already_initialized" },
+          meta: { requestId: "bootstrap-status" },
+        }),
+      });
+      return;
+    }
     if (path.endsWith("/auth/csrf")) {
       const csrfToken = csrfTokens[csrfState];
       csrfReads.push(csrfToken);

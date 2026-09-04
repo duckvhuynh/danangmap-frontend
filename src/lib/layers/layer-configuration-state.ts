@@ -316,6 +316,16 @@ export function reconcilePublicProjection(draft: LayerConfigurationDraft): Layer
   };
 }
 
+export function slugifyLayerTitle(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/gu, "")
+    .toLocaleLowerCase("vi")
+    .replace(/đ/gu, "d")
+    .replace(/[^a-z0-9]+/gu, "-")
+    .replace(/^-+|-+$/gu, "");
+}
+
 export function validateLayerConfiguration(draft: LayerConfigurationDraft): LayerConfigurationErrors {
   const errors: LayerConfigurationErrors = {};
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(draft.slug)) errors.slug = "Mã lớp dùng chữ thường, số và dấu gạch ngang.";

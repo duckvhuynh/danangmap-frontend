@@ -269,7 +269,7 @@ test("revoke-all clears the current principal recovery and routes to login once"
   });
 
   await page.goto("/admin/settings");
-  await expect(page.getByRole("heading", { name: "Cài đặt" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Bảo mật tài khoản" })).toBeVisible();
   await page.getByRole("button", { name: "Đăng xuất trên mọi thiết bị" }).click();
   await expect(page.getByRole("note")).toContainText("Bản nháp chỉ lưu trong trình duyệt này sẽ bị xóa");
   await expect(page.getByRole("note")).toContainText("Hãy lưu các thay đổi lên hệ thống trước khi tiếp tục");

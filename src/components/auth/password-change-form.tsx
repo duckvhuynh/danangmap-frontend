@@ -2,7 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { IconAlertCircle, IconKey } from "@tabler/icons-react";
+import {
+  CircleAlert as IconAlertCircle,
+  KeyRound as IconKey,
+} from "lucide-react";
 import { SecurityError, SecuritySuccess } from "@/components/auth/security-feedback";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -138,7 +141,7 @@ export function PasswordChangeForm({
     return (
       <div className="mt-7 flex flex-col gap-4">
         <Alert aria-live="assertive" className="border-warning/30 bg-surface-subtle text-warning">
-          <IconAlertCircle size={18} stroke={1.75} />
+          <IconAlertCircle size={18} strokeWidth={1.75} />
           <AlertTitle>Trạng thái đổi mật khẩu chưa xác định</AlertTitle>
           <AlertDescription>
             Máy chủ có thể đã đổi mật khẩu và thu hồi phiên cũ. DanangMap không tự gửi lại yêu cầu;
@@ -210,7 +213,7 @@ export function PasswordChangeForm({
       </FieldGroup>
       {error && <SecurityError errorRef={errorRef} id="password-change-error" message={error} />}
       <Button disabled={pending} type="submit">
-        <IconKey data-icon="inline-start" stroke={1.75} />
+        <IconKey data-icon="inline-start" strokeWidth={1.75} />
         {pending ? "Đang đổi mật khẩu..." : "Đổi mật khẩu và tiếp tục"}
       </Button>
     </form>

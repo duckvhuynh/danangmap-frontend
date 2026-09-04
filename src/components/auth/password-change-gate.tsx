@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { IconAlertCircle } from "@tabler/icons-react";
+import { CircleAlert as IconAlertCircle } from "lucide-react";
 import { PasswordChangeForm } from "@/components/auth/password-change-form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -46,7 +46,7 @@ export function PasswordChangeGate() {
     return (
       <div className="mt-7 flex flex-col gap-3">
         <Alert className="border-destructive/25 bg-red-50 text-destructive" ref={errorRef} tabIndex={-1} variant="destructive">
-          <IconAlertCircle size={18} stroke={1.75} />
+          <IconAlertCircle size={18} strokeWidth={1.75} />
           <AlertTitle>Không thể xác minh phiên đăng nhập</AlertTitle>
           <AlertDescription>
             {accountSecurityErrorMessage(state.error, "change")}

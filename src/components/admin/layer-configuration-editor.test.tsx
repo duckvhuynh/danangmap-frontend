@@ -119,6 +119,35 @@ afterEach(() => {
 });
 
 describe("layer configuration editor", () => {
+  it("generates the layer code from a Vietnamese name until it is edited manually", () => {
+    renderEditor({});
+
+    const title = screen.getByLabelText("Tên lớp");
+    const slug = screen.getByLabelText("Mã lớp");
+    expect(
+      title.compareDocumentPosition(slug) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).not.toBe(0);
+    expect(title).toHaveAttribute(
+      "placeholder",
+      "Ví dụ: Nhà vệ sinh công cộng",
+    );
+    expect(slug).toHaveAttribute(
+      "placeholder",
+      "Ví dụ: nha-ve-sinh-cong-cong",
+    );
+
+    fireEvent.change(title, {
+      target: { value: "Nhà vệ sinh công cộng" },
+    });
+    expect(slug).toHaveValue("nha-ve-sinh-cong-cong");
+
+    fireEvent.change(slug, { target: { value: "nha-ve-sinh-bien" } });
+    fireEvent.change(title, {
+      target: { value: "Nhà vệ sinh công cộng ven biển" },
+    });
+    expect(slug).toHaveValue("nha-ve-sinh-bien");
+  });
+
   it("uses readable configuration labels and lets users choose icons by meaning", () => {
     renderEditor({});
     expect(screen.getByText("Bản nháp")).toBeInTheDocument();
@@ -311,7 +340,7 @@ describe("layer configuration editor", () => {
 
     fireEvent.click(screen.getByLabelText("Nhóm lớp"));
     fireEvent.click(await screen.findByRole("option", { name: "Hành chính" }));
-    fireEvent.click(screen.getByRole("button", { name: "Lưu sắp xếp lớp" }));
+    fireEvent.click(screen.getByRole("button", { name: "Lưu thông tin chung" }));
 
     await waitFor(() => expect(updateCatalog).toHaveBeenCalledTimes(1));
     expect(updateCatalog.mock.calls[0]![1]).toMatchObject({
@@ -373,7 +402,7 @@ describe("layer configuration editor", () => {
       );
     renderEdit({ updateCatalog }, "draft", onReload);
     fireEvent.click(screen.getByLabelText("Bật lớp mặc định khi mở bản đồ"));
-    fireEvent.click(screen.getByRole("button", { name: "Lưu sắp xếp lớp" }));
+    fireEvent.click(screen.getByRole("button", { name: "Lưu thông tin chung" }));
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("request-stale");
@@ -463,6 +492,6 @@ describe("layer configuration editor", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Lưu trữ lớp" }));
     await waitFor(() => expect(archive).toHaveBeenCalledTimes(1));
-    expect(screen.getByRole("button", { name: "Lưu sắp xếp lớp" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Lưu thông tin chung" })).toBeEnabled();
   });
 });

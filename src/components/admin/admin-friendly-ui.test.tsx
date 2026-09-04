@@ -60,11 +60,11 @@ describe("friendly admin navigation and dashboard", () => {
   it("exposes all admin destinations and logout through the mobile menu", async () => {
     render(<AdminShell><p>Nội dung</p></AdminShell>);
     const mobile = screen.getByRole("navigation", { name: "Quản trị trên di động" });
-    expect(within(mobile).getByRole("link", { name: "Bảo mật" })).toHaveAttribute("href", "/admin/settings");
-    fireEvent.click(within(mobile).getByRole("button", { name: "Menu" }));
+    expect(within(mobile).getByRole("link", { name: "Bảo mật tài khoản" })).toHaveAttribute("href", "/admin/settings");
+    fireEvent.click(within(mobile).getByRole("button", { name: "Thêm" }));
     const menu = screen.getByRole("dialog", { name: "Menu quản trị" });
-    expect(within(menu).getByRole("link", { name: "Nhật ký" })).toHaveAttribute("href", "/admin/audit");
-    expect(within(menu).getByRole("link", { name: "Người dùng" })).toBeInTheDocument();
+    expect(within(menu).getByRole("link", { name: "Nhật ký hoạt động" })).toHaveAttribute("href", "/admin/audit");
+    expect(within(menu).getByRole("link", { name: "Tài khoản" })).toBeInTheDocument();
     expect(within(menu).getByText("Quản trị hệ thống")).toBeInTheDocument();
     expect(within(menu).queryByText("system_admin")).not.toBeInTheDocument();
     fireEvent.click(within(menu).getByRole("button", { name: "Đăng xuất" }));
@@ -83,10 +83,10 @@ describe("friendly admin navigation and dashboard", () => {
   it("does not offer system-only navigation to editors", () => {
     vi.mocked(useAdminSession).mockReturnValue({ principal: { ...principal, role: "editor" }, csrfToken: "csrf", refreshCsrf: vi.fn(), clearClientPrincipal: vi.fn() });
     render(<AdminShell><p>Nội dung</p></AdminShell>);
-    fireEvent.click(screen.getByRole("button", { name: "Menu" }));
+    fireEvent.click(screen.getByRole("button", { name: "Thêm" }));
     const menu = screen.getByRole("dialog");
     expect(within(menu).queryByRole("link", { name: "Nhật ký" })).not.toBeInTheDocument();
-    expect(within(menu).queryByRole("link", { name: "Người dùng" })).not.toBeInTheDocument();
+    expect(within(menu).queryByRole("link", { name: "Tài khoản" })).not.toBeInTheDocument();
   });
 });
 

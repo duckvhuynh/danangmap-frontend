@@ -10,21 +10,21 @@ import {
   useSyncExternalStore,
 } from "react";
 import {
-  IconArrowLeft,
-  IconCalendar,
-  IconCheck,
-  IconChevronRight,
-  IconCircleCheck,
-  IconClock,
-  IconCloudUpload,
-  IconFileDescription,
-  IconInfoCircle,
-  IconMessage,
-  IconPolygon,
-  IconRefresh,
-  IconUser,
-  IconX,
-} from "@tabler/icons-react";
+  ArrowLeft as IconArrowLeft,
+  Calendar as IconCalendar,
+  Check as IconCheck,
+  ChevronRight as IconChevronRight,
+  CircleCheck as IconCircleCheck,
+  Clock as IconClock,
+  CloudUpload as IconCloudUpload,
+  FileText as IconFileDescription,
+  Info as IconInfoCircle,
+  MessageSquare as IconMessage,
+  Pentagon as IconPolygon,
+  RefreshCw as IconRefresh,
+  User as IconUser,
+  X as IconX,
+} from "lucide-react";
 import {
   AdminErrorNotice,
   useAdminSession,
@@ -41,6 +41,7 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
+import { Textarea } from "@/components/ui/textarea";
 import {
   getDesktopAuthoringCapability,
   getServerDesktopAuthoringCapability,
@@ -722,7 +723,7 @@ function RevisionReviewSession({
             href={`/admin/layers/${resolvedLayerId}/history`}
             aria-label="Quay lại lịch sử lớp"
           >
-            <IconArrowLeft stroke={1.75} />
+            <IconArrowLeft strokeWidth={1.75} />
           </Link>
         </Button>
         <div className="min-w-0 flex-1">
@@ -734,7 +735,7 @@ function RevisionReviewSession({
             <IconFileDescription
               className="md:hidden"
               size={14}
-              stroke={1.75}
+              strokeWidth={1.75}
             />
             <span className="md:hidden">Bản #{bundle.revision.revisionNo}</span>
             <span className="hidden md:inline">
@@ -743,7 +744,7 @@ function RevisionReviewSession({
           </p>
         </div>
         <Badge className={cn("md:hidden", status.className)}>
-          <IconClock stroke={1.75} />
+          <IconClock strokeWidth={1.75} />
           {status.label}
         </Badge>
         <Badge className="hidden md:inline-flex">
@@ -851,7 +852,7 @@ function RevisionReviewSession({
                 aria-label={`Xem phiên bản có ${bundle.workspace.featureCount} đối tượng`}
               >
                 <span className="grid size-10 shrink-0 place-items-center rounded-control bg-accent-subtle text-primary">
-                  <IconPolygon size={21} stroke={1.75} />
+                  <IconPolygon size={21} strokeWidth={1.75} />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-semibold">
@@ -864,13 +865,13 @@ function RevisionReviewSession({
                 <IconChevronRight
                   className="text-muted-foreground"
                   size={20}
-                  stroke={1.75}
+                  strokeWidth={1.75}
                 />
               </button>
               <dl className="mt-2 grid grid-cols-2 border-y py-2 text-xs">
                 <div className="flex min-w-0 items-center gap-2 border-r pr-2">
                   <span className="grid size-9 shrink-0 place-items-center rounded-control bg-emerald-50 text-success">
-                    <IconUser size={19} stroke={1.75} />
+                    <IconUser size={19} strokeWidth={1.75} />
                   </span>
                   <div className="min-w-0">
                     <dt className="text-muted-foreground">Tác giả</dt>
@@ -881,7 +882,7 @@ function RevisionReviewSession({
                 </div>
                 <div className="flex min-w-0 items-center gap-2 pl-2">
                   <span className="grid size-9 shrink-0 place-items-center rounded-control bg-surface-subtle text-muted-foreground">
-                    <IconCalendar size={19} stroke={1.75} />
+                    <IconCalendar size={19} strokeWidth={1.75} />
                   </span>
                   <div className="min-w-0">
                     <dt className="text-muted-foreground">Cập nhật</dt>
@@ -908,7 +909,7 @@ function RevisionReviewSession({
                       : "bg-accent-subtle text-primary",
                   )}
                 >
-                  <IconCircleCheck size={21} stroke={1.75} />
+                  <IconCircleCheck size={21} strokeWidth={1.75} />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-medium">
@@ -928,7 +929,7 @@ function RevisionReviewSession({
                 <IconChevronRight
                   className="text-muted-foreground"
                   size={20}
-                  stroke={1.75}
+                  strokeWidth={1.75}
                 />
               </button>
             </div>
@@ -947,7 +948,7 @@ function RevisionReviewSession({
               <IconInfoCircle
                 className="mt-0.5 shrink-0 text-primary"
                 size={18}
-                stroke={1.75}
+                strokeWidth={1.75}
               />
               <p>
                 Bản xem trên di động chỉ hỗ trợ xem và duyệt. Chỉnh sửa dữ liệu
@@ -976,7 +977,7 @@ function RevisionReviewSession({
           >
             <div className="flex items-center gap-3">
               <span className="grid size-10 place-items-center rounded-control bg-accent-subtle text-primary">
-                <IconPolygon stroke={1.75} />
+                <IconPolygon strokeWidth={1.75} />
               </span>
               <div>
                 <h2 id="workspace-title" className="text-sm font-semibold">
@@ -1029,7 +1030,7 @@ function RevisionReviewSession({
               )}
               {visibleSuccess && (
                 <Alert role="status" aria-atomic="true">
-                  <IconCheck aria-hidden="true" stroke={1.75} />
+                  <IconCheck aria-hidden="true" strokeWidth={1.75} />
                   <AlertTitle>Trạng thái công việc</AlertTitle>
                   <AlertDescription>{visibleSuccess}</AlertDescription>
                 </Alert>
@@ -1038,7 +1039,7 @@ function RevisionReviewSession({
           )}
           {jobRecoveryError !== null && (
             <Alert>
-              <IconRefresh stroke={1.75} />
+              <IconRefresh strokeWidth={1.75} />
               <AlertTitle>Chưa thể khôi phục trạng thái công bố</AlertTitle>
               <AlertDescription>
                 <p>
@@ -1053,7 +1054,7 @@ function RevisionReviewSession({
                     void load();
                   }}
                 >
-                  <IconRefresh data-icon="inline-start" stroke={1.75} />
+                  <IconRefresh data-icon="inline-start" strokeWidth={1.75} />
                   Thử kết nối lại
                 </Button>
               </AlertDescription>
@@ -1074,9 +1075,9 @@ function RevisionReviewSession({
                 <FieldLabel htmlFor="review-comment">
                   Ý kiến kiểm duyệt
                 </FieldLabel>
-                <textarea
+                <Textarea
                   id="review-comment"
-                  className="min-h-24 w-full scroll-mb-28 resize-y rounded-control border bg-surface p-3 text-sm"
+                  className="min-h-24 scroll-mb-28 resize-y"
                   value={comment}
                   aria-describedby="review-comment-description"
                   onChange={(event) => {
@@ -1101,9 +1102,9 @@ function RevisionReviewSession({
             <section className="rounded-panel border bg-surface p-4">
               <Field>
                 <FieldLabel htmlFor="release-note">Ghi chú công bố</FieldLabel>
-                <textarea
+                <Textarea
                   id="release-note"
-                  className="min-h-24 w-full scroll-mb-28 resize-y rounded-control border bg-surface p-3 text-sm"
+                  className="min-h-24 scroll-mb-28 resize-y"
                   value={releaseNote}
                   aria-describedby="release-note-description"
                   onChange={(event) => {
@@ -1251,7 +1252,7 @@ function RevisionReviewSession({
                   variant="outline"
                   className="h-11 min-h-11 flex-1 text-destructive md:h-10 md:min-h-10"
                 >
-                  <IconX data-icon="inline-start" stroke={1.75} />
+                  <IconX data-icon="inline-start" strokeWidth={1.75} />
                   {busy === "changes" ? (
                     <>
                       <Spinner data-icon="inline-start" />
@@ -1274,7 +1275,7 @@ function RevisionReviewSession({
                   }}
                   className="h-11 min-h-11 flex-1 md:h-10 md:min-h-10"
                 >
-                  <IconCheck data-icon="inline-start" stroke={1.75} />
+                  <IconCheck data-icon="inline-start" strokeWidth={1.75} />
                   {busy === "approve" ? (
                     <>
                       <Spinner data-icon="inline-start" />
@@ -1299,7 +1300,7 @@ function RevisionReviewSession({
                 }}
                 className="flex-1"
               >
-                <IconCloudUpload data-icon="inline-start" stroke={1.75} />
+                <IconCloudUpload data-icon="inline-start" strokeWidth={1.75} />
                 {busy === "publish" ? (
                   <>
                     <Spinner data-icon="inline-start" />

@@ -1,4 +1,4 @@
-import { IconKey } from "@tabler/icons-react";
+import { KeyRound as IconKey } from "lucide-react";
 import { PasswordChangeGate } from "@/components/auth/password-change-gate";
 import { SecurityPageShell } from "@/components/auth/security-page-shell";
 

@@ -3,13 +3,13 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  IconAlertCircle,
-  IconCheck,
-  IconClipboard,
-  IconDownload,
-  IconKey,
-  IconQrcode,
-} from "@tabler/icons-react";
+  CircleAlert as IconAlertCircle,
+  Check as IconCheck,
+  Clipboard as IconClipboard,
+  Download as IconDownload,
+  KeyRound as IconKey,
+  QrCode as IconQrcode,
+} from "lucide-react";
 import { REGEXP_ONLY_DIGITS } from "input-otp";
 import { QRCodeCanvas } from "qrcode.react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -60,7 +60,7 @@ function TotpInput({ value, onChange, disabled, invalid, label }: { value: strin
 function InlineError({ message, errorRef }: { message: string; errorRef: React.RefObject<HTMLDivElement | null> }) {
   return (
     <Alert className="border-destructive/25 bg-red-50 text-destructive" ref={errorRef} tabIndex={-1} variant="destructive">
-      <IconAlertCircle size={18} stroke={1.75} />
+      <IconAlertCircle size={18} strokeWidth={1.75} />
       <AlertTitle>Không thể xác thực</AlertTitle>
       <AlertDescription>{message}</AlertDescription>
     </Alert>
@@ -215,7 +215,7 @@ function EnrollmentFlow() {
     return (
       <div className="mt-6 flex flex-col gap-4">
         <Alert className="border-warning/30 bg-surface-subtle text-warning">
-          <IconAlertCircle size={18} stroke={1.75} />
+          <IconAlertCircle size={18} strokeWidth={1.75} />
           <AlertTitle>Cần đăng nhập lại</AlertTitle>
           <AlertDescription>{stage.message} DanangMap không tự gọi lại enrollment để tránh hiển thị sai secret.</AlertDescription>
         </Alert>
@@ -228,7 +228,7 @@ function EnrollmentFlow() {
     return (
       <div className="mt-6 flex flex-col gap-5">
         <Alert className="border-success/30 bg-surface-subtle text-success">
-          <IconCheck size={18} stroke={1.75} />
+          <IconCheck size={18} strokeWidth={1.75} />
           <AlertTitle>Đã bật xác thực hai bước</AlertTitle>
           <AlertDescription>10 mã dưới đây chỉ hiển thị trong bước này. Mỗi mã dùng được một lần.</AlertDescription>
         </Alert>
@@ -237,8 +237,8 @@ function EnrollmentFlow() {
         </ol>
         {error && <InlineError errorRef={errorRef} message={error} />}
         <div className="grid gap-2 sm:grid-cols-2">
-          <Button onClick={() => void copyText(stage.codes.join("\n"), "codes")} type="button" variant="outline"><IconClipboard stroke={1.75} />{copied === "codes" ? "Đã sao chép" : "Sao chép 10 mã"}</Button>
-          <Button onClick={() => downloadCodes(stage.codes)} type="button" variant="outline"><IconDownload stroke={1.75} />Tải tệp .txt</Button>
+          <Button onClick={() => void copyText(stage.codes.join("\n"), "codes")} type="button" variant="outline"><IconClipboard strokeWidth={1.75} />{copied === "codes" ? "Đã sao chép" : "Sao chép 10 mã"}</Button>
+          <Button onClick={() => downloadCodes(stage.codes)} type="button" variant="outline"><IconDownload strokeWidth={1.75} />Tải tệp .txt</Button>
         </div>
         <Field orientation="horizontal">
           <Checkbox checked={acknowledged} id="codes-saved" onCheckedChange={(checked) => setAcknowledged(checked === true)} />
@@ -260,11 +260,11 @@ function EnrollmentFlow() {
     return (
       <div className="mt-6 flex flex-col gap-4">
         <div className="rounded-control border bg-surface-subtle p-4">
-          <div className="flex items-start gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-map-control bg-accent-subtle text-primary"><IconKey stroke={1.75} /></span><div><h2 className="text-sm font-semibold">Thiết lập ứng dụng xác thực</h2><p className="mt-1 text-sm leading-6 text-muted-foreground">Chuẩn bị ứng dụng TOTP như Microsoft Authenticator, Google Authenticator hoặc ứng dụng tương đương.</p></div></div>
+          <div className="flex items-start gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-map-control bg-accent-subtle text-primary"><IconKey strokeWidth={1.75} /></span><div><h2 className="text-sm font-semibold">Thiết lập ứng dụng xác thực</h2><p className="mt-1 text-sm leading-6 text-muted-foreground">Chuẩn bị ứng dụng TOTP như Microsoft Authenticator, Google Authenticator hoặc ứng dụng tương đương.</p></div></div>
         </div>
         <p className="text-sm leading-6 text-muted-foreground">Mã QR và khóa thủ công chỉ được máy chủ cấp một lần. Nhấn nút khi bạn sẵn sàng quét mã.</p>
         {error && <InlineError errorRef={errorRef} message={error} />}
-        <Button disabled={pending} onClick={() => void start()} type="button"><IconQrcode stroke={1.75} />{pending ? "Đang tạo mã thiết lập..." : "Thiết lập xác thực hai bước"}</Button>
+        <Button disabled={pending} onClick={() => void start()} type="button"><IconQrcode strokeWidth={1.75} />{pending ? "Đang tạo mã thiết lập..." : "Thiết lập xác thực hai bước"}</Button>
       </div>
     );
   }
@@ -282,7 +282,7 @@ function EnrollmentFlow() {
           <FieldLabel>Không quét được mã QR?</FieldLabel>
           <div className="flex items-center gap-2 rounded-control border bg-surface-subtle p-2 pl-3">
             <code className="min-w-0 flex-1 break-all text-sm font-semibold tracking-[0.08em]" data-testid="manual-mfa-secret">{stage.setup.secret}</code>
-            <Button aria-label="Sao chép khóa thiết lập thủ công" onClick={() => void copyText(stage.setup.secret, "secret")} size="icon-sm" type="button" variant="ghost"><IconClipboard stroke={1.75} /></Button>
+            <Button aria-label="Sao chép khóa thiết lập thủ công" onClick={() => void copyText(stage.setup.secret, "secret")} size="icon-sm" type="button" variant="ghost"><IconClipboard strokeWidth={1.75} /></Button>
           </div>
           <FieldDescription>{copied === "secret" ? "Đã sao chép khóa." : `Nhập khóa thủ công trong ứng dụng${stage.setup.issuer ? ` với nhà phát hành ${stage.setup.issuer}` : ""}.`}</FieldDescription>
         </Field>

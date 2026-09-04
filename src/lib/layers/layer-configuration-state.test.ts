@@ -10,9 +10,17 @@ import {
   removeSchemaField,
   replaceSchemaField,
   validateLayerConfiguration,
+  slugifyLayerTitle,
 } from "./layer-configuration-state";
 
 describe("dynamic layer configuration state", () => {
+  it("creates a stable layer code from a Vietnamese title", () => {
+    expect(slugifyLayerTitle("Nhà vệ sinh công cộng")).toBe(
+      "nha-ve-sinh-cong-cong",
+    );
+    expect(slugifyLayerTitle("  Đường & Cầu số 2  ")).toBe("duong-cau-so-2");
+  });
+
   it("normalizes geometry kinds when the mode changes", () => {
     const mixed = changeGeometryMode(createEmptyLayerConfiguration(), "mixed");
     expect(mixed.allowedGeometryKinds).toEqual(["point", "line", "polygon"]);

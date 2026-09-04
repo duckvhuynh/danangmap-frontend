@@ -2,7 +2,7 @@
 
 ## Phạm vi và nguyên tắc
 
-Rà soát trang quản trị hiện có, không thiết kế lại thương hiệu. Giữ nền trắng/xanh, Tabler Icons, shadcn, các thao tác bản đồ và hợp đồng API. Không thay backend, phân quyền, MFA policy, dữ liệu đang công bố hoặc các hạng mục M7/M8.
+Rà soát trang quản trị hiện có, không thiết kế lại thương hiệu. Giữ nền trắng/xanh, Lucide Icons, shadcn, các thao tác bản đồ và hợp đồng API. Không thay backend, phân quyền, MFA policy, dữ liệu đang công bố hoặc các hạng mục M7/M8.
 
 Product Design audit được dùng để chụp và đối chiếu giao diện trước/sau. Hai agent frontend xử lý song song nhóm tài khoản và nhóm lớp dữ liệu; agent QA độc lập thao tác trình duyệt. Review chéo giữ nguyên kiểm tra API, quyền, chống ghi đè và bảo vệ thông tin riêng tư.
 

@@ -2,13 +2,13 @@
 
 import { forwardRef } from "react";
 import {
-  IconAlertTriangle,
-  IconCheck,
-  IconClock,
-  IconCloudOff,
-  IconDatabaseExport,
-  IconLoader2,
-} from "@tabler/icons-react";
+  TriangleAlert as IconAlertTriangle,
+  Check as IconCheck,
+  Clock as IconClock,
+  CloudOff as IconCloudOff,
+  DatabaseBackup as IconDatabaseExport,
+  LoaderCircle as IconLoader2,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { PublicationJob } from "@/lib/api/publication-jobs";
 import type { PublicationTrackingIssue, PublicationTrackingState } from "@/lib/publications/publication-job-tracking";
@@ -23,11 +23,11 @@ const phaseText: Record<PublicationJob["phase"], string> = {
 };
 
 function statusIcon(job: PublicationJob) {
-  if (job.status === "succeeded") return <IconCheck stroke={1.75}/>;
-  if (job.status === "failed") return <IconAlertTriangle stroke={1.75}/>;
-  if (job.status === "queued") return <IconClock stroke={1.75}/>;
-  if (job.phase === "switching") return <IconDatabaseExport stroke={1.75}/>;
-  return <IconLoader2 stroke={1.75}/>;
+  if (job.status === "succeeded") return <IconCheck strokeWidth={1.75}/>;
+  if (job.status === "failed") return <IconAlertTriangle strokeWidth={1.75}/>;
+  if (job.status === "queued") return <IconClock strokeWidth={1.75}/>;
+  if (job.phase === "switching") return <IconDatabaseExport strokeWidth={1.75}/>;
+  return <IconLoader2 strokeWidth={1.75}/>;
 }
 
 function measuredProgress(job: PublicationJob) {
@@ -93,7 +93,7 @@ export const PublicationJobStatus = forwardRef<HTMLElement, {
     </div>}
 
     {!compact && job.status !== "succeeded" && job.status !== "failed" && trackingState !== "connected" && <div className="mt-3 flex items-start gap-2 text-sm text-warning" role="status">
-      <IconCloudOff className="mt-0.5 shrink-0" size={18} stroke={1.75}/>
+      <IconCloudOff className="mt-0.5 shrink-0" size={18} strokeWidth={1.75}/>
       <div>
         <p>{trackingIssue?.userMessage ?? (trackingState === "paused" ? "Tiến độ sẽ được cập nhật khi bạn quay lại trang này." : "Đã mất kết nối theo dõi. Công việc trên máy chủ vẫn tiếp tục.")}</p>
       </div>

@@ -7,6 +7,8 @@ services:
       args:
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:?Set NEXT_PUBLIC_API_BASE_URL to the public map origin}
         NEXT_PUBLIC_MAPBOX_TOKEN: ${NEXT_PUBLIC_MAPBOX_TOKEN:?Set a public URL-restricted Mapbox token}
+        NEXT_PUBLIC_MAPBOX_STREET_STYLE: ${NEXT_PUBLIC_MAPBOX_STREET_STYLE:-mapbox://styles/mapbox/streets-v12}
+        NEXT_PUBLIC_MAPBOX_LIGHT_STYLE: ${NEXT_PUBLIC_MAPBOX_LIGHT_STYLE:-mapbox://styles/mapbox/light-v11}
         NEXT_PUBLIC_DANANGMAP_DEMO_MODE: 'false'
     image: danangmap-frontend:${APP_VERSION:-0.1.0}
     environment:

@@ -2,25 +2,25 @@
 
 import { useMemo, useRef, useState } from "react";
 import {
-  IconAlertTriangle,
-  IconArchive,
-  IconArrowDown,
-  IconArrowLeft,
-  IconArrowUp,
-  IconCircleCheck,
-  IconDatabase,
-  IconDeviceFloppy,
-  IconEye,
-  IconForms,
-  IconGeometry,
-  IconInfoCircle,
-  IconHistory,
-  IconGitBranch,
-  IconPlus,
-  IconRestore,
-  IconSettings,
-  IconTrash,
-} from "@tabler/icons-react";
+  TriangleAlert as IconAlertTriangle,
+  Archive as IconArchive,
+  ArrowDown as IconArrowDown,
+  ArrowLeft as IconArrowLeft,
+  ArrowUp as IconArrowUp,
+  CircleCheck as IconCircleCheck,
+  Database as IconDatabase,
+  Save as IconDeviceFloppy,
+  Eye as IconEye,
+  FormInput as IconForms,
+  Shapes as IconGeometry,
+  Info as IconInfoCircle,
+  History as IconHistory,
+  GitBranch as IconGitBranch,
+  Plus as IconPlus,
+  ArchiveRestore as IconRestore,
+  Settings as IconSettings,
+  Trash2 as IconTrash,
+} from "lucide-react";
 import Link from "next/link";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -43,6 +43,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
+import { Textarea } from "@/components/ui/textarea";
 import {
   changeGeometryMode,
   changeAllowedGeometryKinds,
@@ -57,6 +58,7 @@ import {
   normalizeFieldOrder,
   removeSchemaField,
   replaceSchemaField,
+  slugifyLayerTitle,
   validateLayerConfiguration,
   type LayerConfigurationDraft,
   type LayerConfigurationErrors,
@@ -132,6 +134,27 @@ const fieldTypeLabels: Record<LayerFieldType, string> = {
   attachment: "Tệp đính kèm",
 };
 
+function fieldDefaultPlaceholder(type: LayerFieldType) {
+  const examples: Record<LayerFieldType, string> = {
+    text: "Ví dụ: Đang hoạt động",
+    long_text: "Ví dụ: Nội dung mặc định",
+    number: "Ví dụ: 10.5",
+    integer: "Ví dụ: 10",
+    boolean: "Ví dụ: true",
+    date: "Ví dụ: 2026-09-04",
+    datetime: "Ví dụ: 2026-09-04T08:30",
+    url: "Ví dụ: https://danang.gov.vn",
+    email: "Ví dụ: lienhe@danang.gov.vn",
+    phone: "Ví dụ: 0236 123 4567",
+    enum: "Ví dụ: Đang hoạt động",
+    multi_enum: "Ví dụ: Mức 1, Mức 2",
+    address: "Ví dụ: 24 Trần Phú, Hải Châu",
+    image: "Để trống nếu không có hình mặc định",
+    attachment: "Để trống nếu không có tệp mặc định",
+  };
+  return examples[type];
+}
+
 const fieldIconOptions = [
   { value: "map-pin", label: "Vị trí" },
   { value: "phone", label: "Điện thoại" },
@@ -179,7 +202,7 @@ function ReadOnlyNotice({
         : "Tính năng này cần máy tính có bàn phím, chuột hoặc bàn di chuột.";
   return (
     <Alert role="note">
-      <IconInfoCircle stroke={1.75} />
+      <IconInfoCircle strokeWidth={1.75} />
       <AlertTitle>{title}</AlertTitle>
       <AlertDescription>
         {description}
@@ -221,11 +244,38 @@ function OverviewSection({
       </p>
       <FieldGroup className="mt-6">
         <div className="grid gap-5 md:grid-cols-2">
+          <Field data-invalid={Boolean(error.title)}>
+            <FieldLabel htmlFor="layer-title">Tên lớp</FieldLabel>
+            <Input
+              id="layer-title"
+              value={draft.title}
+              placeholder="Ví dụ: Nhà vệ sinh công cộng"
+              disabled={revisionDisabled}
+              onChange={(event) => {
+                const title = event.target.value;
+                const currentGeneratedSlug = slugifyLayerTitle(draft.title);
+                const shouldGenerateSlug =
+                  !draft.layerId &&
+                  (!draft.slug || draft.slug === currentGeneratedSlug);
+                onChange({
+                  ...draft,
+                  title,
+                  slug: shouldGenerateSlug
+                    ? slugifyLayerTitle(title)
+                    : draft.slug,
+                });
+              }}
+              aria-invalid={Boolean(error.title)}
+              aria-describedby={error.title ? "layer-title-error" : undefined}
+            />
+            <FieldError id="layer-title-error">{error.title}</FieldError>
+          </Field>
           <Field data-invalid={Boolean(error.slug)}>
             <FieldLabel htmlFor="layer-slug">Mã lớp</FieldLabel>
             <Input
               id="layer-slug"
               value={draft.slug}
+              placeholder="Ví dụ: nha-ve-sinh-cong-cong"
               disabled={catalogDisabled || Boolean(draft.layerId)}
               onChange={(event) =>
                 onChange({
@@ -243,27 +293,14 @@ function OverviewSection({
             </FieldDescription>
             <FieldError id="layer-slug-error">{error.slug}</FieldError>
           </Field>
-          <Field data-invalid={Boolean(error.title)}>
-            <FieldLabel htmlFor="layer-title">Tên lớp</FieldLabel>
-            <Input
-              id="layer-title"
-              value={draft.title}
-              disabled={revisionDisabled}
-              onChange={(event) =>
-                onChange({ ...draft, title: event.target.value })
-              }
-              aria-invalid={Boolean(error.title)}
-              aria-describedby={error.title ? "layer-title-error" : undefined}
-            />
-            <FieldError id="layer-title-error">{error.title}</FieldError>
-          </Field>
         </div>
         <Field>
           <FieldLabel htmlFor="layer-description">Mô tả</FieldLabel>
-          <textarea
+          <Textarea
             id="layer-description"
-            className="min-h-24 w-full resize-y rounded-control border bg-surface p-3 text-sm outline-none focus:border-primary focus:ring-2 focus-visible:ring-ring/25 disabled:bg-surface-subtle"
+            className="min-h-24 resize-y"
             value={draft.description}
+            placeholder="Ví dụ: Vị trí các nhà vệ sinh công cộng phục vụ người dân và du khách trên địa bàn thành phố."
             disabled={revisionDisabled}
             onChange={(event) =>
               onChange({ ...draft, description: event.target.value })
@@ -308,6 +345,7 @@ function OverviewSection({
               type="number"
               step={1}
               value={draft.displayOrder}
+              placeholder="Ví dụ: 10"
               disabled={catalogDisabled}
               onChange={(event) =>
                 onChange({
@@ -589,6 +627,7 @@ function SchemaFieldCard({
           <Input
             id={`field-key-${field.clientId}`}
             value={field.key}
+            placeholder="Ví dụ: dia_chi"
             disabled={disabled || Boolean(field.serverId)}
             onChange={(event) =>
               onChange(
@@ -601,6 +640,7 @@ function SchemaFieldCard({
             }
             aria-invalid={Boolean(errors[`${path}.key`])}
           />
+          <FieldDescription>Dùng để liên kết dữ liệu và không thể đổi sau khi lưu.</FieldDescription>
           <FieldError>{errors[`${path}.key`]}</FieldError>
         </Field>
         <Field data-invalid={Boolean(errors[`${path}.label`])}>
@@ -610,6 +650,7 @@ function SchemaFieldCard({
           <Input
             id={`field-label-${field.clientId}`}
             value={field.label}
+            placeholder="Ví dụ: Địa chỉ"
             disabled={disabled}
             onChange={(event) =>
               onChange(changeSchemaField(field, "label", event.target.value))
@@ -664,6 +705,7 @@ function SchemaFieldCard({
           <Input
             id={`field-description-${field.clientId}`}
             value={field.description}
+            placeholder="Ví dụ: Địa chỉ đầy đủ để người dân dễ tìm kiếm"
             disabled={disabled}
             onChange={(event) =>
               onChange(
@@ -679,6 +721,7 @@ function SchemaFieldCard({
           <Input
             id={`field-default-${field.clientId}`}
             value={field.defaultValue}
+            placeholder={fieldDefaultPlaceholder(field.type)}
             disabled={disabled}
             onChange={(event) =>
               onChange(
@@ -694,12 +737,13 @@ function SchemaFieldCard({
           data-invalid={Boolean(errors[`${path}.options`])}
         >
           <FieldLabel htmlFor={`field-options-${field.clientId}`}>
-            Các lựa chọn · mỗi dòng một giá trị
+            Các lựa chọn (mỗi dòng một giá trị)
           </FieldLabel>
-          <textarea
+          <Textarea
             id={`field-options-${field.clientId}`}
-            className="min-h-24 rounded-control border bg-surface p-3 text-sm"
+            className="min-h-24 resize-y"
             value={optionsValue}
+            placeholder={"Ví dụ:\nĐang hoạt động\nTạm ngưng\nĐã đóng"}
             disabled={disabled}
             onChange={(event) =>
               onChange(
@@ -762,7 +806,7 @@ function SchemaSection({
             })
           }
         >
-          <IconPlus data-icon="inline-start" stroke={1.75} />
+          <IconPlus data-icon="inline-start" strokeWidth={1.75} />
           Thêm trường
         </Button>
       </div>
@@ -956,6 +1000,7 @@ function PresentationSection({
                   <Input
                     id={`style-${key}`}
                     value={draft.style[key]}
+                    placeholder="Ví dụ: #1A73E8"
                     disabled={disabled}
                     onChange={(event) =>
                       onChange({
@@ -985,6 +1030,7 @@ function PresentationSection({
                   max={max}
                   step={step}
                   value={draft.style[key]}
+                  placeholder={`Ví dụ: ${min}`}
                   disabled={disabled}
                   onChange={(event) =>
                     onChange({
@@ -1009,6 +1055,7 @@ function PresentationSection({
               max={24}
               disabled={disabled}
               value={draft.renderConfig.minZoom}
+              placeholder="Ví dụ: 8"
               onChange={(event) =>
                 onChange({
                   ...draft,
@@ -1029,6 +1076,7 @@ function PresentationSection({
               max={24}
               disabled={disabled}
               value={draft.renderConfig.maxZoom}
+              placeholder="Ví dụ: 20"
               onChange={(event) =>
                 onChange({
                   ...draft,
@@ -1066,10 +1114,10 @@ function PresentationSection({
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                <SelectItem value="auto">Tự động</SelectItem>
-                <SelectItem value="geojson">Tải toàn bộ dữ liệu (GeoJSON)</SelectItem>
-                <SelectItem value="mvt">Tải theo vùng nhìn (MVT)</SelectItem>
-                <SelectItem value="hybrid">Kết hợp</SelectItem>
+                <SelectItem value="auto">Tự động (khuyên dùng)</SelectItem>
+                <SelectItem value="geojson">Ưu tiên tải toàn bộ lớp</SelectItem>
+                <SelectItem value="mvt">Ưu tiên tải theo vùng đang xem</SelectItem>
+                <SelectItem value="hybrid">Tự động kết hợp</SelectItem>
               </SelectGroup>
             </SelectContent>
           </Select>
@@ -1529,15 +1577,15 @@ export function LayerConfigurationEditor({
 
   if (mode === "create" && !canAuthorContent(principalRole))
     return (
-      <main className="mx-auto max-w-2xl p-4 sm:p-6">
+      <main className="mx-auto max-w-2xl p-4 pb-24 sm:p-6 md:pb-6">
         <Button asChild variant="ghost" className="-ml-3">
           <Link href="/admin/layers">
-            <IconArrowLeft data-icon="inline-start" stroke={1.75} />
+            <IconArrowLeft data-icon="inline-start" strokeWidth={1.75} />
             Lớp dữ liệu
           </Link>
         </Button>
         <Alert className="mt-6" variant="destructive">
-          <IconAlertTriangle stroke={1.75} />
+          <IconAlertTriangle strokeWidth={1.75} />
           <AlertTitle>Không có quyền tạo lớp</AlertTitle>
           <AlertDescription>
             Bạn cần quyền biên tập hoặc quản trị hệ thống để tạo lớp và các trường dữ liệu.
@@ -1547,15 +1595,15 @@ export function LayerConfigurationEditor({
     );
   if (mode === "create" && !canAuthor)
     return (
-      <main className="mx-auto max-w-2xl p-4 sm:p-6">
+      <main className="mx-auto max-w-2xl p-4 pb-24 sm:p-6 md:pb-6">
         <Button asChild variant="ghost" className="-ml-3">
           <Link href="/admin/layers">
-            <IconArrowLeft data-icon="inline-start" stroke={1.75} />
+            <IconArrowLeft data-icon="inline-start" strokeWidth={1.75} />
             Lớp dữ liệu
           </Link>
         </Button>
         <Alert className="mt-6" role="note">
-          <IconInfoCircle stroke={1.75} />
+          <IconInfoCircle strokeWidth={1.75} />
           <AlertTitle>Tạo lớp cần máy tính</AlertTitle>
           <AlertDescription>
             Tạo và sửa lớp cần máy tính có bàn phím, chuột hoặc bàn di chuột. Trên thiết bị này, bạn vẫn có thể xem dữ liệu và duyệt nội dung.
@@ -1570,7 +1618,7 @@ export function LayerConfigurationEditor({
         <div>
           <Button asChild variant="ghost" size="sm" className="-ml-3 mb-2">
             <Link href="/admin/layers">
-              <IconArrowLeft data-icon="inline-start" stroke={1.75} />
+              <IconArrowLeft data-icon="inline-start" strokeWidth={1.75} />
               Lớp dữ liệu
             </Link>
           </Button>
@@ -1595,7 +1643,7 @@ export function LayerConfigurationEditor({
           {mode === "edit" && draft.layerId && (
             <Button asChild type="button" variant="outline">
               <Link href={`/admin/layers/${draft.layerId}/history`}>
-                <IconHistory data-icon="inline-start" stroke={1.75} />
+                <IconHistory data-icon="inline-start" strokeWidth={1.75} />
                 Lịch sử
               </Link>
             </Button>
@@ -1629,7 +1677,7 @@ export function LayerConfigurationEditor({
               ) : (
                 <IconDatabase data-icon="inline-start" />
               )}
-              Lưu sắp xếp lớp
+              Lưu thông tin chung
             </Button>
           )}
           {mode === "edit" && canRevisionMutate && (
@@ -1646,7 +1694,7 @@ export function LayerConfigurationEditor({
               {pending === "revision" ? (
                 <>
                   <Spinner />
-                  Đang phân tích...
+                  Đang kiểm tra...
                 </>
               ) : (
                 <>
@@ -1789,7 +1837,7 @@ export function LayerConfigurationEditor({
                 activeTab === id && "bg-accent-subtle text-primary",
               )}
             >
-              <Icon size={20} stroke={1.75} />
+              <Icon size={20} strokeWidth={1.75} />
               {label}
             </button>
           ))}
@@ -1868,6 +1916,7 @@ export function LayerConfigurationEditor({
                 <Input
                   id="archive-confirmation"
                   value={archiveConfirmation}
+                  placeholder="Nhập LƯU TRỮ"
                   disabled={!canCatalogMutate}
                   onChange={(event) => {
                     setArchiveConfirmation(event.target.value);

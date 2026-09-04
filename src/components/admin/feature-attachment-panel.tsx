@@ -2,16 +2,16 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  IconAlertTriangle,
-  IconArrowDown,
-  IconArrowUp,
-  IconFile,
-  IconPhoto,
-  IconRefresh,
-  IconShieldCheck,
-  IconTrash,
-  IconUpload,
-} from "@tabler/icons-react";
+  TriangleAlert as IconAlertTriangle,
+  ArrowDown as IconArrowDown,
+  ArrowUp as IconArrowUp,
+  File as IconFile,
+  Image as IconPhoto,
+  RefreshCw as IconRefresh,
+  ShieldCheck as IconShieldCheck,
+  Trash2 as IconTrash,
+  Upload as IconUpload,
+} from "lucide-react";
 import { AdminErrorNotice } from "@/components/admin/admin-session";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
