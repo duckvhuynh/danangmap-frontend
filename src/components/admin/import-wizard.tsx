@@ -487,6 +487,7 @@ function MappingStep({
                   <Input
                     className="mt-2"
                     value={mapping.longitudeColumn}
+                    placeholder="Ví dụ: kinh_do hoặc longitude"
                     onChange={(event) =>
                       onMapping({
                         ...mapping,
@@ -500,6 +501,7 @@ function MappingStep({
                   <Input
                     className="mt-2"
                     value={mapping.latitudeColumn}
+                    placeholder="Ví dụ: vi_do hoặc latitude"
                     onChange={(event) =>
                       onMapping({
                         ...mapping,
@@ -515,6 +517,7 @@ function MappingStep({
                 <Input
                   className="mt-2"
                   value={mapping.geometryColumn}
+                  placeholder="Ví dụ: hinh_hoc hoặc geometry"
                   onChange={(event) =>
                     onMapping({
                       ...mapping,
@@ -792,6 +795,7 @@ function IssuesStep({
           <Input
             className="mt-2 max-w-sm"
             value={confirmation}
+            placeholder="Nhập THAY THẾ"
             onChange={(event) => onConfirmation(event.target.value)}
             autoComplete="off"
           />

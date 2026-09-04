@@ -13,8 +13,8 @@ test("desktop Editor creates a mixed layer and lands on its persisted layer conf
   await page.goto("/admin/layers");
   await page.getByRole("link", { name: "Tạo lớp" }).click();
   await expect(page).toHaveURL(/\/admin\/layers\/new$/u);
-  await page.getByLabel("Mã lớp").fill("tru-so-hanh-chinh");
   await page.getByLabel("Tên lớp").fill("Trụ sở hành chính");
+  await expect(page.getByLabel("Mã lớp")).toHaveValue("tru-so-hanh-chinh");
   await page.getByRole("tab", { name: "Loại đối tượng" }).click();
   await page.getByRole("radio", { name: /Kết hợp/u }).check();
   await page.getByRole("checkbox", { name: "Đường", exact: true }).click();

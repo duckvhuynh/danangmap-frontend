@@ -165,6 +165,7 @@ export function RollbackDialog({
           <Input
             id={`rollback-confirm-${publication.snapshotId}`}
             value={confirmation}
+            placeholder="Nhập KHÔI PHỤC"
             onChange={(event) => { setConfirmation(event.target.value); resetOperation(); }}
             aria-invalid={confirmationInvalid || undefined}
             aria-describedby={`${confirmationDescriptionId}${confirmationInvalid ? ` ${confirmationErrorId}` : ""}`}

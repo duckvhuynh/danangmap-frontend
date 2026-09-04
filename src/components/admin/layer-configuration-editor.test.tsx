@@ -119,6 +119,32 @@ afterEach(() => {
 });
 
 describe("layer configuration editor", () => {
+  it("generates the layer code from a Vietnamese name until it is edited manually", () => {
+    renderEditor({});
+
+    const title = screen.getByLabelText("Tên lớp");
+    const slug = screen.getByLabelText("Mã lớp");
+    expect(title).toHaveAttribute(
+      "placeholder",
+      "Ví dụ: Nhà vệ sinh công cộng",
+    );
+    expect(slug).toHaveAttribute(
+      "placeholder",
+      "Ví dụ: nha-ve-sinh-cong-cong",
+    );
+
+    fireEvent.change(title, {
+      target: { value: "Nhà vệ sinh công cộng" },
+    });
+    expect(slug).toHaveValue("nha-ve-sinh-cong-cong");
+
+    fireEvent.change(slug, { target: { value: "nha-ve-sinh-bien" } });
+    fireEvent.change(title, {
+      target: { value: "Nhà vệ sinh công cộng ven biển" },
+    });
+    expect(slug).toHaveValue("nha-ve-sinh-bien");
+  });
+
   it("uses readable configuration labels and lets users choose icons by meaning", () => {
     renderEditor({});
     expect(screen.getByText("Bản nháp")).toBeInTheDocument();

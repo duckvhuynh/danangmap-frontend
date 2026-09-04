@@ -58,6 +58,7 @@ import {
   normalizeFieldOrder,
   removeSchemaField,
   replaceSchemaField,
+  slugifyLayerTitle,
   validateLayerConfiguration,
   type LayerConfigurationDraft,
   type LayerConfigurationErrors,
@@ -132,6 +133,27 @@ const fieldTypeLabels: Record<LayerFieldType, string> = {
   image: "Hình ảnh",
   attachment: "Tệp đính kèm",
 };
+
+function fieldDefaultPlaceholder(type: LayerFieldType) {
+  const examples: Record<LayerFieldType, string> = {
+    text: "Ví dụ: Đang hoạt động",
+    long_text: "Ví dụ: Nội dung mặc định",
+    number: "Ví dụ: 10.5",
+    integer: "Ví dụ: 10",
+    boolean: "Ví dụ: true",
+    date: "Ví dụ: 2026-09-04",
+    datetime: "Ví dụ: 2026-09-04T08:30",
+    url: "Ví dụ: https://danang.gov.vn",
+    email: "Ví dụ: lienhe@danang.gov.vn",
+    phone: "Ví dụ: 0236 123 4567",
+    enum: "Ví dụ: Đang hoạt động",
+    multi_enum: "Ví dụ: Mức 1, Mức 2",
+    address: "Ví dụ: 24 Trần Phú, Hải Châu",
+    image: "Để trống nếu không có hình mặc định",
+    attachment: "Để trống nếu không có tệp mặc định",
+  };
+  return examples[type];
+}
 
 const fieldIconOptions = [
   { value: "map-pin", label: "Vị trí" },
@@ -227,6 +249,7 @@ function OverviewSection({
             <Input
               id="layer-slug"
               value={draft.slug}
+              placeholder="Ví dụ: nha-ve-sinh-cong-cong"
               disabled={catalogDisabled || Boolean(draft.layerId)}
               onChange={(event) =>
                 onChange({
@@ -249,10 +272,22 @@ function OverviewSection({
             <Input
               id="layer-title"
               value={draft.title}
+              placeholder="Ví dụ: Nhà vệ sinh công cộng"
               disabled={revisionDisabled}
-              onChange={(event) =>
-                onChange({ ...draft, title: event.target.value })
-              }
+              onChange={(event) => {
+                const title = event.target.value;
+                const currentGeneratedSlug = slugifyLayerTitle(draft.title);
+                const shouldGenerateSlug =
+                  !draft.layerId &&
+                  (!draft.slug || draft.slug === currentGeneratedSlug);
+                onChange({
+                  ...draft,
+                  title,
+                  slug: shouldGenerateSlug
+                    ? slugifyLayerTitle(title)
+                    : draft.slug,
+                });
+              }}
               aria-invalid={Boolean(error.title)}
               aria-describedby={error.title ? "layer-title-error" : undefined}
             />
@@ -265,6 +300,7 @@ function OverviewSection({
             id="layer-description"
             className="min-h-24 resize-y"
             value={draft.description}
+            placeholder="Ví dụ: Vị trí các nhà vệ sinh công cộng phục vụ người dân và du khách trên địa bàn thành phố."
             disabled={revisionDisabled}
             onChange={(event) =>
               onChange({ ...draft, description: event.target.value })
@@ -309,6 +345,7 @@ function OverviewSection({
               type="number"
               step={1}
               value={draft.displayOrder}
+              placeholder="Ví dụ: 10"
               disabled={catalogDisabled}
               onChange={(event) =>
                 onChange({
@@ -590,6 +627,7 @@ function SchemaFieldCard({
           <Input
             id={`field-key-${field.clientId}`}
             value={field.key}
+            placeholder="Ví dụ: dia_chi"
             disabled={disabled || Boolean(field.serverId)}
             onChange={(event) =>
               onChange(
@@ -612,6 +650,7 @@ function SchemaFieldCard({
           <Input
             id={`field-label-${field.clientId}`}
             value={field.label}
+            placeholder="Ví dụ: Địa chỉ"
             disabled={disabled}
             onChange={(event) =>
               onChange(changeSchemaField(field, "label", event.target.value))
@@ -666,6 +705,7 @@ function SchemaFieldCard({
           <Input
             id={`field-description-${field.clientId}`}
             value={field.description}
+            placeholder="Ví dụ: Địa chỉ đầy đủ để người dân dễ tìm kiếm"
             disabled={disabled}
             onChange={(event) =>
               onChange(
@@ -681,6 +721,7 @@ function SchemaFieldCard({
           <Input
             id={`field-default-${field.clientId}`}
             value={field.defaultValue}
+            placeholder={fieldDefaultPlaceholder(field.type)}
             disabled={disabled}
             onChange={(event) =>
               onChange(
@@ -702,6 +743,7 @@ function SchemaFieldCard({
             id={`field-options-${field.clientId}`}
             className="min-h-24 resize-y"
             value={optionsValue}
+            placeholder={"Ví dụ:\nĐang hoạt động\nTạm ngưng\nĐã đóng"}
             disabled={disabled}
             onChange={(event) =>
               onChange(
@@ -958,6 +1000,7 @@ function PresentationSection({
                   <Input
                     id={`style-${key}`}
                     value={draft.style[key]}
+                    placeholder="Ví dụ: #1A73E8"
                     disabled={disabled}
                     onChange={(event) =>
                       onChange({
@@ -987,6 +1030,7 @@ function PresentationSection({
                   max={max}
                   step={step}
                   value={draft.style[key]}
+                  placeholder={`Ví dụ: ${min}`}
                   disabled={disabled}
                   onChange={(event) =>
                     onChange({
@@ -1011,6 +1055,7 @@ function PresentationSection({
               max={24}
               disabled={disabled}
               value={draft.renderConfig.minZoom}
+              placeholder="Ví dụ: 8"
               onChange={(event) =>
                 onChange({
                   ...draft,
@@ -1031,6 +1076,7 @@ function PresentationSection({
               max={24}
               disabled={disabled}
               value={draft.renderConfig.maxZoom}
+              placeholder="Ví dụ: 20"
               onChange={(event) =>
                 onChange({
                   ...draft,
@@ -1870,6 +1916,7 @@ export function LayerConfigurationEditor({
                 <Input
                   id="archive-confirmation"
                   value={archiveConfirmation}
+                  placeholder="Nhập LƯU TRỮ"
                   disabled={!canCatalogMutate}
                   onChange={(event) => {
                     setArchiveConfirmation(event.target.value);

@@ -205,6 +205,7 @@ export function RecoveryCodesPanel({
               id="recovery-current-password"
               maxLength={200}
               minLength={12}
+              placeholder="Nhập mật khẩu hiện tại"
               onChange={(event) => changed("password", event.target.value)}
               required
               type="password"
@@ -220,6 +221,7 @@ export function RecoveryCodesPanel({
               id="recovery-mfa-code"
               maxLength={64}
               minLength={6}
+              placeholder="Ví dụ: 123456 hoặc mã khôi phục"
               onChange={(event) => changed("mfa", event.target.value)}
               required
               value={mfaCode}

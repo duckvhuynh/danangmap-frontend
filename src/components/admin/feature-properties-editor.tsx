@@ -79,6 +79,22 @@ function inputValue(field: AdminField, value: unknown) {
   return String(value);
 }
 
+function fieldPlaceholder(field: AdminField) {
+  const examples: Partial<Record<AdminField["type"], string>> = {
+    text: `Nhập ${field.label.toLocaleLowerCase("vi")}`,
+    long_text: `Nhập nội dung ${field.label.toLocaleLowerCase("vi")}`,
+    number: "Ví dụ: 10.5",
+    integer: "Ví dụ: 10",
+    date: "Chọn ngày",
+    datetime: "Chọn ngày và giờ",
+    url: "Ví dụ: https://danang.gov.vn",
+    email: "Ví dụ: lienhe@danang.gov.vn",
+    phone: "Ví dụ: 0236 123 4567",
+    address: "Ví dụ: 24 Trần Phú, Hải Châu, Đà Nẵng",
+  };
+  return examples[field.type] ?? `Nhập ${field.label.toLocaleLowerCase("vi")}`;
+}
+
 export function FeaturePropertiesEditor({
   featureId,
   properties,
@@ -155,6 +171,7 @@ export function FeaturePropertiesEditor({
                 <Textarea
                   id={inputId}
                   value={String(value ?? "")}
+                  placeholder={fieldPlaceholder(field)}
                   onChange={(event) =>
                     setDraft((current) => ({
                       ...current,
@@ -258,6 +275,7 @@ export function FeaturePropertiesEditor({
                   minLength={field.validation?.minLength}
                   maxLength={field.validation?.maxLength}
                   value={String(value ?? "")}
+                  placeholder={fieldPlaceholder(field)}
                   onChange={(event) =>
                     setDraft((current) => ({
                       ...current,
