@@ -1200,13 +1200,14 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
         >
           <div className="flex h-10 items-center justify-between border-b px-3">
             <button
-              className="flex items-center gap-2 text-xs font-medium"
+              className="flex shrink-0 items-center gap-2 whitespace-nowrap text-xs font-medium"
+              aria-expanded={tableOpen}
               onClick={() => setTableOpen((value) => !value)}
             >
               <IconTable size={18} />
               Bảng dữ liệu <Badge>{featureRows.length}</Badge>
             </button>
-            <span className="text-xs text-muted-foreground">
+            <span className="hidden text-xs text-muted-foreground xl:block">
               Bấm vào đối tượng trong danh sách để chỉnh sửa
             </span>
           </div>

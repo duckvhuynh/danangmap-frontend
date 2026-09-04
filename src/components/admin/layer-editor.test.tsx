@@ -65,6 +65,8 @@ describe("LayerEditor desktop-only authoring", () => {
     const drawingTools = await screen.findByRole("navigation", { name: "Công cụ vẽ" });
     expect(drawingTools.parentElement).toHaveClass("grid-cols-[180px_52px_minmax(0,1fr)_260px]", "xl:grid-cols-[260px_52px_minmax(0,1fr)_320px]");
     expect(screen.getByTestId("drawing-canvas").parentElement).toHaveClass("min-w-0");
+    expect(screen.getByRole("button", { name: /Bảng dữ liệu/u })).toHaveClass("whitespace-nowrap", "shrink-0");
+    expect(screen.getByRole("button", { name: /Bảng dữ liệu/u })).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByRole("region", { name: "Trạng thái lưu dữ liệu" }).parentElement).toHaveClass("left-3", "right-3");
   });
 

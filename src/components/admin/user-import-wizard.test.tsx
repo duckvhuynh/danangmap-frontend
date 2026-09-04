@@ -95,6 +95,9 @@ describe("System Admin user import wizard", () => {
     });
     render(<UserImportWizard actions={api} pollIntervalMs={0} />);
 
+    const fileInput = screen.getByLabelText("Chọn tệp CSV hoặc XLSX");
+    expect(fileInput).toHaveClass("sr-only");
+    expect(fileInput).not.toHaveClass("w-full", "h-11");
     const file = new File(["email,username,displayName,role\na@danang.gov.vn,a01,A,editor"], "users.csv", { type: "text/csv" });
     fireEvent.change(screen.getByLabelText("Chọn tệp CSV hoặc XLSX"), { target: { files: [file] } });
     fireEvent.click(screen.getByRole("button", { name: "Tải lên và kiểm tra" }));

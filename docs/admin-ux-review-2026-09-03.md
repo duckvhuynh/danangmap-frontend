@@ -21,11 +21,13 @@ Product Design audit được dùng để chụp và đối chiếu giao diện 
 - [x] So sánh dữ liệu hiển thị tên đối tượng và trường; tọa độ chi tiết chỉ mở khi cần. Thông tin riêng tư vẫn bị lọc.
 - [x] Nhật ký có tên thao tác dễ hiểu; mã tham chiếu chỉ nằm trong phần hỗ trợ thu gọn.
 - [x] Hộp thoại tài khoản không bị kéo rộng bởi nội dung dài; thiết bị và trạng thái thư được diễn giải.
+- [x] Màn hình biên tập 1024px dùng cột thu gọn, không tràn ngang; nút bảng dữ liệu không bị xuống dòng/cắt chữ.
+- [x] Ô chọn tệp nhập người dùng không kế thừa kích thước của ô nhập văn bản; vùng chọn tệp có viền focus khi dùng bàn phím.
 - [x] Cập nhật regression tests và locator của các bộ E2E hiện có theo giao diện mới.
 
 ## Kiểm chứng tự động
 
-- Vitest: 71 suites, 486 tests đạt tại lần chạy toàn bộ 21:19 ngày 03/09/2026.
+- Vitest: 71 suites, 491 tests đạt tại lần chạy toàn bộ bắt đầu 21:40:31 ngày 03/09/2026 (31,01 giây).
 - ESLint, TypeScript, generated API contract check: đạt.
 - Docker production build: đạt; frontend chạy non-root (UID 1001), health endpoint trả `ok`.
 - Backend hiện hữu: PostgreSQL, Redis, MinIO và migrations sẵn sàng. Geo service và mail báo degraded từ môi trường local; không thay cấu hình trong đợt này.
@@ -35,21 +37,23 @@ Product Design audit được dùng để chụp và đối chiếu giao diện 
 
 Môi trường: frontend Docker tại `http://localhost:3000`, backend thật tại `http://localhost:4000`, xác thực hai bước tắt. Baseline chụp bằng trình duyệt trong app; sau khi kết nối này mất, kiểm tra lại bằng Brave qua công cụ trình duyệt được hỗ trợ.
 
-Chỉ dùng lớp thử riêng `qa-admin-ux-20260903`. Không xóa lớp cũ, thay bảo mật tài khoản hoặc công bố dữ liệu thử.
+Chỉ ghi dữ liệu vào hai lớp thử riêng, đều chưa công bố và tắt hiển thị mặc định: `QA giao diện quản trị 03-09-2026` (đã gửi duyệt, hai điểm) và `QA kiểm tra màn hình quản trị` (bản nháp, một điểm). Các lớp này được giữ lại để đối chiếu. Không xóa/sửa lớp cũ, thay bảo mật tài khoản hoặc công bố dữ liệu thử.
 
 | Bước | Nội dung | Kết quả |
 | --- | --- | --- |
 | 1 | Hết phiên → đăng nhập → tổng quan | Đạt trên bản mới |
-| 2 | Danh sách lớp → tạo lớp → cấu hình | Baseline đạt; đang kiểm tra lại |
+| 2 | Danh sách lớp → tạo lớp → cấu hình | Đạt: tìm kiếm, tạo lớp riêng, các tab và lựa chọn biểu tượng hoạt động |
 | 3 | Vẽ/sửa → kiểm tra thiếu tên → lưu → tải lại | Đạt: vẽ, kiểm tra thiếu tên, lưu, tải lại và khôi phục bản nháp chưa lưu |
 | 4 | Nhập tệp → đối chiếu → áp dụng | Chưa hoàn tất: hộp thoại chọn tệp Brave không được công cụ nhận diện |
 | 5 | Gửi duyệt → yêu cầu chỉnh sửa/phê duyệt | Gửi duyệt đạt; kiểm tra chặn tự duyệt đạt. Phê duyệt thành công chưa chạy vì cần người duyệt khác |
-| 6 | Lịch sử, so sánh, nhật ký | Đang kiểm tra lại |
-| 7 | Người dùng, chi tiết tài khoản, bảo mật | Đang kiểm tra lại; không thực hiện thao tác đổi bảo mật |
-| 8 | Mobile: chặn edit, xem/duyệt, menu, đăng xuất | Đang kiểm tra lại |
+| 6 | Lịch sử, so sánh, nhật ký | Đạt: tên tác giả/thao tác dễ hiểu; không lộ UUID/ETag trong nội dung chính; lần công bố hiện hành được giải thích đúng |
+| 7 | Người dùng, chi tiết tài khoản, bảo mật | Đạt: trạng thái xác thực phản ánh MFA đang tắt; hộp thoại không tràn ngang; không còn thông tin hạ tầng dư thừa. Không đổi bảo mật tài khoản |
+| 8 | Mobile và desktop nhỏ | Đạt: mobile chặn edit, cho xem/duyệt; menu đầy đủ, đóng/mở và đăng xuất/đăng nhập hoạt động. Desktop 1024px vẽ, đặt tên, lưu và tải lại được |
 
-Ảnh và ghi chép của cùng đợt kiểm tra: `artifacts/admin-ux-20260903/` trong workspace (cạnh hai repo), gồm `before/` và `after/`. Đây là bằng chứng local, không phải URL công khai.
+Tổng cộng 22 kiểm tra thao tác được ghi trong `after/QA-NOTES.md`. Ảnh và ghi chép của cùng đợt kiểm tra: `artifacts/admin-ux-20260903/` trong workspace (cạnh hai repo), gồm `before/` và `after/`. Đây là bằng chứng local, không phải URL công khai; ảnh không được đưa lên GitHub vì có dữ liệu từ môi trường quản trị local.
+
+Các ảnh đối chiếu chính: `02-dashboard.png`, `05-settings.png`, `14-user-detail.png`, `16-mobile-editor.png`, `18-local-draft-restore.png`, `19-mobile-menu.png`, `21-submitted-confirmation.png` trong thư mục `after/`. Ảnh `15-user-import.png` có lỗi kích thước khi chụp nên không dùng làm bằng chứng cuối; bản Docker cuối được kiểm tra trực tiếp với chiều rộng nội dung bằng đúng viewport và ô chọn tệp ẩn rộng 1px. Màn hình 1024px đã qua luồng vẽ/lưu/tải lại và test component; lần chụp lại nhãn bảng sau sửa CSS bị gián đoạn do phiên agent QA trả 404.
 
 ## Giới hạn
 
-Không tuyên bố đạt toàn bộ WCAG từ ảnh. Kiểm tra bàn phím, focus và aria có regression tests; đọc màn hình, zoom 200% và các loại thiết bị thực cần đợt kiểm tra riêng. Upload thực qua hộp thoại tệp chưa hoàn tất; không thay bằng thao tác API để gắn nhãn E2E đã đạt. Mail mời/khôi phục và công bố dữ liệu thật không nằm trong thao tác trình duyệt của đợt này.
+Không tuyên bố đạt toàn bộ WCAG từ ảnh. Kiểm tra bàn phím, focus và aria có regression tests; đọc màn hình, zoom 200% và các loại thiết bị thực cần đợt kiểm tra riêng. Upload thực qua hộp thoại tệp chưa hoàn tất; không thay bằng thao tác API để gắn nhãn E2E đã đạt. Phê duyệt bằng người duyệt khác, mail mời/khôi phục và công bố dữ liệu thật không nằm trong thao tác trình duyệt của đợt này.

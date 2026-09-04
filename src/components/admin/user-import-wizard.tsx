@@ -21,7 +21,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import { AdminApiError } from "@/lib/api/admin";
 import { userImportActions, type UserImportActions, type UserImportIssue, type UserImportIssuePage, type UserImportJob, type UserImportReportPage } from "@/lib/api/user-imports";
 import { adminUserRoleLabels } from "@/lib/users/user-admin-state";
@@ -154,12 +153,12 @@ function UploadStep({
 
       <FieldGroup className="mt-6">
         <Field data-invalid={Boolean(fileError)}>
-          <div className="rounded-panel border-2 border-dashed bg-surface-subtle p-6 text-center">
+          <div className="rounded-panel border-2 border-dashed bg-surface-subtle p-6 text-center focus-within:ring-2 focus-within:ring-ring">
             <IconUpload className="mx-auto text-primary" size={30} stroke={1.6} />
             <FieldLabel htmlFor="user-import-file" className="mx-auto mt-3 cursor-pointer text-primary underline-offset-4 hover:underline">
               Chọn tệp CSV hoặc XLSX
             </FieldLabel>
-            <Input
+            <input
               id="user-import-file"
               className="sr-only"
               type="file"
