@@ -238,7 +238,7 @@ test("System Admin manages another user, enforces self-service restrictions, and
     await detail.getByRole("button", { name: "Đóng" }).click();
     detail = await openUserDetail(adminPage, requiredEnv("DANANGMAP_ADMIN_LOGIN"));
     await expect(detail.getByText("Tài khoản của bạn", { exact: true })).toBeVisible();
-    await expect(detail.getByRole("link", { name: "Cài đặt bảo mật" })).toBeVisible();
+    await expect(detail.getByRole("link", { name: "Bảo mật tài khoản" })).toBeVisible();
     await expect(detail.getByRole("button", { name: "Đặt lại xác thực", exact: true })).not.toBeAttached();
     await expect(detail.getByRole("button", { name: "Đăng xuất tất cả" })).not.toBeAttached();
     await detail.getByRole("button", { name: "Đóng" }).click();

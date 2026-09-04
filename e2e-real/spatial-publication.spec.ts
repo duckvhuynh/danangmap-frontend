@@ -192,7 +192,7 @@ async function approveAsReviewer(page: Page, revisionId: string) {
 
 async function publishAsPublisher(page: Page, revisionId: string) {
   await page.goto(`/admin/layers/${revisionId}/review`);
-  await expect(page.getByText("Đã duyệt", { exact: true }).filter({ visible: true })).toBeVisible();
+  await expect(page.locator("main > header").getByText("Đã duyệt", { exact: true }).filter({ visible: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Duyệt thay đổi" })).not.toBeAttached();
   await page.getByLabel("Ghi chú công bố").fill("Gate B công bố dữ liệu đã được duyệt.");
   const responsePromise = page.waitForResponse((response) => response.url().endsWith(`/api/v1/admin/revisions/${revisionId}:publish`) && response.request().method() === "POST");
@@ -217,7 +217,7 @@ async function publishAsPublisher(page: Page, revisionId: string) {
     expect(response.headers().location).toBeUndefined();
     expect(response.headers()["retry-after"]).toBeUndefined();
   }
-  await expect(page.getByText("Đã công bố", { exact: true }).filter({ visible: true })).toBeVisible({ timeout: 150_000 });
+  await expect(page.locator("main > header").getByText("Đã công bố", { exact: true }).filter({ visible: true })).toBeVisible({ timeout: 150_000 });
 }
 
 async function assertPublicUi(page: Page, importedName: string, privateValue: string) {

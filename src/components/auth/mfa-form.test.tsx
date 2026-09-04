@@ -190,5 +190,6 @@ describe("existing MFA verification", () => {
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent(expected);
     expect(alert).toHaveFocus();
+    expect(screen.getByLabelText("Mã xác thực 6 số")).toHaveValue("");
   });
 });

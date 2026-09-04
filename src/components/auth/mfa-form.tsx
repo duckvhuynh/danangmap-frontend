@@ -95,6 +95,7 @@ function ExistingMfaForm() {
         }
         router.replace("/admin");
       } catch (caught) {
+        setCode("");
         setError(authErrorMessage(caught, "verify"));
         globalThis.setTimeout(() => errorRef.current?.focus(), 0);
       } finally {
@@ -189,6 +190,7 @@ function EnrollmentFlow() {
       const terminal = caught instanceof AuthApiError && (caught.ambiguous || caught.status === 403 || caught.status === 409 || (caught.status === 401 && caught.code !== "AUTH_MFA_INVALID"));
       if (terminal) setStage({ name: "restart", message });
       else {
+        setCode("");
         setError(message);
         focusError();
       }

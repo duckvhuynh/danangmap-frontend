@@ -157,7 +157,7 @@ async function publish(page: Page, revisionId: string) {
       return typeof data === "object" && data !== null && "status" in data ? String(data.status) : "invalid";
     }, jobId), { timeout: 150_000, intervals: [500, 1_000, 2_000] }).toBe("succeeded");
   }
-  await expect(page.getByText("Đã công bố", { exact: true }).filter({ visible: true })).toBeVisible({ timeout: 150_000 });
+  await expect(page.locator("main > header").getByText("Đã công bố", { exact: true }).filter({ visible: true })).toBeVisible({ timeout: 150_000 });
 }
 
 async function publicFeature(request: APIRequestContext, slug: string, featureId: string) {

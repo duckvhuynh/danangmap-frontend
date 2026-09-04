@@ -71,7 +71,12 @@ async function isRejectedGeneratedTotp(response: Response) {
 }
 
 async function submitGeneratedTotp(page: Page, secret: string, loginIdentity: string) {
-  await page.getByLabel("Mã xác thực 6 số").fill(await freshTotp(page, secret, loginIdentity));
+  const input = page.getByLabel("Mã xác thực 6 số");
+  const code = await freshTotp(page, secret, loginIdentity);
+  await input.focus();
+  await input.press("ControlOrMeta+A");
+  await input.pressSequentially(code);
+  await expect(input).toHaveValue(code);
   const verification = page.waitForResponse((response) => response.url().endsWith("/api/v1/auth/mfa/verify") && response.request().method() === "POST");
   await page.getByRole("button", { name: "Xác nhận" }).click();
   return verification;

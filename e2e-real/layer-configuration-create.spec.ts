@@ -108,8 +108,8 @@ async function configureMixedLayer(page: Page, slug: string, title: string) {
   await page.getByLabel("Công khai").nth(1).click();
 
   await page.getByRole("tab", { name: "Hiển thị" }).click();
-  await page.getByLabel("Màu điểm").fill("#0B57D0");
-  await page.getByLabel("Màu nền vùng").fill("#EAF3FF");
+  await page.getByRole("textbox", { name: "Màu điểm", exact: true }).fill("#0B57D0");
+  await page.getByRole("textbox", { name: "Màu nền vùng", exact: true }).fill("#EAF3FF");
   await page.getByLabel("Hiển thị tọa độ").click();
 }
 

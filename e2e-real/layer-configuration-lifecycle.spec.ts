@@ -111,7 +111,7 @@ async function publish(page: Page, revisionId: string) {
     expect(response.headers().location).toBeUndefined();
     expect(response.headers()["retry-after"]).toBeUndefined();
   }
-  await expect(page.getByText("Đã công bố", { exact: true }).filter({ visible: true })).toBeVisible({ timeout: 150_000 });
+  await expect(page.locator("main > header").getByText("Đã công bố", { exact: true }).filter({ visible: true })).toBeVisible({ timeout: 150_000 });
 }
 
 test("layer configuration lifecycle keeps version domains isolated and recovers conflicts by refetch", async ({ browser }) => {
@@ -153,7 +153,7 @@ test("layer configuration lifecycle keeps version domains isolated and recovers 
     await editorPage.getByRole("tab", { name: "Thông tin" }).click();
     await editorPage.getByLabel("Tên lớp").fill(`${title} updated`);
     await editorPage.getByRole("tab", { name: "Hiển thị" }).click();
-    await editorPage.getByLabel("Màu viền điểm").fill("#0B57D0");
+    await editorPage.getByRole("textbox", { name: "Màu viền điểm", exact: true }).fill("#0B57D0");
     await expect(editorPage.getByLabel("Độ mờ đường")).not.toBeAttached();
     await editorPage.getByText("Tùy chọn tải dữ liệu nâng cao", { exact: true }).click();
     await editorPage.getByLabel("Cách tải dữ liệu bản đồ").click();
@@ -261,14 +261,14 @@ test("layer configuration lifecycle keeps version domains isolated and recovers 
     expect(record(deniedSecondSuccessor.body).code).toBe("DRAFT_ALREADY_EXISTS");
 
     await reviewerPage.goto(`/admin/layers/${layerId}`);
-    await expect(reviewerPage.getByText("Bạn có quyền xem cấu hình")).toBeVisible();
+    await expect(reviewerPage.getByRole("heading", { name: "Phiên bản này chỉ được xem" })).toBeVisible();
     await expect(reviewerPage.getByRole("button", { name: "Lưu sắp xếp lớp" })).not.toBeAttached();
 
     const mobileContext = await browser.newContext({ ...devices["Pixel 7"], ...contextOptions, storageState: await editorContext.storageState() });
     extraContexts.push(mobileContext);
     const mobilePage = await mobileContext.newPage();
     await mobilePage.goto(`/admin/layers/${layerId}`);
-    await expect(mobilePage.getByText("Sửa cấu hình cần máy tính")).toBeVisible();
+    await expect(mobilePage.getByText(/Mở lại trên thiết bị phù hợp để chỉnh sửa/u)).toBeVisible();
     await expect(mobilePage.getByRole("button", { name: "Lưu cấu hình" })).not.toBeAttached();
   } finally {
     await editorContext.close();
