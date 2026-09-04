@@ -1,7 +1,10 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { IconAlertCircle, IconRefresh } from "@tabler/icons-react";
+import {
+  CircleAlert as IconAlertCircle,
+  RefreshCw as IconRefresh,
+} from "lucide-react";
 import { acquireCsrfToken, AdminApiError, adminErrorMessage, getAdminSession, type AdminPrincipal } from "@/lib/api/admin";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -16,7 +19,7 @@ interface AdminSessionValue {
 const AdminSessionContext = createContext<AdminSessionValue | null>(null);
 
 export function AdminErrorNotice({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
-  return <Alert variant="destructive"><IconAlertCircle stroke={1.75}/><AlertTitle>Không thể hoàn tất yêu cầu</AlertTitle><AlertDescription><p>{adminErrorMessage(error)}</p>{error instanceof AdminApiError && error.requestId ? <details className="mt-2"><summary className="cursor-pointer font-medium">Thông tin hỗ trợ</summary><p className="mt-2 break-all text-xs">Mã yêu cầu: {error.requestId}</p></details> : null}{onRetry ? <Button className="mt-3" type="button" variant="outline" size="sm" onClick={onRetry}><IconRefresh stroke={1.75}/>Thử lại</Button> : null}</AlertDescription></Alert>;
+  return <Alert variant="destructive"><IconAlertCircle strokeWidth={1.75}/><AlertTitle>Không thể hoàn tất yêu cầu</AlertTitle><AlertDescription><p>{adminErrorMessage(error)}</p>{error instanceof AdminApiError && error.requestId ? <details className="mt-2"><summary className="cursor-pointer font-medium">Thông tin hỗ trợ</summary><p className="mt-2 break-all text-xs">Mã yêu cầu: {error.requestId}</p></details> : null}{onRetry ? <Button className="mt-3" type="button" variant="outline" size="sm" onClick={onRetry}><IconRefresh strokeWidth={1.75}/>Thử lại</Button> : null}</AlertDescription></Alert>;
 }
 
 export function AdminSessionProvider({ children }: { children: React.ReactNode }) {

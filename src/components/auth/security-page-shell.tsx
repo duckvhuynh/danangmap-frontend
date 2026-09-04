@@ -1,6 +1,9 @@
 import Link from "next/link";
-import type { TablerIcon } from "@tabler/icons-react";
-import { IconArrowLeft, IconShieldCheck } from "@tabler/icons-react";
+import type { LucideIcon } from "lucide-react";
+import {
+  ArrowLeft as IconArrowLeft,
+  ShieldCheck as IconShieldCheck,
+} from "lucide-react";
 import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
 
@@ -20,7 +23,7 @@ export function SecurityPageShell({
   description: string;
   sideTitle: string;
   sideDescription: string;
-  icon: TablerIcon;
+  icon: LucideIcon;
   children: React.ReactNode;
   backHref?: string;
   backLabel?: string;
@@ -35,7 +38,7 @@ export function SecurityPageShell({
           <p className="mt-5 max-w-lg text-lg leading-8 text-muted-foreground">{sideDescription}</p>
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <IconShieldCheck className="text-success" stroke={1.75} />
+          <IconShieldCheck className="text-success" strokeWidth={1.75} />
           Không chia sẻ mật khẩu hoặc mã xác thực cho người khác
         </div>
       </section>
@@ -43,14 +46,14 @@ export function SecurityPageShell({
         <div className="w-full max-w-md">
           <div className="mb-9 lg:hidden"><BrandMark /></div>
           <span className="grid size-11 place-items-center rounded-map-control bg-accent-subtle text-primary">
-            <Icon stroke={1.75} />
+            <Icon strokeWidth={1.75} />
           </span>
           <h1 className="mt-5 text-2xl font-semibold tracking-[-0.02em]">{title}</h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
           {children}
           <Button asChild className="mt-7 -ml-3" variant="ghost">
             <Link href={backHref}>
-              <IconArrowLeft data-icon="inline-start" stroke={1.75} />
+              <IconArrowLeft data-icon="inline-start" strokeWidth={1.75} />
               {backLabel}
             </Link>
           </Button>

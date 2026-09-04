@@ -3,7 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { IconAlertCircle, IconKey } from "@tabler/icons-react";
+import {
+  CircleAlert as IconAlertCircle,
+  KeyRound as IconKey,
+} from "lucide-react";
 import { SecurityError, SecuritySuccess } from "@/components/auth/security-feedback";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -123,7 +126,7 @@ export function ResetPasswordForm({
     return (
       <div className="mt-7 flex flex-col gap-4">
         <Alert aria-live="assertive" className="border-warning/30 bg-surface-subtle text-warning">
-          <IconAlertCircle size={18} stroke={1.75} />
+          <IconAlertCircle size={18} strokeWidth={1.75} />
           <AlertTitle>Trạng thái đặt lại chưa xác định</AlertTitle>
           <AlertDescription>
             Mã một lần có thể đã được sử dụng. DanangMap không tự gửi lại mật khẩu; hãy thử đăng nhập
@@ -197,7 +200,7 @@ export function ResetPasswordForm({
       </FieldGroup>
       {error && <SecurityError errorRef={errorRef} id="reset-confirm-error" message={error} />}
       <Button disabled={pending} type="submit">
-        <IconKey data-icon="inline-start" stroke={1.75} />
+        <IconKey data-icon="inline-start" strokeWidth={1.75} />
         {pending ? "Đang đặt lại mật khẩu..." : "Đặt lại mật khẩu"}
       </Button>
     </form>

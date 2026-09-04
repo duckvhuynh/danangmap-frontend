@@ -1,5 +1,8 @@
 import { useEffect, useId, useRef } from "react";
-import { IconGitCommit, IconHistory } from "@tabler/icons-react";
+import {
+  GitCommit as IconGitCommit,
+  History as IconHistory,
+} from "lucide-react";
 import { AdminErrorNotice } from "@/components/admin/admin-session";
 import { historyDate, historyRoleLabel, historyStatusLabel } from "@/components/admin/history-format";
 import { Badge } from "@/components/ui/badge";
@@ -34,7 +37,7 @@ export function WorkflowTimeline({
 
   if (loading) return <div className="flex flex-col gap-3" role="status" aria-live="polite" aria-label="Đang tải lịch sử duyệt"><Skeleton className="h-16 w-full"/><Skeleton className="h-16 w-full"/></div>;
   if (error) return <AdminErrorNotice error={error} onRetry={onRetry}/>;
-  if (!events || events.items.length === 0) return <Empty className="border" role="status" aria-live="polite"><EmptyHeader><EmptyMedia variant="icon"><IconHistory aria-hidden="true" stroke={1.75}/></EmptyMedia><EmptyTitle>Chưa có thao tác duyệt</EmptyTitle><EmptyDescription>Các lần gửi duyệt, phê duyệt và yêu cầu chỉnh sửa sẽ xuất hiện tại đây.</EmptyDescription></EmptyHeader></Empty>;
+  if (!events || events.items.length === 0) return <Empty className="border" role="status" aria-live="polite"><EmptyHeader><EmptyMedia variant="icon"><IconHistory aria-hidden="true" strokeWidth={1.75}/></EmptyMedia><EmptyTitle>Chưa có thao tác duyệt</EmptyTitle><EmptyDescription>Các lần gửi duyệt, phê duyệt và yêu cầu chỉnh sửa sẽ xuất hiện tại đây.</EmptyDescription></EmptyHeader></Empty>;
 
   return <div className="flex flex-col gap-4">
     <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
@@ -42,7 +45,7 @@ export function WorkflowTimeline({
     </p>
     <ol ref={listRef} id={listId} tabIndex={-1} className="divide-y rounded-panel border bg-surface outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="Lịch sử duyệt" aria-busy={loadingMore}>
       {events.items.map((event) => <li key={event.id} className="flex gap-3 p-4">
-        <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-control bg-accent-subtle text-primary"><IconGitCommit size={19} stroke={1.75}/></span>
+        <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-control bg-accent-subtle text-primary"><IconGitCommit size={19} strokeWidth={1.75}/></span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
             <span aria-hidden="true">{historyStatusLabel(event.fromStatus)}</span>

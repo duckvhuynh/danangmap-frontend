@@ -37,7 +37,7 @@ The product owner supplied a new custom Street style after the source rasters we
 
 ## 3. Visual-system findings
 
-- Flat civic blue, white surfaces, Tabler Icons, Google Maps-like 8/10/12 px radii and neutral shadows remain consistent.
+- Flat civic blue, white surfaces, Lucide Icons, Google Maps-like 8/10/12 px radii and neutral shadows remain consistent.
 - No gradient, glassmorphism, satellite UI, decorative image or custom cursor was introduced.
 - Polygon fill opacity was reduced from 0.18 to 0.12 so Street labels remain legible; outlines and point contrast remain clear on Street and Light.
 - Public mobile and admin review mobile have one foreground sheet/panel at a time and preserve 44 px minimum controls.

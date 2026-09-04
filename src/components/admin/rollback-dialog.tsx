@@ -1,7 +1,10 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { IconHistory, IconRotateClockwise } from "@tabler/icons-react";
+import {
+  History as IconHistory,
+  RotateCw as IconRotateClockwise,
+} from "lucide-react";
 import { AdminErrorNotice } from "@/components/admin/admin-session";
 import { historyDate } from "@/components/admin/history-format";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -109,7 +112,7 @@ export function RollbackDialog({
   return <Dialog open={open} onOpenChange={close}>
     <DialogTrigger asChild>
       <Button type="button" variant="outline" size="sm" disabled={disabled} aria-label={`Khôi phục bản này, lần công bố ${publication.generation}`}>
-        <IconRotateClockwise aria-hidden="true" data-icon="inline-start" stroke={1.75}/>
+        <IconRotateClockwise aria-hidden="true" data-icon="inline-start" strokeWidth={1.75}/>
         Khôi phục bản này
       </Button>
     </DialogTrigger>
@@ -126,7 +129,7 @@ export function RollbackDialog({
       </DialogHeader>
 
       <Alert role="note">
-        <IconHistory aria-hidden="true" stroke={1.75}/>
+        <IconHistory aria-hidden="true" strokeWidth={1.75}/>
         <AlertTitle>Bản công bố được chọn</AlertTitle>
         <AlertDescription>
           Phiên bản {publication.revisionNo}, {publication.featureCount.toLocaleString("vi-VN")} đối tượng, kích hoạt lúc {historyDate(publication.activatedAt)}.
@@ -178,7 +181,7 @@ export function RollbackDialog({
           {pending ? (
             <Spinner data-icon="inline-start"/>
           ) : (
-            <IconRotateClockwise aria-hidden="true" data-icon="inline-start" stroke={1.75}/>
+            <IconRotateClockwise aria-hidden="true" data-icon="inline-start" strokeWidth={1.75}/>
           )}
           {pending ? "Đang khôi phục..." : "Xác nhận khôi phục"}
         </Button>

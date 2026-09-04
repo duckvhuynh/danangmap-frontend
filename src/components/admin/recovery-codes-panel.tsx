@@ -2,13 +2,13 @@
 
 import { useRef, useState, useSyncExternalStore } from "react";
 import {
-  IconAlertTriangle,
-  IconCheck,
-  IconClipboard,
-  IconDeviceDesktop,
-  IconDownload,
-  IconKey,
-} from "@tabler/icons-react";
+  TriangleAlert as IconAlertTriangle,
+  Check as IconCheck,
+  Clipboard as IconClipboard,
+  Monitor as IconDeviceDesktop,
+  Download as IconDownload,
+  KeyRound as IconKey,
+} from "lucide-react";
 import { SecurityError } from "@/components/auth/security-feedback";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -131,7 +131,7 @@ export function RecoveryCodesPanel({
     <section aria-labelledby="recovery-codes-title" className="rounded-panel border bg-surface p-5">
       <div className="flex items-start gap-4">
         <span className="grid size-11 shrink-0 place-items-center rounded-control bg-accent-subtle text-primary">
-          <IconKey stroke={1.75} />
+          <IconKey strokeWidth={1.75} />
         </span>
         <div className="min-w-0 flex-1">
           <h2 className="font-medium" id="recovery-codes-title">Mã khôi phục đăng nhập</h2>
@@ -143,14 +143,14 @@ export function RecoveryCodesPanel({
 
       {!canMutate ? (
         <Alert className="mt-4 border-primary/20 bg-accent-subtle">
-          <IconDeviceDesktop stroke={1.75} />
+          <IconDeviceDesktop strokeWidth={1.75} />
           <AlertTitle>Cần dùng máy tính</AlertTitle>
           <AlertDescription>Để tạo mã khôi phục mới, hãy mở trang này trên máy tính có bàn phím và chuột.</AlertDescription>
         </Alert>
       ) : stage.name === "restart" ? (
         <div className="mt-4 grid gap-4">
           <Alert className="border-warning/30 bg-surface-subtle text-warning">
-            <IconAlertTriangle stroke={1.75} />
+            <IconAlertTriangle strokeWidth={1.75} />
             <AlertTitle>Cần bắt đầu một lượt tạo mới</AlertTitle>
             <AlertDescription>{stage.message}</AlertDescription>
           </Alert>
@@ -161,7 +161,7 @@ export function RecoveryCodesPanel({
       ) : stage.name === "codes" ? (
         <div className="mt-4 grid gap-4">
           <Alert className="border-success/30 bg-surface-subtle text-success">
-            <IconCheck stroke={1.75} />
+            <IconCheck strokeWidth={1.75} />
             <AlertTitle>Đã tạo 10 mã khôi phục mới</AlertTitle>
             <AlertDescription>Lưu các mã ở nơi an toàn. Bạn sẽ không xem lại được sau khi rời bước này.</AlertDescription>
           </Alert>
@@ -175,10 +175,10 @@ export function RecoveryCodesPanel({
           {error ? <SecurityError errorRef={errorRef} message={error} /> : null}
           <div className="grid gap-2 sm:grid-cols-2">
             <Button onClick={() => void copyCodes(stage.codes)} type="button" variant="outline">
-              <IconClipboard stroke={1.75} />{copied ? "Đã sao chép" : "Sao chép 10 mã"}
+              <IconClipboard strokeWidth={1.75} />{copied ? "Đã sao chép" : "Sao chép 10 mã"}
             </Button>
             <Button onClick={() => downloadCodes(stage.codes)} type="button" variant="outline">
-              <IconDownload stroke={1.75} />Tải tệp .txt
+              <IconDownload strokeWidth={1.75} />Tải tệp .txt
             </Button>
           </div>
           <Field orientation="horizontal">
@@ -193,7 +193,7 @@ export function RecoveryCodesPanel({
       ) : (
         <form className="mt-4 grid gap-4" onSubmit={submit}>
           <Alert className="border-warning/30 bg-surface-subtle text-warning">
-            <IconAlertTriangle stroke={1.75} />
+            <IconAlertTriangle strokeWidth={1.75} />
             <AlertTitle>Các mã cũ sẽ hết hiệu lực</AlertTitle>
             <AlertDescription>Sau khi xác nhận thành công, mọi mã khôi phục hiện tại sẽ không còn dùng được.</AlertDescription>
           </Alert>

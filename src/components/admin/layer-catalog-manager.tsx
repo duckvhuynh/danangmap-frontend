@@ -10,16 +10,16 @@ import {
   useSyncExternalStore,
 } from "react";
 import {
-  IconArchive,
-  IconArrowDown,
-  IconArrowUp,
-  IconEdit,
-  IconEye,
-  IconFileImport,
-  IconPlus,
-  IconSearch,
-  IconSettings,
-} from "@tabler/icons-react";
+  Archive as IconArchive,
+  ArrowDown as IconArrowDown,
+  ArrowUp as IconArrowUp,
+  SquarePen as IconEdit,
+  Eye as IconEye,
+  FileInput as IconFileImport,
+  Plus as IconPlus,
+  Search as IconSearch,
+  Settings as IconSettings,
+} from "lucide-react";
 import {
   AdminErrorNotice,
   useAdminSession,
@@ -446,7 +446,7 @@ export function LayerCatalogManager({
                 <thead className="bg-surface-subtle text-xs text-muted-foreground">
                   <tr>
                     <th className="px-5 py-3 font-medium">Tên lớp</th>
-                    <th className="px-5 py-3 font-medium">Loại dữ liệu</th>
+                    <th className="px-5 py-3 font-medium">Loại đối tượng</th>
                     <th className="px-5 py-3 font-medium">Trạng thái</th>
                     <th className="px-5 py-3 font-medium">Cập nhật</th>
                     <th className="w-80 px-5 py-3">
@@ -589,7 +589,7 @@ export function LayerCatalogManager({
                           href={`/admin/layers/${layer.id}/revisions/${layer.revisionId}/review`}
                         >
                           <IconEye />
-                          Xem / duyệt
+                          Xem và duyệt
                         </Link>
                       </Button>
                     )}
@@ -602,7 +602,7 @@ export function LayerCatalogManager({
         <footer className="flex items-center justify-between border-t px-5 py-4 text-sm text-muted-foreground">
           <span>{visible.length} lớp dữ liệu</span>
           <span>
-            {includeArchived ? "Gồm mục đã lưu trữ" : "Đang sử dụng"}
+            {includeArchived ? "Gồm cả mục đã lưu trữ" : "Chỉ mục đang hoạt động"}
           </span>
         </footer>
       </section>

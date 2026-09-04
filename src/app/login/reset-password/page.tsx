@@ -1,4 +1,4 @@
-import { IconLock } from "@tabler/icons-react";
+import { Lock as IconLock } from "lucide-react";
 import { ResetPasswordForm } from "@/components/auth/reset-password-form";
 import { SecurityPageShell } from "@/components/auth/security-page-shell";
 

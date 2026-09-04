@@ -3,16 +3,16 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  IconAlertCircle,
-  IconClock,
-  IconDeviceDesktop,
-  IconKey,
-  IconLockAccess,
-  IconMailForward,
-  IconRefresh,
-  IconShieldLock,
-  IconUserEdit,
-} from "@tabler/icons-react";
+  CircleAlert as IconAlertCircle,
+  Clock as IconClock,
+  Monitor as IconDeviceDesktop,
+  KeyRound as IconKey,
+  LockKeyhole as IconLockAccess,
+  Forward as IconMailForward,
+  RefreshCw as IconRefresh,
+  Shield as IconShieldLock,
+  UserPen as IconUserEdit,
+} from "lucide-react";
 import { useAdminSession } from "@/components/admin/admin-session";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -123,7 +123,7 @@ function SecurityActionDialog({
           <DialogDescription>{copy?.description}</DialogDescription>
         </DialogHeader>
         <form className="grid gap-5" onSubmit={submit}>
-          {error ? <Alert variant="destructive"><IconAlertCircle stroke={1.75} /><AlertTitle>Không thể hoàn tất thao tác</AlertTitle><AlertDescription>{detailErrorMessage(error)}</AlertDescription></Alert> : null}
+          {error ? <Alert variant="destructive"><IconAlertCircle strokeWidth={1.75} /><AlertTitle>Không thể hoàn tất thao tác</AlertTitle><AlertDescription>{detailErrorMessage(error)}</AlertDescription></Alert> : null}
           <Field data-invalid={reason.length > 0 && reason.trim().length < 8}>
             <FieldLabel htmlFor="security-action-reason">Lý do thao tác</FieldLabel>
             <Input id="security-action-reason" value={reason} onChange={(event) => { setReason(event.target.value); setError(null); operationKey.current = null; }} maxLength={500} autoFocus disabled={pending} />
@@ -274,7 +274,7 @@ export function UserSecurityDetail({
           </DialogHeader>
           <div className="grid min-w-0 max-h-[calc(100dvh-11rem)] gap-6 overflow-y-auto px-5 pb-6 sm:px-6 [&>section]:min-w-0">
             {loading && !user ? <div className="grid gap-3" role="status" aria-label="Đang tải chi tiết tài khoản"><Skeleton className="h-20" /><Skeleton className="h-32" /><Skeleton className="h-48" /></div> : null}
-            {error && !user ? <Alert variant="destructive"><IconAlertCircle stroke={1.75} /><AlertTitle>Không tải được chi tiết tài khoản</AlertTitle><AlertDescription><p>{detailErrorMessage(error)}</p><Button className="mt-3" type="button" variant="outline" size="sm" onClick={() => void load()}><IconRefresh stroke={1.75} />Thử lại</Button></AlertDescription></Alert> : null}
+            {error && !user ? <Alert variant="destructive"><IconAlertCircle strokeWidth={1.75} /><AlertTitle>Không tải được chi tiết tài khoản</AlertTitle><AlertDescription><p>{detailErrorMessage(error)}</p><Button className="mt-3" type="button" variant="outline" size="sm" onClick={() => void load()}><IconRefresh strokeWidth={1.75} />Thử lại</Button></AlertDescription></Alert> : null}
             {user ? <>
               <section className="flex flex-wrap items-start justify-between gap-4 rounded-panel border bg-surface p-4" aria-labelledby="identity-summary-title">
                 <div className="min-w-0"><p id="identity-summary-title" className="text-lg font-semibold">{user.displayName}</p><p className="mt-1 text-sm text-muted-foreground">{user.email} · @{user.username}</p><div className="mt-3 flex flex-wrap gap-2"><Badge>{adminUserRoleLabels[user.role]}</Badge><Badge>{adminUserStatusLabels[user.status]}</Badge>{isSelf ? <Badge className="bg-green-50 text-success">Tài khoản của bạn</Badge> : null}</div></div>
@@ -283,12 +283,12 @@ export function UserSecurityDetail({
 
               <SecuritySummary user={user} mfaPolicyEnabled={principal.mfaEnabled} />
 
-              {!canMutate ? <Alert className="border-primary/20 bg-accent-subtle"><IconDeviceDesktop stroke={1.75} /><AlertTitle>Chi tiết chỉ xem</AlertTitle><AlertDescription>Để chỉnh sửa tài khoản hoặc thay đổi bảo mật, hãy dùng máy tính có bàn phím và chuột.</AlertDescription></Alert> : null}
+              {!canMutate ? <Alert className="border-primary/20 bg-accent-subtle"><IconDeviceDesktop strokeWidth={1.75} /><AlertTitle>Chi tiết chỉ xem</AlertTitle><AlertDescription>Để chỉnh sửa tài khoản hoặc thay đổi bảo mật, hãy dùng máy tính có bàn phím và chuột.</AlertDescription></Alert> : null}
 
               <section className="rounded-panel border bg-surface p-4" aria-labelledby="account-fields-title">
-                <div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-control bg-accent-subtle text-primary"><IconUserEdit stroke={1.75} /></span><div><h3 id="account-fields-title" className="font-medium">Hồ sơ và quyền truy cập</h3><p className="mt-1 text-xs text-muted-foreground">Khi đổi vai trò hoặc trạng thái, người dùng sẽ phải đăng nhập lại.</p></div></div>
+                <div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-control bg-accent-subtle text-primary"><IconUserEdit strokeWidth={1.75} /></span><div><h3 id="account-fields-title" className="font-medium">Hồ sơ và quyền truy cập</h3><p className="mt-1 text-xs text-muted-foreground">Khi đổi vai trò hoặc trạng thái, người dùng sẽ phải đăng nhập lại.</p></div></div>
                 {canMutate ? <form className="mt-5 grid gap-4" onSubmit={save}>
-                  {saveError ? <Alert variant="destructive"><IconAlertCircle stroke={1.75} /><AlertTitle>Không lưu được thay đổi</AlertTitle><AlertDescription>{detailErrorMessage(saveError)}</AlertDescription></Alert> : null}
+                  {saveError ? <Alert variant="destructive"><IconAlertCircle strokeWidth={1.75} /><AlertTitle>Không lưu được thay đổi</AlertTitle><AlertDescription>{detailErrorMessage(saveError)}</AlertDescription></Alert> : null}
                   <Field data-invalid={displayName.trim().length < 2}><FieldLabel htmlFor="admin-user-display-name">Tên hiển thị</FieldLabel><Input id="admin-user-display-name" value={displayName} onChange={(event) => { setDisplayName(event.target.value); editChanged(); }} disabled={saving} maxLength={200} /><FieldError>{displayName.trim().length < 2 ? "Tên hiển thị cần ít nhất 2 ký tự." : undefined}</FieldError></Field>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <Field><FieldLabel htmlFor="admin-user-role">Vai trò</FieldLabel><Select value={role} onValueChange={(value: AdminUserDetail["role"]) => { setRole(value); editChanged(); }} disabled={saving}><SelectTrigger id="admin-user-role"><SelectValue /></SelectTrigger><SelectContent><SelectGroup>{adminUserRoles.map((item) => <SelectItem key={item} value={item}>{adminUserRoleLabels[item]}</SelectItem>)}</SelectGroup></SelectContent></Select></Field>
@@ -301,15 +301,15 @@ export function UserSecurityDetail({
               </section>
 
               <section className="rounded-panel border bg-surface p-4" aria-labelledby="security-actions-title">
-                <div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-control bg-accent-subtle text-primary"><IconShieldLock stroke={1.75} /></span><div><h3 id="security-actions-title" className="font-medium">Bảo mật tài khoản</h3><p className="mt-1 text-xs text-muted-foreground">Hỗ trợ khi người dùng quên mật khẩu hoặc mất quyền truy cập.</p></div></div>
-                {isSelf ? <Alert className="mt-4"><IconLockAccess stroke={1.75} /><AlertTitle>Đây là tài khoản của bạn</AlertTitle><AlertDescription>Để xem cách xác thực hoặc đăng xuất các thiết bị của mình, mở <Link className="font-medium text-primary underline-offset-4 hover:underline" href="/admin/settings">Bảo mật tài khoản</Link>.</AlertDescription></Alert> : null}
-                {!isSelf && canMutate ? <div className="mt-4 grid gap-2 sm:grid-cols-3"><Button type="button" variant="outline" onClick={() => setSecurityAction({ kind: "password-reset" })}><IconMailForward stroke={1.75} />Gửi email đặt lại mật khẩu</Button>{principal.mfaEnabled ? <Button type="button" variant="outline" disabled={!user.mfa.enabled} onClick={() => setSecurityAction({ kind: "reset-mfa" })}><IconKey stroke={1.75} />Đặt lại xác thực</Button> : null}<Button type="button" variant="outline" disabled={!activeSessions.length} onClick={() => setSecurityAction({ kind: "revoke-all" })}><IconLockAccess stroke={1.75} />Đăng xuất tất cả</Button></div> : null}
+                <div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-control bg-accent-subtle text-primary"><IconShieldLock strokeWidth={1.75} /></span><div><h3 id="security-actions-title" className="font-medium">Bảo mật tài khoản</h3><p className="mt-1 text-xs text-muted-foreground">Hỗ trợ khi người dùng quên mật khẩu hoặc mất quyền truy cập.</p></div></div>
+                {isSelf ? <Alert className="mt-4"><IconLockAccess strokeWidth={1.75} /><AlertTitle>Đây là tài khoản của bạn</AlertTitle><AlertDescription>Để xem cách xác thực hoặc đăng xuất các thiết bị của mình, mở <Link className="font-medium text-primary underline-offset-4 hover:underline" href="/admin/settings">Bảo mật tài khoản</Link>.</AlertDescription></Alert> : null}
+                {!isSelf && canMutate ? <div className="mt-4 grid gap-2 sm:grid-cols-3"><Button type="button" variant="outline" onClick={() => setSecurityAction({ kind: "password-reset" })}><IconMailForward strokeWidth={1.75} />Gửi email đặt lại mật khẩu</Button>{principal.mfaEnabled ? <Button type="button" variant="outline" disabled={!user.mfa.enabled} onClick={() => setSecurityAction({ kind: "reset-mfa" })}><IconKey strokeWidth={1.75} />Đặt lại xác thực</Button> : null}<Button type="button" variant="outline" disabled={!activeSessions.length} onClick={() => setSecurityAction({ kind: "revoke-all" })}><IconLockAccess strokeWidth={1.75} />Đăng xuất tất cả</Button></div> : null}
                 <div className="mt-5 divide-y rounded-control border">
-                  {user.sessions.length ? user.sessions.map((session) => <div key={session.id} className="flex flex-wrap items-center gap-3 p-3"><IconDeviceDesktop className="text-muted-foreground" stroke={1.75} /><div className="min-w-0 flex-1"><p className="text-sm font-medium">{session.kind === "authenticated" ? "Đã đăng nhập" : "Chờ xác thực"} · {securityStatusLabel(session.status)}</p><p className="mt-1 truncate text-xs text-muted-foreground">{sessionDeviceLabel(session.userAgent)} · bắt đầu {formatDate(session.createdAt)}</p></div>{!isSelf && canMutate && session.status === "active" ? <Button type="button" variant="ghost" size="sm" onClick={() => setSecurityAction({ kind: "revoke-session", sessionId: session.id })}>Đăng xuất</Button> : null}</div>) : <p className="p-4 text-sm text-muted-foreground">Chưa có phiên đăng nhập gần đây.</p>}
+                  {user.sessions.length ? user.sessions.map((session) => <div key={session.id} className="flex flex-wrap items-center gap-3 p-3"><IconDeviceDesktop className="text-muted-foreground" strokeWidth={1.75} /><div className="min-w-0 flex-1"><p className="text-sm font-medium">{session.kind === "authenticated" ? "Đã đăng nhập" : "Chờ xác thực"} · {securityStatusLabel(session.status)}</p><p className="mt-1 truncate text-xs text-muted-foreground">{sessionDeviceLabel(session.userAgent)} · bắt đầu {formatDate(session.createdAt)}</p></div>{!isSelf && canMutate && session.status === "active" ? <Button type="button" variant="ghost" size="sm" onClick={() => setSecurityAction({ kind: "revoke-session", sessionId: session.id })}>Đăng xuất</Button> : null}</div>) : <p className="p-4 text-sm text-muted-foreground">Chưa có phiên đăng nhập gần đây.</p>}
                 </div>
               </section>
 
-              <section className="rounded-panel border bg-surface p-4" aria-labelledby="mail-history-title"><div className="flex items-center gap-3"><IconClock className="text-primary" stroke={1.75} /><div><h3 id="mail-history-title" className="font-medium">Lời mời và yêu cầu đặt lại mật khẩu</h3><p className="mt-1 text-xs text-muted-foreground">Theo dõi trạng thái gửi email và sử dụng lời mời.</p></div></div><div className="mt-4 grid gap-2 text-sm">{[...user.invites.map((item) => ({ id: item.id, label: `Lời mời · ${securityStatusLabel(item.status)}`, at: item.createdAt, mail: item.mailStatus })), ...user.passwordResets.map((item) => ({ id: item.id, label: `Đặt lại mật khẩu · ${securityStatusLabel(item.status)}`, at: item.createdAt, mail: item.mailStatus }))].map((item) => <div key={item.id} className="flex flex-wrap justify-between gap-2 rounded-control bg-surface-subtle px-3 py-2"><span>{item.label}</span><span className="text-xs text-muted-foreground">Email: {mailStatusLabel(item.mail)} · {formatDate(item.at)}</span></div>)}{!user.invites.length && !user.passwordResets.length ? <p className="text-muted-foreground">Chưa có email bảo mật gần đây.</p> : null}</div><Button asChild className="mt-4" variant="outline" size="sm"><Link href="/admin/audit"><IconShieldLock stroke={1.75} />Xem lịch sử hoạt động</Link></Button></section>
+              <section className="rounded-panel border bg-surface p-4" aria-labelledby="mail-history-title"><div className="flex items-center gap-3"><IconClock className="text-primary" strokeWidth={1.75} /><div><h3 id="mail-history-title" className="font-medium">Lời mời và yêu cầu đặt lại mật khẩu</h3><p className="mt-1 text-xs text-muted-foreground">Theo dõi trạng thái gửi email và sử dụng lời mời.</p></div></div><div className="mt-4 grid gap-2 text-sm">{[...user.invites.map((item) => ({ id: item.id, label: `Lời mời · ${securityStatusLabel(item.status)}`, at: item.createdAt, mail: item.mailStatus })), ...user.passwordResets.map((item) => ({ id: item.id, label: `Đặt lại mật khẩu · ${securityStatusLabel(item.status)}`, at: item.createdAt, mail: item.mailStatus }))].map((item) => <div key={item.id} className="flex flex-wrap justify-between gap-2 rounded-control bg-surface-subtle px-3 py-2"><span>{item.label}</span><span className="text-xs text-muted-foreground">Email: {mailStatusLabel(item.mail)} · {formatDate(item.at)}</span></div>)}{!user.invites.length && !user.passwordResets.length ? <p className="text-muted-foreground">Chưa có email bảo mật gần đây.</p> : null}</div><Button asChild className="mt-4" variant="outline" size="sm"><Link href="/admin/audit"><IconShieldLock strokeWidth={1.75} />Xem lịch sử hoạt động</Link></Button></section>
             </> : null}
           </div>
         </DialogContent>

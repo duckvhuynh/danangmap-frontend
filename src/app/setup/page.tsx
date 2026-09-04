@@ -1,4 +1,4 @@
-import { IconUserShield } from "@tabler/icons-react";
+import { ShieldUser as IconUserShield } from "lucide-react";
 import { BootstrapSetupForm } from "@/components/auth/bootstrap-setup-form";
 import { SecurityPageShell } from "@/components/auth/security-page-shell";
 

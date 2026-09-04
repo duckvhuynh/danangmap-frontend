@@ -42,7 +42,7 @@ Ba artifact visual direction public desktop ban đầu đã được sinh ở c�
 2. **Layer Dock:** dùng navigation rail, search command panel và dock layer thấp để giảm che bản đồ. Artifact: `docs/visual-directions/direction-2.png`.
 3. **Civic Atlas:** nhấn mạnh phân loại layer, metadata và khả năng đọc như một atlas hành chính số. Artifact: `docs/visual-directions/direction-3.png`.
 
-Ba hướng đều giữ trắng, xanh thương hiệu, không gradient, cùng radius scale và cùng yêu cầu accessibility. Product owner đã chọn Direction 1, sau đó phê duyệt vòng refined dùng hình học control, radius và elevation tham chiếu Google Maps web, Tabler Icons và primary blue `#1A73E8`.
+Ba hướng đều giữ trắng, xanh thương hiệu, không gradient, cùng radius scale và cùng yêu cầu accessibility. Product owner đã chọn Direction 1, sau đó phê duyệt vòng refined dùng hình học control, radius và elevation tham chiếu Google Maps web và primary blue `#1A73E8`. Ngày 2026-09-04, product owner chốt Lucide là bộ icon duy nhất để đồng bộ với shadcn/ui.
 
 ### 4.1 Selection record
 
@@ -52,7 +52,7 @@ Ba hướng đều giữ trắng, xanh thương hiệu, không gradient, cùng r
 | Source of truth public desktop | `docs/visual-directions/direction-1-refined.png` |
 | Quyết định bởi | Product owner `duckvhuynh` |
 | Ngày phê duyệt | 2026-08-21 |
-| Phạm vi phê duyệt | Bố cục map-first, Google Maps-like controls/shadows/radius, Tabler Icons, lighter civic blue |
+| Phạm vi phê duyệt | Bố cục map-first, Google Maps-like controls/shadows/radius, Lucide Icons, lighter civic blue |
 | Không được trộn | Direction 2, Direction 3 hoặc visual system khác nếu chưa mở design review mới |
 
 ### 4.2 Derived source targets
@@ -130,8 +130,8 @@ Radius là một hệ có quy tắc, không dùng tùy hứng:
 
 ### 5.5 Iconography
 
-- Chỉ dùng `@tabler/icons-react`; không cài hoặc import Lucide và không trộn icon family.
-- Stroke mặc định `1.75`, line cap/line join giữ theo Tabler. Trạng thái active được phân biệt bằng surface, label và focus, không tăng stroke tùy ý.
+- Chỉ dùng `lucide-react`; không cài hoặc import bộ icon khác và không trộn icon family.
+- Stroke mặc định `1.75`, line cap/line join giữ theo Lucide. Trạng thái active được phân biệt bằng surface, label và focus, không tăng stroke tùy ý.
 - Icon trong shadcn control dùng `data-icon`; icon-only control luôn có accessible name và tooltip.
 - Không tự vẽ SVG path, CSS art, emoji hoặc text glyph thay icon.
 
@@ -432,7 +432,7 @@ Terra Draw output phải đi qua canonical geometry adapter trước khi vào st
 
 ### 10.6 Durable publication progress
 
-Publish dùng ngôn ngữ control nổi hiện có: nền trắng, border xanh nhạt, shadow thấp, radius kiểu Google Maps web và Tabler Icons. Không thêm gradient, glass hoặc route mới. `202 Accepted` chỉ hợp lệ khi body là durable job `queued/queued`; frontend từ chối terminal/already-building body và không coi 202 là công bố thành công.
+Publish dùng ngôn ngữ control nổi hiện có: nền trắng, border xanh nhạt, shadow thấp, radius kiểu Google Maps web và Lucide Icons. Không thêm gradient, glass hoặc route mới. `202 Accepted` chỉ hợp lệ khi body là durable job `queued/queued`; frontend từ chối terminal/already-building body và không coi 202 là công bố thành công.
 
 - Review screen lấy lại job theo `layerId + revisionId` khi mở hoặc reload; history tách riêng danh sách job đang chạy/đã kết thúc khỏi snapshot đã commit.
 - Job `queued` luôn indeterminate. Khi `totalUnits=null`, UI chỉ báo số feature đã xử lý và không render progressbar. `0%` là giá trị hợp lệ khi tổng lớn hơn 0; empty nonterminal `totalUnits=0, percent=null` được gọi rõ là revision rỗng và không dựng progressbar hoặc 100% giả.
@@ -450,7 +450,7 @@ Revision review hiển thị attachment diff từ typed backend contract, không
 - Entry chỉ hiển thị descriptor an toàn của field public, non-sensitive: file name, field key, size, scan status và display order trước/sau.
 - Object/quarantine key, checksum, owner và descriptor của field private/sensitive không được render hoặc lưu client-side. Thay đổi ẩn chỉ xuất hiện dưới dạng count/boolean redacted.
 - Empty state “không đổi attachment” chỉ dùng khi backend trả `changed=false`; UI không tự suy ra từ mảng thiếu hoặc contract lỗi.
-- Danh sách attachment nằm trong semantic section của từng feature, có heading/icon Tabler bằng text, không phụ thuộc màu để phân biệt add/remove/reorder và vẫn đọc được trên mobile review.
+- Danh sách attachment nằm trong semantic section của từng feature, có heading và icon Lucide đi kèm nhãn chữ, không phụ thuộc màu để phân biệt thêm/xóa/đổi thứ tự và vẫn đọc được trên mobile review.
 
 ## 11. IndexedDB và Dexie crash-safe autosave
 

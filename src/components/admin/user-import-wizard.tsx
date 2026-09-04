@@ -3,18 +3,18 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
-  IconAlertTriangle,
-  IconArrowLeft,
-  IconCheck,
-  IconCircleCheck,
-  IconDownload,
-  IconFileSpreadsheet,
-  IconInfoCircle,
-  IconRefresh,
-  IconShieldLock,
-  IconUpload,
-  IconUsersPlus,
-} from "@tabler/icons-react";
+  TriangleAlert as IconAlertTriangle,
+  ArrowLeft as IconArrowLeft,
+  Check as IconCheck,
+  CircleCheck as IconCircleCheck,
+  Download as IconDownload,
+  FileSpreadsheet as IconFileSpreadsheet,
+  Info as IconInfoCircle,
+  RefreshCw as IconRefresh,
+  Shield as IconShieldLock,
+  Upload as IconUpload,
+  UsersRound as IconUsersPlus,
+} from "lucide-react";
 import { useAdminSession } from "@/components/admin/admin-session";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -80,7 +80,7 @@ function Stepper({ stage }: { stage: UserImportStage }) {
             : "flex items-center gap-2 rounded-control border bg-surface px-3 py-2 text-xs text-muted-foreground"}
         >
           <span className="grid size-6 shrink-0 place-items-center rounded-full border bg-surface font-medium">
-            {index < currentIndex ? <IconCheck stroke={2} /> : index + 1}
+            {index < currentIndex ? <IconCheck strokeWidth={2} /> : index + 1}
           </span>
           {step.label}
         </li>
@@ -92,7 +92,7 @@ function Stepper({ stage }: { stage: UserImportStage }) {
 function ImportPolicyNote() {
   return (
     <Alert role="note" className="bg-surface-subtle">
-      <IconShieldLock stroke={1.75} />
+      <IconShieldLock strokeWidth={1.75} />
       <AlertTitle>Bạn sẽ kiểm tra trước khi gửi lời mời</AlertTitle>
       <AlertDescription>
         Bước kiểm tra chưa tạo tài khoản. Sau khi bạn xác nhận, người dùng hợp lệ sẽ nhận email mời tự đặt mật khẩu. Tài khoản hiện có không bị thay đổi.
@@ -121,7 +121,7 @@ function UserImportErrorNotice({ error, onRetry }: { error: unknown; onRetry?: (
   }
   return (
     <Alert variant="destructive">
-      <IconAlertTriangle stroke={1.75} />
+      <IconAlertTriangle strokeWidth={1.75} />
       <AlertTitle>Không thể hoàn tất yêu cầu</AlertTitle>
       <AlertDescription><p>{message}</p>{onRetry && <Button className="mt-3" type="button" variant="outline" size="sm" onClick={onRetry}><IconRefresh data-icon="inline-start" />Cập nhật trạng thái</Button>}</AlertDescription>
     </Alert>
@@ -144,7 +144,7 @@ function UploadStep({
   return (
     <section className="rounded-panel border bg-surface p-5 map-panel-shadow sm:p-6" aria-labelledby="user-import-upload-heading">
       <div className="flex items-start gap-3">
-        <IconFileSpreadsheet className="mt-0.5 text-primary" stroke={1.75} />
+        <IconFileSpreadsheet className="mt-0.5 text-primary" strokeWidth={1.75} />
         <div>
           <h2 id="user-import-upload-heading" className="font-semibold">1. Chọn danh sách người dùng</h2>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">Chọn tệp danh sách tài khoản. Bạn sẽ xem kết quả kiểm tra trước khi gửi lời mời.</p>
@@ -154,7 +154,7 @@ function UploadStep({
       <FieldGroup className="mt-6">
         <Field data-invalid={Boolean(fileError)}>
           <div className="rounded-panel border-2 border-dashed bg-surface-subtle p-6 text-center focus-within:ring-2 focus-within:ring-ring">
-            <IconUpload className="mx-auto text-primary" size={30} stroke={1.6} />
+            <IconUpload className="mx-auto text-primary" size={30} strokeWidth={1.6} />
             <FieldLabel htmlFor="user-import-file" className="mx-auto mt-3 cursor-pointer text-primary underline-offset-4 hover:underline">
               Chọn tệp CSV hoặc XLSX
             </FieldLabel>
@@ -194,7 +194,7 @@ function UploadStep({
       <div className="mt-5"><ImportPolicyNote /></div>
       <div className="mt-6 flex justify-end">
         <Button type="button" disabled={!file || Boolean(fileError) || busy} onClick={onSubmit}>
-          <IconUpload data-icon="inline-start" stroke={1.75} />
+          <IconUpload data-icon="inline-start" strokeWidth={1.75} />
           {busy ? "Đang tải lên..." : "Tải lên và kiểm tra"}
         </Button>
       </div>
@@ -206,7 +206,7 @@ function ProcessingStep({ job, title }: { job: UserImportJob; title: string }) {
   const progress = Math.max(0, Math.min(100, job.progress));
   return (
     <section className="rounded-panel border bg-surface p-8 text-center map-panel-shadow" aria-live="polite">
-      <span className="mx-auto grid size-12 place-items-center rounded-full bg-accent-subtle text-primary"><IconRefresh className="animate-spin" stroke={1.75} /></span>
+      <span className="mx-auto grid size-12 place-items-center rounded-full bg-accent-subtle text-primary"><IconRefresh className="animate-spin" strokeWidth={1.75} /></span>
       <h2 className="mt-4 font-semibold">{title}</h2>
       <p className="mt-2 text-sm text-muted-foreground">{userImportStatusLabel(job.status)} · {progress}%</p>
       <div className="mx-auto mt-4 h-2 max-w-md overflow-hidden rounded-full bg-surface-subtle" role="progressbar" aria-label={title} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
@@ -250,7 +250,7 @@ function InspectStep({ job, sheet, busy, onSheet, onValidate }: { job: UserImpor
       <div className="mt-5"><ImportPolicyNote /></div>
       <div className="mt-6 flex justify-end">
         <Button type="button" disabled={!canValidate || busy} onClick={onValidate}>
-          <IconCheck data-icon="inline-start" stroke={1.75} />
+          <IconCheck data-icon="inline-start" strokeWidth={1.75} />
           {busy ? "Đang bắt đầu kiểm tra..." : "Kiểm tra dữ liệu"}
         </Button>
       </div>
@@ -336,10 +336,10 @@ function IssuesStep({
         </FieldContent>
       </Field>
 
-      {job.counts.valid < 1 && <Alert variant="destructive" className="mt-5"><IconAlertTriangle stroke={1.75} /><AlertTitle>Không có dòng hợp lệ</AlertTitle><AlertDescription>Hãy sửa tệp rồi nhập lại danh sách.</AlertDescription></Alert>}
+      {job.counts.valid < 1 && <Alert variant="destructive" className="mt-5"><IconAlertTriangle strokeWidth={1.75} /><AlertTitle>Không có dòng hợp lệ</AlertTitle><AlertDescription>Hãy sửa tệp rồi nhập lại danh sách.</AlertDescription></Alert>}
       <div className="mt-6 flex justify-end">
         <Button type="button" disabled={!acknowledged || job.counts.valid < 1 || busy} onClick={onApply}>
-          <IconUsersPlus data-icon="inline-start" stroke={1.75} />
+          <IconUsersPlus data-icon="inline-start" strokeWidth={1.75} />
           {busy ? "Đang gửi lệnh..." : `Gửi ${job.counts.valid.toLocaleString("vi-VN")} lời mời`}
         </Button>
       </div>
@@ -351,7 +351,7 @@ function CompleteStep({ job, report, filter, busy, onFilter, onSearch, onMore, o
   return (
     <section className="rounded-panel border bg-surface p-6 map-panel-shadow sm:p-8">
       <div className="text-center">
-        <span className="mx-auto grid size-12 place-items-center rounded-full bg-emerald-50 text-success"><IconCircleCheck stroke={1.75} /></span>
+        <span className="mx-auto grid size-12 place-items-center rounded-full bg-emerald-50 text-success"><IconCircleCheck strokeWidth={1.75} /></span>
         <h2 className="mt-4 text-lg font-semibold">Đã nhập danh sách người dùng</h2>
         <p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Đã tạo {job.counts.applied.toLocaleString("vi-VN")} lời mời. Người nhận cần mở email và đặt mật khẩu để bắt đầu sử dụng tài khoản.</p>
       </div>
@@ -365,8 +365,8 @@ function CompleteStep({ job, report, filter, busy, onFilter, onSearch, onMore, o
       <div className="mt-5"><IssueTable issues={report?.issues ?? []} /></div>
       {report?.meta.hasMore && <Button className="mt-3" type="button" variant="outline" onClick={onMore} disabled={busy}>Xem thêm báo cáo</Button>}
       <div className="mt-6 flex flex-wrap justify-center gap-3">
-        <Button type="button" variant="outline" onClick={onDownload} disabled={!report}><IconDownload data-icon="inline-start" stroke={1.75} />Tải báo cáo đang xem</Button>
-        <Button type="button" onClick={onRestart}><IconRefresh data-icon="inline-start" stroke={1.75} />Nhập danh sách khác</Button>
+        <Button type="button" variant="outline" onClick={onDownload} disabled={!report}><IconDownload data-icon="inline-start" strokeWidth={1.75} />Tải báo cáo đang xem</Button>
+        <Button type="button" onClick={onRestart}><IconRefresh data-icon="inline-start" strokeWidth={1.75} />Nhập danh sách khác</Button>
       </div>
     </section>
   );
@@ -377,7 +377,7 @@ function MobileReadOnly() {
     <main className="mx-auto max-w-3xl p-4 pb-24 sm:p-6">
       <Button asChild variant="ghost" size="sm"><Link href="/admin/users"><IconArrowLeft data-icon="inline-start" />Người dùng</Link></Button>
       <section className="mt-4 rounded-panel border bg-surface p-6 map-panel-shadow">
-        <span className="grid size-11 place-items-center rounded-map-control bg-accent-subtle text-primary"><IconInfoCircle stroke={1.75} /></span>
+        <span className="grid size-11 place-items-center rounded-map-control bg-accent-subtle text-primary"><IconInfoCircle strokeWidth={1.75} /></span>
         <h1 className="mt-4 text-xl font-semibold">Nhập danh sách cần dùng máy tính</h1>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">Bạn có thể xem tài khoản trên điện thoại. Để nhập danh sách, hãy dùng máy tính có bàn phím và chuột.</p>
       </section>
@@ -556,7 +556,7 @@ export function UserImportWizard({ actions, pollIntervalMs = 800 }: { actions: U
   }
 
   if (principal.role !== "system_admin") {
-    return <main className="mx-auto max-w-3xl p-4 pb-24 sm:p-6"><section className="rounded-panel border bg-surface p-6 map-panel-shadow"><IconShieldLock className="text-destructive" stroke={1.75} /><h1 className="mt-4 text-xl font-semibold">Không có quyền nhập danh sách người dùng</h1><p className="mt-2 text-sm leading-6 text-muted-foreground">Chỉ quản trị hệ thống được nhập danh sách tài khoản. Hãy liên hệ người phụ trách nếu bạn cần được cấp quyền.</p></section></main>;
+    return <main className="mx-auto max-w-3xl p-4 pb-24 sm:p-6"><section className="rounded-panel border bg-surface p-6 map-panel-shadow"><IconShieldLock className="text-destructive" strokeWidth={1.75} /><h1 className="mt-4 text-xl font-semibold">Không có quyền nhập danh sách người dùng</h1><p className="mt-2 text-sm leading-6 text-muted-foreground">Chỉ quản trị hệ thống được nhập danh sách tài khoản. Hãy liên hệ người phụ trách nếu bạn cần được cấp quyền.</p></section></main>;
   }
   if (!canAuthor) return <MobileReadOnly />;
 
@@ -578,7 +578,7 @@ export function UserImportWizard({ actions, pollIntervalMs = 800 }: { actions: U
         {stage === "issues" && job && <IssuesStep job={job} page={issues} filter={filter} acknowledged={acknowledged} busy={busy} onFilter={setFilter} onSearch={searchIssues} onMore={() => { if (issues?.meta.nextCursor) void loadIssues(job, issues.meta.nextCursor, true).catch(setError); }} onAcknowledged={setAcknowledged} onApply={apply} />}
         {stage === "applying" && job && <ProcessingStep job={job} title="Đang tạo lời mời" />}
         {stage === "complete" && job && <CompleteStep job={job} report={report} filter={filter} busy={busy} onFilter={setFilter} onSearch={searchReport} onMore={() => { if (report?.meta.nextCursor) void loadReport(job, report.meta.nextCursor, true).catch(setError); }} onDownload={downloadReport} onRestart={restart} />}
-        {stage === "failed" && job && <section className="rounded-panel border bg-surface p-8 text-center map-panel-shadow"><span className="mx-auto grid size-12 place-items-center rounded-full bg-red-50 text-destructive"><IconAlertTriangle stroke={1.75} /></span><h2 className="mt-4 text-lg font-semibold">Chưa thể nhập danh sách</h2><p className="mt-2 text-sm text-muted-foreground">{userImportIssueLabel(job.failureCode)}.</p><div className="mt-6 flex flex-wrap justify-center gap-3">{job.failureCode === "USER_IMPORT_VALIDATE_FAILED" && <Button type="button" onClick={validate} disabled={busy}><IconRefresh data-icon="inline-start" />Thử kiểm tra lại</Button>}{job.failureCode === "USER_IMPORT_APPLY_FAILED" && <Button type="button" onClick={apply} disabled={busy}><IconRefresh data-icon="inline-start" />Thử gửi lời mời lại</Button>}<Button type="button" variant="outline" onClick={retryStatus} disabled={busy}>Cập nhật trạng thái</Button><Button type="button" variant={job.failureCode === "USER_IMPORT_VALIDATE_FAILED" || job.failureCode === "USER_IMPORT_APPLY_FAILED" ? "outline" : "default"} onClick={restart}>Nhập danh sách khác</Button></div></section>}
+        {stage === "failed" && job && <section className="rounded-panel border bg-surface p-8 text-center map-panel-shadow"><span className="mx-auto grid size-12 place-items-center rounded-full bg-red-50 text-destructive"><IconAlertTriangle strokeWidth={1.75} /></span><h2 className="mt-4 text-lg font-semibold">Chưa thể nhập danh sách</h2><p className="mt-2 text-sm text-muted-foreground">{userImportIssueLabel(job.failureCode)}.</p><div className="mt-6 flex flex-wrap justify-center gap-3">{job.failureCode === "USER_IMPORT_VALIDATE_FAILED" && <Button type="button" onClick={validate} disabled={busy}><IconRefresh data-icon="inline-start" />Thử kiểm tra lại</Button>}{job.failureCode === "USER_IMPORT_APPLY_FAILED" && <Button type="button" onClick={apply} disabled={busy}><IconRefresh data-icon="inline-start" />Thử gửi lời mời lại</Button>}<Button type="button" variant="outline" onClick={retryStatus} disabled={busy}>Cập nhật trạng thái</Button><Button type="button" variant={job.failureCode === "USER_IMPORT_VALIDATE_FAILED" || job.failureCode === "USER_IMPORT_APPLY_FAILED" ? "outline" : "default"} onClick={restart}>Nhập danh sách khác</Button></div></section>}
       </div>
 
     </main>

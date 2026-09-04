@@ -1,12 +1,12 @@
 "use client";
 
 import {
-  IconAlertTriangle,
-  IconCloudCheck,
-  IconCloudOff,
-  IconDeviceDesktop,
-  IconRefresh,
-} from "@tabler/icons-react";
+  TriangleAlert as IconAlertTriangle,
+  CloudCheck as IconCloudCheck,
+  CloudOff as IconCloudOff,
+  Monitor as IconDeviceDesktop,
+  RefreshCw as IconRefresh,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AdminApiError, adminErrorMessage } from "@/lib/api/admin";
 import type { FeatureMutationLedgerEntry } from "@/lib/editor/draft-db";
@@ -77,7 +77,7 @@ export function EditorSyncStatus({
         <span className="grid size-9 shrink-0 place-items-center rounded-map-control bg-accent-subtle text-primary">
           <Icon
             size={19}
-            stroke={1.75}
+            strokeWidth={1.75}
             className={phase === "syncing" ? "animate-spin" : undefined}
           />
         </span>

@@ -1,4 +1,7 @@
-import { IconAlertTriangle, IconCircleCheck } from "@tabler/icons-react";
+import {
+  TriangleAlert as IconAlertTriangle,
+  CircleCheck as IconCircleCheck,
+} from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import type { RevisionHistory } from "@/lib/api/history";
@@ -6,14 +9,14 @@ import type { RevisionHistory } from "@/lib/api/history";
 export function ValidationReport({ validation }: { validation: RevisionHistory["validation"] }) {
   if (validation.status === "valid") {
     return <Alert>
-      <IconCircleCheck stroke={1.75}/>
+      <IconCircleCheck strokeWidth={1.75}/>
       <AlertTitle>Dữ liệu hợp lệ</AlertTitle>
       <AlertDescription>{validation.featureCount.toLocaleString("vi-VN")} đối tượng đã được kiểm tra trong phiên bản này.</AlertDescription>
     </Alert>;
   }
 
   return <Alert variant="destructive">
-    <IconAlertTriangle stroke={1.75}/>
+    <IconAlertTriangle strokeWidth={1.75}/>
     <AlertTitle>Cần xử lý lỗi dữ liệu</AlertTitle>
     <AlertDescription>
       <p>{validation.featureCount.toLocaleString("vi-VN")} đối tượng đã được kiểm tra. Cần sửa các lỗi bên dưới trước khi tiếp tục.</p>

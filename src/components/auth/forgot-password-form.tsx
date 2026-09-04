@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { IconMailForward } from "@tabler/icons-react";
+import { Forward as IconMailForward } from "lucide-react";
 import { SecurityError, SecuritySuccess } from "@/components/auth/security-feedback";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
@@ -118,7 +118,7 @@ export function ForgotPasswordForm({
       </Field>
       {error && <SecurityError errorRef={errorRef} id="reset-request-error" message={error} />}
       <Button disabled={pending} type="submit">
-        <IconMailForward data-icon="inline-start" stroke={1.75} />
+        <IconMailForward data-icon="inline-start" strokeWidth={1.75} />
         {pending ? "Đang gửi yêu cầu..." : "Gửi hướng dẫn đặt lại"}
       </Button>
     </form>

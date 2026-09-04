@@ -1,5 +1,9 @@
 import Link from "next/link";
-import { IconArrowLeft, IconMailCheck, IconShieldLock } from "@tabler/icons-react";
+import {
+  ArrowLeft as IconArrowLeft,
+  MailCheck as IconMailCheck,
+  Shield as IconShieldLock,
+} from "lucide-react";
 import { InviteAcceptForm } from "@/components/auth/invite-accept-form";
 import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
@@ -21,7 +25,7 @@ export default function InviteAcceptPage() {
           </p>
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <IconShieldLock className="text-success" stroke={1.75} />
+          <IconShieldLock className="text-success" strokeWidth={1.75} />
           Mã lời mời không được lưu trên trình duyệt
         </div>
       </section>
@@ -29,7 +33,7 @@ export default function InviteAcceptPage() {
         <div className="w-full max-w-md">
           <div className="mb-9 lg:hidden"><BrandMark /></div>
           <span className="grid size-11 place-items-center rounded-map-control bg-accent-subtle text-primary">
-            <IconMailCheck stroke={1.75} />
+            <IconMailCheck strokeWidth={1.75} />
           </span>
           <h1 className="mt-5 text-2xl font-semibold tracking-[-0.02em]">Chấp nhận lời mời</h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
@@ -38,7 +42,7 @@ export default function InviteAcceptPage() {
           <InviteAcceptForm />
           <Button asChild className="mt-7 -ml-3" variant="ghost">
             <Link href="/login">
-              <IconArrowLeft data-icon="inline-start" stroke={1.75} />
+              <IconArrowLeft data-icon="inline-start" strokeWidth={1.75} />
               Quay lại đăng nhập
             </Link>
           </Button>

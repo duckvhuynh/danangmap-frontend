@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { IconUserShield } from "@tabler/icons-react";
+import { ShieldUser as IconUserShield } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getBootstrapStatus } from "@/lib/api/bootstrap";
 
@@ -21,7 +21,7 @@ export function BootstrapSetupLink() {
 
   return (
     <Alert className="mt-5 border-primary/20 bg-accent-subtle" role="note">
-      <IconUserShield className="text-primary" stroke={1.75} />
+      <IconUserShield className="text-primary" strokeWidth={1.75} />
       <AlertDescription className="text-muted-foreground">
         Đây là lần khởi động đầu tiên?{" "}
         <Link

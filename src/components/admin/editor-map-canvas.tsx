@@ -31,16 +31,15 @@ import {
 } from "@/lib/editor/restore-controller";
 import { resolveMapboxStyle } from "@/components/map/mapbox-config";
 
-export type DrawTool =
-  | "select"
-  | "point"
-  | "linestring"
-  | "polygon"
-  | "circle";
+export type DrawTool = "select" | "point" | "linestring" | "polygon" | "circle";
 
 type EditorMapCanvasProps = {
   activeTool: DrawTool;
   restore: RestoreRequest;
+  focusRequest: {
+    version: number;
+    featureId: string | number | null;
+  };
   deleteRequest: number;
   command: EditorCommand;
   onSelectionChange: (featureId: string | number | null) => void;
@@ -49,9 +48,55 @@ type EditorMapCanvasProps = {
   onError: (message: string) => void;
 };
 
+function collectCoordinates(value: unknown, output: [number, number][]) {
+  if (!Array.isArray(value)) return;
+  if (
+    value.length >= 2 &&
+    typeof value[0] === "number" &&
+    typeof value[1] === "number"
+  ) {
+    output.push([value[0], value[1]]);
+    return;
+  }
+  for (const child of value) collectCoordinates(child, output);
+}
+
+function fitFeatures(map: MapboxMap, features: unknown[]) {
+  const coordinates: [number, number][] = [];
+  for (const value of features) {
+    const feature = decodeTerraFeature(value);
+    if (feature && "coordinates" in feature.geometry)
+      collectCoordinates(feature.geometry.coordinates, coordinates);
+  }
+  if (coordinates.length === 0) return;
+  const [firstLng, firstLat] = coordinates[0];
+  let west = firstLng;
+  let east = firstLng;
+  let south = firstLat;
+  let north = firstLat;
+  for (const [lng, lat] of coordinates.slice(1)) {
+    west = Math.min(west, lng);
+    east = Math.max(east, lng);
+    south = Math.min(south, lat);
+    north = Math.max(north, lat);
+  }
+  if (west === east && south === north) {
+    map.easeTo({ center: [west, south], zoom: 16, duration: 0 });
+    return;
+  }
+  map.fitBounds(
+    [
+      [west, south],
+      [east, north],
+    ],
+    { padding: 72, maxZoom: 17, duration: 0 },
+  );
+}
+
 export default function EditorMapCanvas({
   activeTool,
   restore,
+  focusRequest,
   deleteRequest,
   command,
   onSelectionChange,
@@ -73,6 +118,7 @@ export default function EditorMapCanvas({
   const appliedDeleteRequestRef = useRef(0);
   const appliedCommandVersionRef = useRef(0);
   const appliedRestoreVersionRef = useRef(0);
+  const appliedFocusVersionRef = useRef(0);
   const [drawReadyVersion, setDrawReadyVersion] = useState(0);
   const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
@@ -106,13 +152,31 @@ export default function EditorMapCanvas({
       attributionControl: true,
     });
     mapRef.current = map;
+    let resizeFrame: number | null = null;
+    const scheduleResize = () => {
+      if (resizeFrame !== null) window.cancelAnimationFrame(resizeFrame);
+      resizeFrame = window.requestAnimationFrame(() => {
+        resizeFrame = null;
+        map.resize();
+      });
+    };
+    const resizeObserver =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(scheduleResize);
+    resizeObserver?.observe(containerRef.current);
+    window.addEventListener("resize", scheduleResize);
+    window.visualViewport?.addEventListener("resize", scheduleResize);
     map.on("error", () =>
       onErrorRef.current(
         "Chưa tải được bản đồ. Kiểm tra kết nối hoặc tải lại trang để thử lại.",
       ),
     );
     map.on("load", () => {
-      const sessionHistory = new TerraDrawSessionUndoRedo({ maxStackSize: 100 });
+      scheduleResize();
+      const sessionHistory = new TerraDrawSessionUndoRedo({
+        maxStackSize: 100,
+      });
       sessionHistoryRef.current = sessionHistory;
       const draw = new TerraDraw({
         adapter: new TerraDrawMapboxGLAdapter({ map }),
@@ -169,7 +233,9 @@ export default function EditorMapCanvas({
       draw.on("select", (id) => {
         const selected = draw.getSnapshotFeature(id);
         const feature = decodeTerraFeature(selected);
-        const logicalId = feature ? editorLogicalFeatureId(feature) : String(id);
+        const logicalId = feature
+          ? editorLogicalFeatureId(feature)
+          : String(id);
         selectedFeatureRef.current = logicalId;
         onSelectionChangeRef.current(logicalId);
       });
@@ -184,11 +250,16 @@ export default function EditorMapCanvas({
         appliedRestoreVersionRef.current,
         onSnapshotRef.current,
       );
+      fitFeatures(map, draw.getSnapshot());
       sessionHistory.clearHistory();
       emitHistory();
       setDrawReadyVersion((version) => version + 1);
     });
     return () => {
+      if (resizeFrame !== null) window.cancelAnimationFrame(resizeFrame);
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", scheduleResize);
+      window.visualViewport?.removeEventListener("resize", scheduleResize);
       drawRef.current?.stop();
       drawRef.current = null;
       sessionHistoryRef.current = null;
@@ -214,8 +285,34 @@ export default function EditorMapCanvas({
     if (draw && appliedRestoreVersionRef.current > previousVersion) {
       sessionHistoryRef.current?.clearHistory();
       onHistoryChangeRef.current({ canUndo: false, canRedo: false });
+      const map = mapRef.current;
+      if (map) fitFeatures(map, draw.getSnapshot());
     }
   }, [restore]);
+
+  useEffect(() => {
+    if (focusRequest.version <= appliedFocusVersionRef.current) return;
+    if (focusRequest.featureId === null) {
+      appliedFocusVersionRef.current = focusRequest.version;
+      return;
+    }
+    const draw = drawRef.current;
+    const map = mapRef.current;
+    if (!draw?.enabled || !map) return;
+    appliedFocusVersionRef.current = focusRequest.version;
+    const logicalId = String(focusRequest.featureId);
+    const parts = editorFeatureParts(draw.getSnapshot(), logicalId);
+    if (parts.length === 0) return;
+    draw.setMode("select");
+    try {
+      draw.selectFeature(parts[0].id);
+    } catch {
+      // Camera focus still works when the draw adapter already selected the part.
+    }
+    selectedFeatureRef.current = logicalId;
+    onSelectionChangeRef.current(logicalId);
+    fitFeatures(map, parts);
+  }, [drawReadyVersion, focusRequest]);
 
   useEffect(() => {
     if (deleteRequest <= appliedDeleteRequestRef.current) return;
@@ -279,7 +376,8 @@ export default function EditorMapCanvas({
         <div className="max-w-sm rounded-panel border bg-surface p-5 text-center">
           <p className="font-semibold">Bản đồ biên tập chưa sẵn sàng</p>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Liên hệ người quản trị để kiểm tra cấu hình bản đồ. Bạn vẫn có thể xem thông tin đối tượng và bản nháp đã lưu trên thiết bị.
+            Liên hệ người quản trị để kiểm tra cấu hình bản đồ. Bạn vẫn có thể
+            xem thông tin đối tượng và bản nháp đã lưu trên thiết bị.
           </p>
         </div>
       </div>
@@ -289,6 +387,7 @@ export default function EditorMapCanvas({
       ref={containerRef}
       className="h-full w-full"
       aria-label="Bản đồ biên tập"
+      role="region"
     />
   );
 }

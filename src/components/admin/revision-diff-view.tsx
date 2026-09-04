@@ -1,7 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { IconAlertTriangle, IconArrowsDiff, IconArrowsSort, IconEyeOff, IconFile, IconMinus, IconPaperclip, IconPlus } from "@tabler/icons-react";
+import {
+  TriangleAlert as IconAlertTriangle,
+  GitCompareArrows as IconArrowsDiff,
+  ArrowUpDown as IconArrowsSort,
+  EyeOff as IconEyeOff,
+  File as IconFile,
+  Minus as IconMinus,
+  Paperclip as IconPaperclip,
+  Plus as IconPlus,
+} from "lucide-react";
 import { AdminErrorNotice } from "@/components/admin/admin-session";
 import { geometryLabel } from "@/lib/admin/labels";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -106,10 +115,10 @@ function formatFileSize(sizeBytes: number) {
 function AttachmentList({ label, items, icon: Icon, fieldLabels }: { label: string; items: AttachmentDescriptor[]; icon: typeof IconFile; fieldLabels: Record<string, string> }) {
   if (items.length === 0) return null;
   return <div>
-    <h5 className="flex items-center gap-1.5 text-xs font-semibold text-foreground"><Icon size={16} stroke={1.75}/>{label}</h5>
+    <h5 className="flex items-center gap-1.5 text-xs font-semibold text-foreground"><Icon size={16} strokeWidth={1.75}/>{label}</h5>
     <ul className="mt-2 space-y-2">
       {items.map((item) => <li key={`${item.id}:${item.fieldKey}`} className="flex min-w-0 items-start gap-2 rounded-control border bg-surface px-3 py-2.5">
-        <IconFile className="mt-0.5 shrink-0 text-muted-foreground" size={17} stroke={1.75}/>
+        <IconFile className="mt-0.5 shrink-0 text-muted-foreground" size={17} strokeWidth={1.75}/>
         <div className="min-w-0">
           <p className="truncate text-sm font-medium" title={item.fileName}>{item.fileName}</p>
           <p className="mt-0.5 text-xs text-muted-foreground">{fieldLabels[item.fieldKey] ?? item.fieldKey} · {formatFileSize(item.sizeBytes)} · {item.status === "clean" ? "Đã kiểm tra an toàn" : "Chưa sẵn sàng"}</p>
@@ -123,11 +132,11 @@ function AttachmentDiffDetails({ featureName, diff, fieldLabels }: { featureName
   if (!diff.changed) return <p className="mt-3 text-xs text-muted-foreground">Tệp đính kèm không thay đổi.</p>;
   return <section className="mt-3 rounded-control border bg-surface-subtle p-3" aria-label={`Thay đổi tệp đính kèm của đối tượng ${featureName}`}>
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <h4 className="flex items-center gap-2 text-sm font-semibold"><IconPaperclip size={17} stroke={1.75}/>Tệp đính kèm</h4>
+      <h4 className="flex items-center gap-2 text-sm font-semibold"><IconPaperclip size={17} strokeWidth={1.75}/>Tệp đính kèm</h4>
       <div className="flex flex-wrap gap-1.5" aria-label="Tóm tắt thay đổi tệp của đối tượng">
-        {diff.added.length > 0 && <Badge><IconPlus data-icon="inline-start" stroke={1.75}/>{diff.added.length} thêm</Badge>}
-        {diff.removed.length > 0 && <Badge><IconMinus data-icon="inline-start" stroke={1.75}/>{diff.removed.length} xóa</Badge>}
-        {diff.reordered.length > 0 && <Badge><IconArrowsSort data-icon="inline-start" stroke={1.75}/>{diff.reordered.length} đổi thứ tự</Badge>}
+        {diff.added.length > 0 && <Badge><IconPlus data-icon="inline-start" strokeWidth={1.75}/>{diff.added.length} thêm</Badge>}
+        {diff.removed.length > 0 && <Badge><IconMinus data-icon="inline-start" strokeWidth={1.75}/>{diff.removed.length} xóa</Badge>}
+        {diff.reordered.length > 0 && <Badge><IconArrowsSort data-icon="inline-start" strokeWidth={1.75}/>{diff.reordered.length} đổi thứ tự</Badge>}
       </div>
     </div>
     <div className="mt-3 grid gap-3 lg:grid-cols-2">
@@ -135,7 +144,7 @@ function AttachmentDiffDetails({ featureName, diff, fieldLabels }: { featureName
       <AttachmentList fieldLabels={fieldLabels} label="Tệp đã xóa" items={diff.removed} icon={IconMinus}/>
     </div>
     {diff.reordered.length > 0 && <div className="mt-3">
-      <h5 className="flex items-center gap-1.5 text-xs font-semibold"><IconArrowsSort size={16} stroke={1.75}/>Đã đổi thứ tự</h5>
+      <h5 className="flex items-center gap-1.5 text-xs font-semibold"><IconArrowsSort size={16} strokeWidth={1.75}/>Đã đổi thứ tự</h5>
       <ul className="mt-2 space-y-2">
         {diff.reordered.map((item) => <li key={`${item.id}:${item.fieldKey}`} className="rounded-control border bg-surface px-3 py-2.5 text-sm">
           <span className="font-medium">{item.fileName}</span>
@@ -143,7 +152,7 @@ function AttachmentDiffDetails({ featureName, diff, fieldLabels }: { featureName
         </li>)}
       </ul>
     </div>}
-    {diff.redactedChange && <p className="mt-3 flex items-center gap-2 text-xs text-muted-foreground"><IconEyeOff size={16} stroke={1.75}/>Một số thay đổi tệp riêng tư đã được ẩn.</p>}
+    {diff.redactedChange && <p className="mt-3 flex items-center gap-2 text-xs text-muted-foreground"><IconEyeOff size={16} strokeWidth={1.75}/>Một số thay đổi tệp riêng tư đã được ẩn.</p>}
   </section>;
 }
 
@@ -208,11 +217,11 @@ export function RevisionDiffView({ revisionId, fieldLabels = {}, transport = def
     entryRefs.current[nextIndex]?.focus();
   }
 
-  if (process.env.NEXT_PUBLIC_DANANGMAP_DEMO_MODE === "true") return <Alert><IconArrowsDiff stroke={1.75}/><AlertTitle>Chưa có dữ liệu so sánh</AlertTitle><AlertDescription>Bản dùng thử chưa hỗ trợ so sánh các phiên bản.</AlertDescription></Alert>;
+  if (process.env.NEXT_PUBLIC_DANANGMAP_DEMO_MODE === "true") return <Alert><IconArrowsDiff strokeWidth={1.75}/><AlertTitle>Chưa có dữ liệu so sánh</AlertTitle><AlertDescription>Bản dùng thử chưa hỗ trợ so sánh các phiên bản.</AlertDescription></Alert>;
   if (loading) return <DiffSkeleton/>;
   if (error instanceof AdminApiError && error.code === "DIFF_TOO_LARGE") {
     return <Alert variant="destructive">
-      <IconAlertTriangle stroke={1.75}/>
+      <IconAlertTriangle strokeWidth={1.75}/>
       <AlertTitle>Có quá nhiều thay đổi để so sánh cùng lúc</AlertTitle>
       <AlertDescription>
         <p>Chưa thể hiển thị so sánh cho phiên bản này. Hãy liên hệ người quản trị hệ thống nếu lỗi tiếp tục.</p>
@@ -254,7 +263,7 @@ export function RevisionDiffView({ revisionId, fieldLabels = {}, transport = def
     <section className="rounded-panel border bg-surface p-4" aria-labelledby="public-schema-diff-title">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div><h3 id="public-schema-diff-title" className="text-sm font-semibold">Thay đổi trường thông tin công khai</h3><p className="mt-1 text-xs text-muted-foreground">Các trường được phép hiển thị trên bản đồ công khai.</p></div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground"><IconEyeOff size={17} stroke={1.75}/><span><strong className="font-semibold text-foreground">{diff.schema.redactedChangeCount.toLocaleString("vi-VN")}</strong> thay đổi đã ẩn</span></div>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground"><IconEyeOff size={17} strokeWidth={1.75}/><span><strong className="font-semibold text-foreground">{diff.schema.redactedChangeCount.toLocaleString("vi-VN")}</strong> thay đổi đã ẩn</span></div>
       </div>
       <dl className="mt-4 grid gap-4 sm:grid-cols-3">
         <PublicFieldKeys label="Trường công khai đã thêm" fieldLabels={fieldLabels} keys={diff.schema.publicFieldsAdded}/>
@@ -265,8 +274,8 @@ export function RevisionDiffView({ revisionId, fieldLabels = {}, transport = def
 
     <section className="rounded-panel border bg-surface p-4" aria-labelledby="attachment-diff-title">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div><h3 id="attachment-diff-title" className="flex items-center gap-2 text-sm font-semibold"><IconPaperclip size={18} stroke={1.75}/>Thay đổi tệp đính kèm</h3><p className="mt-1 text-xs text-muted-foreground">Chỉ hiển thị thông tin tệp công khai. Tệp riêng tư và thông tin nhạy cảm được ẩn.</p></div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground"><IconEyeOff size={17} stroke={1.75}/><span><strong className="font-semibold text-foreground">{diff.attachments.redactedChangeCount.toLocaleString("vi-VN")}</strong> thay đổi đã ẩn</span></div>
+        <div><h3 id="attachment-diff-title" className="flex items-center gap-2 text-sm font-semibold"><IconPaperclip size={18} strokeWidth={1.75}/>Thay đổi tệp đính kèm</h3><p className="mt-1 text-xs text-muted-foreground">Chỉ hiển thị thông tin tệp công khai. Tệp riêng tư và thông tin nhạy cảm được ẩn.</p></div>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground"><IconEyeOff size={17} strokeWidth={1.75}/><span><strong className="font-semibold text-foreground">{diff.attachments.redactedChangeCount.toLocaleString("vi-VN")}</strong> thay đổi đã ẩn</span></div>
       </div>
       <dl className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <div className="rounded-control bg-surface-subtle p-3"><dt className="text-xs text-muted-foreground">Đối tượng có thay đổi</dt><dd className="mt-1 text-lg font-semibold tabular-nums">{diff.attachments.featuresModified.toLocaleString("vi-VN")}</dd></div>
@@ -276,7 +285,7 @@ export function RevisionDiffView({ revisionId, fieldLabels = {}, transport = def
       </dl>
     </section>
 
-    {diff.entries.length === 0 ? <Empty className="border"><EmptyHeader><EmptyMedia variant="icon"><IconArrowsDiff stroke={1.75}/></EmptyMedia><EmptyTitle>Không có thay đổi đối tượng</EmptyTitle><EmptyDescription>Không có thay đổi đối tượng so với phiên bản đã chọn.</EmptyDescription></EmptyHeader></Empty> : <div>
+    {diff.entries.length === 0 ? <Empty className="border"><EmptyHeader><EmptyMedia variant="icon"><IconArrowsDiff strokeWidth={1.75}/></EmptyMedia><EmptyTitle>Không có thay đổi đối tượng</EmptyTitle><EmptyDescription>Không có thay đổi đối tượng so với phiên bản đã chọn.</EmptyDescription></EmptyHeader></Empty> : <div>
       <p className="sr-only" id={entryInstructionsId}>Dùng phím mũi tên lên và xuống, Home hoặc End để di chuyển giữa các đối tượng thay đổi.</p>
       <ol aria-describedby={entryInstructionsId} aria-label="Các đối tượng thay đổi" className="divide-y rounded-panel border bg-surface">
       {diff.entries.map((entry, index) => { const name = entry.properties.after.name ?? entry.properties.before.name; const featureName = typeof name === "string" && name.trim() ? name : `Đối tượng ${index + 1}`; return <li key={`${entry.featureId}:${entry.changeType}`} className="p-4">
@@ -290,7 +299,7 @@ export function RevisionDiffView({ revisionId, fieldLabels = {}, transport = def
         >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2"><Badge>{changeLabel(entry.changeType)}</Badge>{entry.redactedChange && <Badge><IconEyeOff data-icon="inline-start" stroke={1.75}/>Có thay đổi đã ẩn</Badge>}</div>
+            <div className="flex flex-wrap items-center gap-2"><Badge>{changeLabel(entry.changeType)}</Badge>{entry.redactedChange && <Badge><IconEyeOff data-icon="inline-start" strokeWidth={1.75}/>Có thay đổi đã ẩn</Badge>}</div>
             <p className="mt-2 break-words text-sm font-medium">{featureName}</p>
           </div>
           <p className="text-sm text-muted-foreground">{entry.properties.changedKeys.length > 0 ? `${entry.properties.changedKeys.length} trường thay đổi` : "Không đổi thông tin công khai"}</p>

@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
-import { IconX } from "@tabler/icons-react"
+import { X as IconX } from "lucide-react";
 
 import { cn } from "@/lib/utils"
 
@@ -45,7 +45,7 @@ const DialogContent = React.forwardRef<
     >
       {children}
       <DialogPrimitive.Close className="absolute right-4 top-4 grid size-10 place-items-center rounded-control text-muted-foreground transition-colors hover:bg-surface-subtle hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:pointer-events-none">
-        <IconX size={20} stroke={1.75} />
+        <IconX size={20} strokeWidth={1.75} />
         <span className="sr-only">Đóng</span>
       </DialogPrimitive.Close>
     </DialogPrimitive.Content>

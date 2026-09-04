@@ -86,7 +86,7 @@ export function NewLayerConfigurationScreen({
 
   if (error) {
     return (
-      <main className="mx-auto max-w-2xl p-4 sm:p-6">
+      <main className="mx-auto max-w-2xl p-4 pb-24 sm:p-6 md:pb-6">
         <AdminErrorNotice
           error={error}
           onRetry={() => {

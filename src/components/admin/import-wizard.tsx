@@ -9,18 +9,18 @@ import {
   useSyncExternalStore,
 } from "react";
 import {
-  IconAlertTriangle,
-  IconArrowLeft,
-  IconArrowRight,
-  IconCheck,
-  IconCircleCheck,
-  IconFileSpreadsheet,
-  IconInfoCircle,
-  IconPlus,
-  IconRefresh,
-  IconTrash,
-  IconUpload,
-} from "@tabler/icons-react";
+  TriangleAlert as IconAlertTriangle,
+  ArrowLeft as IconArrowLeft,
+  ArrowRight as IconArrowRight,
+  Check as IconCheck,
+  CircleCheck as IconCircleCheck,
+  FileSpreadsheet as IconFileSpreadsheet,
+  Info as IconInfoCircle,
+  Plus as IconPlus,
+  RefreshCw as IconRefresh,
+  Trash2 as IconTrash,
+  Upload as IconUpload,
+} from "lucide-react";
 import {
   AdminErrorNotice,
   useAdminSession,
@@ -143,7 +143,7 @@ function Stepper({ current }: { current: WizardStep }) {
         >
           <span className="grid size-6 shrink-0 place-items-center rounded-full border bg-surface font-medium">
             {stepIndex < index ? (
-              <IconCheck size={15} stroke={2} />
+              <IconCheck size={15} strokeWidth={2} />
             ) : (
               stepIndex + 1
             )}
@@ -173,7 +173,7 @@ function FileStep({
   return (
     <section className="rounded-panel border bg-surface p-5 map-panel-shadow sm:p-6">
       <div className="flex items-start gap-3">
-        <IconFileSpreadsheet className="mt-0.5 text-primary" stroke={1.75} />
+        <IconFileSpreadsheet className="mt-0.5 text-primary" strokeWidth={1.75} />
         <div>
           <h2 className="font-semibold">1. Chọn tệp và cách nhập</h2>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
@@ -182,7 +182,7 @@ function FileStep({
         </div>
       </div>
       <div className="mt-6 rounded-panel border-2 border-dashed bg-surface-subtle p-6 text-center">
-        <IconUpload className="mx-auto text-primary" size={30} stroke={1.6} />
+        <IconUpload className="mx-auto text-primary" size={30} strokeWidth={1.6} />
         <label
           htmlFor="import-file"
           className="mt-3 inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
@@ -217,7 +217,7 @@ function FileStep({
               aria-label="Bỏ tệp đã chọn"
               onClick={() => onFile(null)}
             >
-              <IconTrash stroke={1.75} />
+              <IconTrash strokeWidth={1.75} />
             </Button>
           </div>
         )}
@@ -259,7 +259,7 @@ function FileStep({
       <div className="mt-6 flex justify-end">
         <Button type="button" onClick={onContinue} disabled={!file || busy}>
           {busy ? "Đang tải lên..." : "Tải lên và tiếp tục"}
-          <IconArrowRight stroke={1.75} />
+          <IconArrowRight strokeWidth={1.75} />
         </Button>
       </div>
     </section>
@@ -337,7 +337,7 @@ function FieldMappingRows({
                 onChange(fields.filter((item) => item.id !== field.id))
               }
             >
-              <IconTrash stroke={1.75} />
+              <IconTrash strokeWidth={1.75} />
             </Button>
           </div>
         ))}
@@ -354,7 +354,7 @@ function FieldMappingRows({
           ])
         }
       >
-        <IconPlus stroke={1.75} />
+        <IconPlus strokeWidth={1.75} />
         Thêm cột
       </Button>
     </div>
@@ -567,7 +567,7 @@ function MappingStep({
         </p>
         <Button type="button" onClick={onContinue} disabled={busy}>
           {busy ? "Đang bắt đầu kiểm tra..." : "Lưu và kiểm tra"}
-          <IconArrowRight stroke={1.75} />
+          <IconArrowRight strokeWidth={1.75} />
         </Button>
       </div>
     </section>
@@ -587,7 +587,7 @@ function ProcessingStep({
       aria-live="polite"
     >
       <span className="mx-auto grid size-12 place-items-center rounded-full bg-accent-subtle text-primary">
-        <IconRefresh className="animate-spin" stroke={1.75} />
+        <IconRefresh className="animate-spin" strokeWidth={1.75} />
       </span>
       <h2 className="mt-4 font-semibold">{label}</h2>
       <p className="mt-2 text-sm text-muted-foreground">
@@ -619,7 +619,7 @@ function TerminalStep({
   return (
     <section className="rounded-panel border bg-surface p-8 text-center map-panel-shadow">
       <span className="mx-auto grid size-12 place-items-center rounded-full bg-destructive/10 text-destructive">
-        <IconAlertTriangle stroke={1.75} />
+        <IconAlertTriangle strokeWidth={1.75} />
       </span>
       <h2 className="mt-4 text-lg font-semibold">
         {job.status === "cancelled"
@@ -636,7 +636,7 @@ function TerminalStep({
       <div className="mt-6 flex flex-wrap justify-center gap-3">
         {onRetry && (
           <Button type="button" onClick={onRetry}>
-            <IconRefresh stroke={1.75} />
+            <IconRefresh strokeWidth={1.75} />
             Kiểm tra lại
           </Button>
         )}
@@ -744,7 +744,7 @@ function IssuesStep({
                     </span>
                   </td>
                   <td className="px-3 py-2">{importIssueLabel(issue.code)}</td>
-                  <td className="px-3 py-2">{issue.field === "geometry" ? "Vị trí / hình dạng" : fields.find((field) => field.key === issue.field)?.label ?? (issue.field ? "Trường dữ liệu" : "—")}</td>
+                  <td className="px-3 py-2">{issue.field === "geometry" ? "Vị trí / hình dạng" : fields.find((field) => field.key === issue.field)?.label ?? (issue.field ? "Trường dữ liệu" : "Chưa xác định")}</td>
                 </tr>
               ))}
             </tbody>
@@ -800,7 +800,7 @@ function IssuesStep({
       <div className="mt-6 flex justify-end">
         <Button type="button" onClick={onApply} disabled={!allowed || busy}>
           {busy ? "Đang áp dụng..." : "Nhập vào bản nháp"}
-          <IconArrowRight stroke={1.75} />
+          <IconArrowRight strokeWidth={1.75} />
         </Button>
       </div>
     </section>
@@ -1055,7 +1055,7 @@ export function ImportWizard({
 
   if (!canAuthor)
     return (
-      <main className="mx-auto max-w-2xl p-6">
+      <main className="mx-auto max-w-2xl p-6 pb-24 md:pb-6">
         <div className="rounded-panel border bg-surface p-6 map-panel-shadow">
           <IconInfoCircle className="text-primary" />
           <h1 className="mt-4 text-xl font-semibold">
@@ -1075,7 +1075,7 @@ export function ImportWizard({
     );
   if (!canAuthorContent(principalRole))
     return (
-      <main className="mx-auto max-w-2xl p-6">
+      <main className="mx-auto max-w-2xl p-6 pb-24 md:pb-6">
         <div className="rounded-panel border bg-surface p-6 map-panel-shadow">
           <IconAlertTriangle className="text-warning" />
           <h1 className="mt-4 text-xl font-semibold">
@@ -1098,13 +1098,13 @@ export function ImportWizard({
     );
   if (!bundle)
     return (
-      <main className="mx-auto max-w-3xl p-6">
+      <main className="mx-auto max-w-3xl p-6 pb-24 md:pb-6">
         <AdminErrorNotice error={error} onRetry={loadBundle} />
       </main>
     );
   if (bundle.revision.status !== "draft")
     return (
-      <main className="mx-auto max-w-2xl p-6">
+      <main className="mx-auto max-w-2xl p-6 pb-24 md:pb-6">
         <div className="rounded-panel border bg-surface p-6">
           <h1 className="text-xl font-semibold">
             Phiên bản này không thể nhập dữ liệu
@@ -1210,7 +1210,7 @@ export function ImportWizard({
         {step === "complete" && job && (
           <section className="rounded-panel border bg-surface p-8 text-center map-panel-shadow">
             <span className="mx-auto grid size-14 place-items-center rounded-full bg-success/10 text-success">
-              <IconCircleCheck size={30} stroke={1.75} />
+              <IconCircleCheck size={30} strokeWidth={1.75} />
             </span>
             <h2 className="mt-4 text-xl font-semibold">
               Nhập dữ liệu hoàn tất

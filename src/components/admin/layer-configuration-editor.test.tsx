@@ -311,7 +311,7 @@ describe("layer configuration editor", () => {
 
     fireEvent.click(screen.getByLabelText("Nhóm lớp"));
     fireEvent.click(await screen.findByRole("option", { name: "Hành chính" }));
-    fireEvent.click(screen.getByRole("button", { name: "Lưu sắp xếp lớp" }));
+    fireEvent.click(screen.getByRole("button", { name: "Lưu thông tin chung" }));
 
     await waitFor(() => expect(updateCatalog).toHaveBeenCalledTimes(1));
     expect(updateCatalog.mock.calls[0]![1]).toMatchObject({
@@ -373,7 +373,7 @@ describe("layer configuration editor", () => {
       );
     renderEdit({ updateCatalog }, "draft", onReload);
     fireEvent.click(screen.getByLabelText("Bật lớp mặc định khi mở bản đồ"));
-    fireEvent.click(screen.getByRole("button", { name: "Lưu sắp xếp lớp" }));
+    fireEvent.click(screen.getByRole("button", { name: "Lưu thông tin chung" }));
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("request-stale");
@@ -463,6 +463,6 @@ describe("layer configuration editor", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Lưu trữ lớp" }));
     await waitFor(() => expect(archive).toHaveBeenCalledTimes(1));
-    expect(screen.getByRole("button", { name: "Lưu sắp xếp lớp" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Lưu thông tin chung" })).toBeEnabled();
   });
 });

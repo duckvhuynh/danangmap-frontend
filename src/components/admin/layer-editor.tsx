@@ -11,23 +11,27 @@ import {
   useSyncExternalStore,
 } from "react";
 import {
-  IconArrowLeft,
-  IconArrowBackUp,
-  IconArrowForwardUp,
-  IconCircle,
-  IconCloudUpload,
-  IconCopy,
-  IconDeviceFloppy,
-  IconFileImport,
-  IconInfoCircle,
-  IconLine,
-  IconMapPin,
-  IconPointer,
-  IconPolygon,
-  IconRestore,
-  IconTable,
-  IconTrash,
-} from "@tabler/icons-react";
+  ArrowLeft,
+  Circle,
+  CloudUpload,
+  Copy,
+  FileUp,
+  History,
+  Info,
+  MapPin,
+  MousePointer2,
+  PanelLeftClose,
+  PanelLeftOpen,
+  PanelRightClose,
+  PanelRightOpen,
+  Pentagon,
+  Redo2,
+  Save,
+  Spline,
+  TableProperties,
+  Trash2,
+  Undo2,
+} from "lucide-react";
 import type { DrawTool } from "@/components/admin/editor-map-canvas";
 import {
   AdminErrorNotice,
@@ -41,7 +45,43 @@ import {
 } from "@/components/admin/editor-sync-status";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   AdminApiError,
   loadRevisionBundle,
@@ -103,48 +143,46 @@ import {
   subscribeSyncActivity,
   withEditorSyncOwnership,
 } from "@/lib/editor/sync-coordinator";
-import { cn } from "@/lib/utils";
 
 const EditorMapCanvas = dynamic(
   () => import("@/components/admin/editor-map-canvas"),
   {
     ssr: false,
-    loading: () => <div className="h-full animate-pulse bg-surface-subtle" />,
+    loading: () => <Skeleton className="h-full rounded-none" />,
   },
 );
 const tools: Array<{
   id: DrawTool;
   label: string;
-  icon: typeof IconPointer;
+  icon: typeof MousePointer2;
   geometryKinds?: string[];
-}> =
-  [
-    { id: "select", label: "Chọn và sửa", icon: IconPointer },
-    {
-      id: "point",
-      label: "Vẽ điểm",
-      icon: IconMapPin,
-      geometryKinds: ["point", "multipoint"],
-    },
-    {
-      id: "linestring",
-      label: "Vẽ đường",
-      icon: IconLine,
-      geometryKinds: ["line", "multiline"],
-    },
-    {
-      id: "polygon",
-      label: "Vẽ vùng",
-      icon: IconPolygon,
-      geometryKinds: ["polygon", "multipolygon"],
-    },
-    {
-      id: "circle",
-      label: "Vẽ đường tròn",
-      icon: IconCircle,
-      geometryKinds: ["circle"],
-    },
-  ];
+}> = [
+  { id: "select", label: "Chọn và chỉnh sửa", icon: MousePointer2 },
+  {
+    id: "point",
+    label: "Vẽ điểm",
+    icon: MapPin,
+    geometryKinds: ["point", "multipoint"],
+  },
+  {
+    id: "linestring",
+    label: "Vẽ đường",
+    icon: Spline,
+    geometryKinds: ["line", "multiline"],
+  },
+  {
+    id: "polygon",
+    label: "Vẽ vùng",
+    icon: Pentagon,
+    geometryKinds: ["polygon", "multipolygon"],
+  },
+  {
+    id: "circle",
+    label: "Vẽ đường tròn",
+    icon: Circle,
+    geometryKinds: ["circle"],
+  },
+];
 
 function MobileCapabilityGate({ revisionId }: { revisionId: string }) {
   return (
@@ -152,23 +190,24 @@ function MobileCapabilityGate({ revisionId }: { revisionId: string }) {
       <div className="mx-auto max-w-lg">
         <Button asChild variant="ghost" className="-ml-3">
           <Link href="/admin/layers">
-            <IconArrowLeft stroke={1.75} />
+            <ArrowLeft data-icon="inline-start" strokeWidth={1.75} />
             Lớp dữ liệu
           </Link>
         </Button>
         <section className="mt-6 rounded-panel border bg-surface p-6">
           <span className="grid size-12 place-items-center rounded-map-control bg-accent-subtle text-primary">
-            <IconInfoCircle stroke={1.75} />
+            <Info strokeWidth={1.75} />
           </span>
           <h1 className="mt-5 text-xl font-semibold">
-            Biên tập cần máy tính
+            Mở trình biên tập trên máy tính
           </h1>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            Để vẽ và sửa bản đồ, hãy dùng máy tính có bàn phím, chuột hoặc bàn di chuột. Trên thiết bị này, bạn vẫn có thể xem và duyệt dữ liệu.
+            Tính năng này cần máy tính có chuột hoặc trackpad và bàn phím. Trên
+            thiết bị này, bạn vẫn có thể xem và kiểm duyệt dữ liệu.
           </p>
           <Button asChild className="mt-6 w-full">
             <Link href={`/admin/layers/${revisionId}/review`}>
-              Mở chế độ xem / duyệt
+              Mở chế độ xem và duyệt
             </Link>
           </Button>
         </section>
@@ -206,14 +245,20 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
   const [error, setError] = useState<unknown>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
-  const [tableOpen, setTableOpen] = useState(true);
+  const [tableOpen, setTableOpen] = useState(false);
+  const [featureListOpen, setFeatureListOpen] = useState(false);
+  const [inspectorOpen, setInspectorOpen] = useState(true);
+  const [focusRequest, setFocusRequest] = useState<{
+    version: number;
+    featureId: string | number | null;
+  }>({ version: 0, featureId: null });
   const [summary, setSummary] = useState("");
   const [reviewerNote, setReviewerNote] = useState("");
   const featuresRef = useRef(features);
   const [syncPhase, setSyncPhase] = useState<EditorSyncPhase>("idle");
-  const [syncIssues, setSyncIssues] = useState<
-    FeatureMutationLedgerEntry[]
-  >([]);
+  const [syncIssues, setSyncIssues] = useState<FeatureMutationLedgerEntry[]>(
+    [],
+  );
   const [pendingSyncCount, setPendingSyncCount] = useState(0);
   const [remoteChanges, setRemoteChanges] = useState(0);
   const [editorCommand, setEditorCommand] = useState<EditorCommand>({
@@ -224,6 +269,14 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
     canUndo: false,
     canRedo: false,
   });
+
+  const selectAndFocusFeature = useCallback((featureId: string | number) => {
+    setSelectedId(featureId);
+    setFocusRequest((current) => ({
+      version: current.version + 1,
+      featureId,
+    }));
+  }, []);
 
   useEffect(() => {
     featuresRef.current = features;
@@ -297,36 +350,33 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
     [bundle, principal.id],
   );
   const syncWorkspaceId = useMemo(
-    () =>
-      bundle
-        ? syncWorkspaceKey(principal.id, bundle.revision.id)
-        : null,
+    () => (bundle ? syncWorkspaceKey(principal.id, bundle.revision.id) : null),
     [bundle, principal.id],
   );
-  const refreshSyncState = useCallback(async (
-    workspaceId: string,
-    preserveActivePhase = true,
-  ) => {
-    const mutations = await listWorkspaceMutations(workspaceId);
-    const issues = mutations.filter(
-      (entry) => entry.status === "conflict" || entry.status === "rejected",
-    );
-    const pending = mutations.filter((entry) =>
-      ["pending", "syncing", "retry"].includes(entry.status),
-    ).length;
-    setSyncIssues(issues);
-    setPendingSyncCount(pending);
-    setSyncPhase((current) =>
-      issues.length
-        ? "issues"
-        : preserveActivePhase &&
-            (current === "syncing" || current === "observing")
-          ? current
-          : pending
-            ? "offline"
-            : "idle",
-    );
-  }, []);
+  const refreshSyncState = useCallback(
+    async (workspaceId: string, preserveActivePhase = true) => {
+      const mutations = await listWorkspaceMutations(workspaceId);
+      const issues = mutations.filter(
+        (entry) => entry.status === "conflict" || entry.status === "rejected",
+      );
+      const pending = mutations.filter((entry) =>
+        ["pending", "syncing", "retry"].includes(entry.status),
+      ).length;
+      setSyncIssues(issues);
+      setPendingSyncCount(pending);
+      setSyncPhase((current) =>
+        issues.length
+          ? "issues"
+          : preserveActivePhase &&
+              (current === "syncing" || current === "observing")
+            ? current
+            : pending
+              ? "offline"
+              : "idle",
+      );
+    },
+    [],
+  );
   useEffect(() => {
     if (!bundle || !syncWorkspaceId) return;
     let active = true;
@@ -395,12 +445,7 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
       active = false;
       unsubscribe();
     };
-  }, [
-    applyBundleAndSnapshot,
-    refreshSyncState,
-    revisionId,
-    syncWorkspaceId,
-  ]);
+  }, [applyBundleAndSnapshot, refreshSyncState, revisionId, syncWorkspaceId]);
   useEffect(() => {
     if (!draftId) return;
     draftDb.drafts
@@ -468,8 +513,7 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
             const isNew =
               feature &&
               !bundle.features.some(
-                (canonical) =>
-                  canonical.id === editorLogicalFeatureId(feature),
+                (canonical) => canonical.id === editorLogicalFeatureId(feature),
               );
             if (!feature) return value;
             if (!isNew) return feature;
@@ -589,8 +633,7 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
             entry.attempts > 0,
         );
         const hasIssues = ledger.some(
-          (entry) =>
-            entry.status === "conflict" || entry.status === "rejected",
+          (entry) => entry.status === "conflict" || entry.status === "rejected",
         );
         let receivedRemoteChanges = 0;
         if (!hasAmbiguousRetry && !hasIssues) {
@@ -607,7 +650,7 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
       });
       if (!ownership.acquired) {
         setSyncPhase("observing");
-        setSuccess("Một tab khác đang đồng bộ workspace này.");
+        setSuccess("Một tab khác đang đồng bộ bản chỉnh sửa này.");
         return;
       }
       const { summary, recoveredSnapshot, receivedRemoteChanges } =
@@ -627,7 +670,9 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
       const issues = await activeWorkspaceIssues(workspaceId);
       setSyncIssues(issues);
       setPendingSyncCount(summary.pending);
-      setSyncPhase(issues.length ? "issues" : summary.pending ? "offline" : "idle");
+      setSyncPhase(
+        issues.length ? "issues" : summary.pending ? "offline" : "idle",
+      );
       if (!issues.length && summary.pending === 0) {
         const nextDiff = diffEditorFeatures(
           fresh.features,
@@ -643,10 +688,12 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
         setSuccess(
           remainsDirty
             ? "Đã nhận phản hồi máy chủ. Còn thay đổi mới cần đồng bộ."
-            : `Đã lưu ${summary.acknowledged} thay đổi lên hệ thống.`,
+            : `Đã lưu ${summary.acknowledged} thay đổi lên máy chủ.`,
         );
       } else {
-        setSuccess("Đã lưu các thay đổi hợp lệ. Một số đối tượng cần bạn kiểm tra lại.");
+        setSuccess(
+          "Đã lưu các thay đổi hợp lệ. Một số đối tượng cần bạn kiểm tra lại.",
+        );
       }
     } catch (reason) {
       setError(reason);
@@ -700,8 +747,8 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
     await refreshSyncState(syncWorkspaceId);
     setSuccess(
       issue.status === "conflict"
-        ? "Đã giữ thay đổi của bạn. Chọn Lưu lên hệ thống để thử lưu lại."
-        : "Hãy sửa dữ liệu chưa hợp lệ rồi chọn Lưu lên hệ thống.",
+        ? "Đã giữ thay đổi của bạn. Chọn Lưu lên máy chủ để thử lưu lại."
+        : "Hãy sửa dữ liệu chưa hợp lệ rồi chọn Lưu lên máy chủ.",
     );
   }
 
@@ -765,7 +812,8 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
             Vai trò hiện tại không thể biên tập
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Bạn cần quyền biên tập hoặc quản trị hệ thống để sửa dữ liệu. Bạn vẫn có thể mở chế độ xem và duyệt.
+            Bạn cần quyền biên tập hoặc quản trị hệ thống để sửa dữ liệu. Bạn
+            vẫn có thể mở chế độ xem và duyệt.
           </p>
           <Button asChild className="mt-5">
             <Link href={`/admin/layers/${revisionId}/review`}>Xem dữ liệu</Link>
@@ -794,26 +842,32 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
       <main className="grid min-h-[100dvh] place-items-center bg-surface-subtle p-6">
         <section className="max-w-lg rounded-panel border bg-surface p-6">
           <h1 className="text-xl font-semibold">
-            {awaitingReview ? "Đã gửi duyệt" : changesRequested ? "Cần chỉnh sửa" : "Phiên bản này chỉ được xem"}
+            {awaitingReview
+              ? "Đã gửi duyệt"
+              : changesRequested
+                ? "Cần chỉnh sửa"
+                : "Phiên bản này chỉ được xem"}
           </h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
             {awaitingReview
-              ? "Phiên bản đang chờ kiểm duyệt. Bạn có thể theo dõi kết quả và nhận xét trong chế độ xem / duyệt."
+              ? "Phiên bản đang chờ kiểm duyệt. Bạn có thể theo dõi kết quả và nhận xét trong chế độ xem và duyệt."
               : changesRequested
                 ? "Nội dung cần chỉnh sửa. Mở lớp để tiếp tục trên bản nháp mới và xem các ý kiến kiểm duyệt."
-                : "Phiên bản này đã khóa chỉnh sửa. Mở chế độ xem / duyệt để xem nội dung và theo dõi trạng thái."}
+                : "Phiên bản này đã khóa chỉnh sửa. Mở chế độ xem và duyệt để xem nội dung và theo dõi trạng thái."}
           </p>
           <div className="mt-5 flex flex-wrap gap-2">
             {changesRequested && (
               <Button asChild>
-                <Link href={`/admin/layers/${bundle.revision.layerId}`}>Mở lớp để chỉnh sửa</Link>
+                <Link href={`/admin/layers/${bundle.revision.layerId}`}>
+                  Mở lớp để chỉnh sửa
+                </Link>
               </Button>
             )}
             <Button asChild variant={changesRequested ? "outline" : "default"}>
               <Link
                 href={`/admin/layers/${bundle.revision.layerId}/revisions/${revisionId}/review`}
               >
-                Mở chế độ xem / duyệt
+                Mở chế độ xem và duyệt
               </Link>
             </Button>
           </div>
@@ -821,16 +875,16 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
       </main>
     );
   }
-  const unsupported =
-    bundle.features.filter(
-      (feature) => adminFeatureToTerraParts(feature).length === 0,
-    ).length;
+  const unsupported = bundle.features.filter(
+    (feature) => adminFeatureToTerraParts(feature).length === 0,
+  ).length;
   const featureRows = snapshotLogicalFeatures(features);
   const selectedLogicalFeature =
     featureRows.find((feature) => feature.id === String(selectedId)) ?? null;
   const fieldValidationErrors = featureRows.flatMap((feature) =>
     validateFeatureProperties(bundle.fields, feature.properties).map(
-      (message) => `${typeof feature.properties.name === "string" && feature.properties.name.trim() ? feature.properties.name : "Đối tượng chưa đặt tên"}: ${message}`,
+      (message) =>
+        `${typeof feature.properties.name === "string" && feature.properties.name.trim() ? feature.properties.name : "Đối tượng chưa đặt tên"}: ${message}`,
     ),
   );
   const selectedFeature =
@@ -859,36 +913,41 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
   const ledgerCanRecover = pendingSyncCount > 0 || syncIssues.length > 0;
 
   return (
-    <main className="grid h-[100dvh] min-h-[720px] overflow-hidden bg-surface grid-rows-[64px_minmax(0,1fr)]">
-      <header className="flex items-center gap-3 border-b bg-surface px-4">
+    <main className="grid h-[100dvh] min-h-0 overflow-hidden bg-surface grid-rows-[64px_minmax(0,1fr)]">
+      <header className="flex min-w-0 items-center gap-2 border-b bg-surface px-3 lg:px-4">
         <Button asChild variant="ghost" size="icon-sm">
-          <Link href="/admin/layers" aria-label="Quay lại lớp dữ liệu">
-            <IconArrowLeft stroke={1.75} />
+          <Link href="/admin/layers" aria-label="Quay lại danh sách lớp">
+            <ArrowLeft strokeWidth={1.75} />
           </Link>
         </Button>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2">
             <h1 className="truncate text-sm font-semibold">
               {bundle.revision.title}
             </h1>
-            <Badge>
-              {revisionStatusLabel(bundle.revision.status)} · Phiên bản {bundle.revision.revisionNo}
+            <Badge className="hidden shrink-0 xl:inline-flex">
+              {revisionStatusLabel(bundle.revision.status)}, phiên bản{" "}
+              {bundle.revision.revisionNo}
             </Badge>
           </div>
-          <p className="mt-0.5 text-xs text-muted-foreground">
+          <p className="truncate text-xs text-muted-foreground">
             {savedAt
-              ? `Tự lưu thiết bị lúc ${new Date(savedAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}`
-              : "Thay đổi được lưu nháp trên thiết bị trong khi biên tập"}
+              ? `Đã lưu trên thiết bị lúc ${new Date(savedAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}`
+              : "Thay đổi được tự động lưu trên thiết bị"}
           </p>
         </div>
-        <Button asChild variant="outline">
-          <Link href={`/admin/layers/${revisionId}/import`}>
-            <IconFileImport stroke={1.75} />
-            Nhập dữ liệu
+        <Button asChild variant="outline" size="sm">
+          <Link
+            href={`/admin/layers/${revisionId}/import`}
+            aria-label="Nhập dữ liệu"
+          >
+            <FileUp data-icon="inline-start" strokeWidth={1.75} />
+            <span className="hidden xl:inline">Nhập dữ liệu</span>
           </Link>
         </Button>
         <Button
           variant="outline"
+          size="sm"
           disabled={
             (!dirty && pendingSyncCount === 0) ||
             busy !== null ||
@@ -898,357 +957,599 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
             syncIssues.length > 0
           }
           onClick={saveServer}
+          aria-label={
+            busy === "save" ? "Đang lưu lên máy chủ" : "Lưu lên máy chủ"
+          }
         >
-          <IconDeviceFloppy stroke={1.75} />
-          {busy === "save" ? "Đang lưu..." : "Lưu lên hệ thống"}
+          <Save data-icon="inline-start" strokeWidth={1.75} />
+          <span className="hidden xl:inline">
+            {busy === "save" ? "Đang lưu" : "Lưu lên máy chủ"}
+          </span>
         </Button>
         <Button
+          size="sm"
           disabled={!canSubmit || busy !== null}
           title={
             dirty
-              ? "Lưu thay đổi trước khi gửi duyệt"
+              ? "Lưu thay đổi lên máy chủ trước khi gửi duyệt"
               : !summary.trim()
-                ? "Nhập tóm tắt thay đổi"
+                ? "Nhập tóm tắt thay đổi trước khi gửi duyệt"
                 : undefined
           }
           onClick={submitForReview}
+          aria-label={busy === "submit" ? "Đang gửi duyệt" : "Gửi duyệt"}
         >
-          <IconCloudUpload stroke={1.75} />
-          {busy === "submit" ? "Đang gửi..." : "Gửi duyệt"}
+          <CloudUpload data-icon="inline-start" strokeWidth={1.75} />
+          <span className="hidden xl:inline">
+            {busy === "submit" ? "Đang gửi" : "Gửi duyệt"}
+          </span>
         </Button>
       </header>
-      <div className="relative grid min-h-0 min-w-0 grid-cols-[180px_52px_minmax(0,1fr)_260px] grid-rows-[minmax(0,1fr)_220px] xl:grid-cols-[260px_52px_minmax(0,1fr)_320px]">
-        <aside className="row-span-2 min-w-0 overflow-y-auto border-r bg-surface">
-          <div className="border-b p-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold">Danh sách đối tượng</h2>
-              <Badge>{featureRows.length}</Badge>
-            </div>
-          </div>
-          <div className="p-2">
-            {featureRows.length === 0 && <p className="p-3 text-sm leading-6 text-muted-foreground">Chưa có đối tượng. Chọn công cụ vẽ bên cạnh hoặc Nhập dữ liệu để bắt đầu.</p>}
-            {featureRows.map((feature, index) => (
-              <button
-                type="button"
-                aria-pressed={String(selectedId) === String(feature.id)}
-                onClick={() => setSelectedId(feature.id ?? null)}
-                key={String(feature.id)}
-                className={cn(
-                  "flex w-full items-center gap-2 rounded-control p-2 text-left text-sm hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  String(selectedId) === String(feature.id) &&
-                    "bg-accent-subtle text-primary",
-                )}
+      <div className="relative min-h-0 min-w-0 overflow-hidden">
+        <ResizablePanelGroup orientation="horizontal">
+          {featureListOpen && (
+            <>
+              <ResizablePanel
+                id="feature-list"
+                defaultSize="19%"
+                minSize="180px"
+                maxSize="320px"
+                groupResizeBehavior="preserve-pixel-size"
+                className="min-w-0 bg-surface"
               >
-                <IconPolygon
-                  className="shrink-0 text-muted-foreground"
-                  size={18}
-                />
-                <span className="truncate">
-                  {typeof feature.properties.name === "string"
-                    ? feature.properties.name
-                    : `Đối tượng ${index + 1}`}
-                </span>
-              </button>
-            ))}
-          </div>
-        </aside>
-        <nav
-          className="row-span-2 flex flex-col items-center gap-1 border-r bg-surface p-1.5"
-          aria-label="Công cụ vẽ"
-        >
-          {availableTools.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              type="button"
-              title={label}
-              aria-label={label}
-              aria-pressed={tool === id}
-              onClick={() => setTool(id)}
-              className={cn(
-                "grid size-10 place-items-center rounded-map-control text-muted-foreground hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                tool === id && "bg-accent-subtle text-primary",
+                <aside
+                  className="flex h-full min-w-0 flex-col"
+                  aria-label="Danh sách đối tượng"
+                >
+                  <div className="flex min-h-12 items-center gap-2 border-b px-3">
+                    <h2 className="min-w-0 flex-1 truncate text-sm font-semibold">
+                      Đối tượng
+                    </h2>
+                    <Badge>{featureRows.length}</Badge>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label="Thu gọn danh sách đối tượng"
+                      onClick={() => setFeatureListOpen(false)}
+                    >
+                      <PanelLeftClose strokeWidth={1.75} />
+                    </Button>
+                  </div>
+                  <ScrollArea className="min-h-0 flex-1">
+                    <div className="flex flex-col gap-1 p-2">
+                      {featureRows.length === 0 ? (
+                        <Empty className="border-0 px-3 py-8">
+                          <EmptyHeader>
+                            <EmptyMedia variant="icon">
+                              <Pentagon strokeWidth={1.75} />
+                            </EmptyMedia>
+                            <EmptyTitle>Chưa có đối tượng</EmptyTitle>
+                            <EmptyDescription>
+                              Chọn một công cụ vẽ trên bản đồ hoặc nhập dữ liệu
+                              để bắt đầu.
+                            </EmptyDescription>
+                          </EmptyHeader>
+                        </Empty>
+                      ) : (
+                        featureRows.map((feature, index) => (
+                          <Button
+                            key={String(feature.id)}
+                            type="button"
+                            variant={
+                              String(selectedId) === String(feature.id)
+                                ? "subtle"
+                                : "ghost"
+                            }
+                            aria-pressed={
+                              String(selectedId) === String(feature.id)
+                            }
+                            onClick={() => selectAndFocusFeature(feature.id)}
+                            className="h-auto w-full justify-start px-2 py-2 text-left"
+                          >
+                            <Pentagon
+                              data-icon="inline-start"
+                              strokeWidth={1.75}
+                            />
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate">
+                                {typeof feature.properties.name === "string" &&
+                                feature.properties.name.trim()
+                                  ? feature.properties.name
+                                  : `Đối tượng ${index + 1}`}
+                              </span>
+                              <span className="block truncate text-xs font-normal text-muted-foreground">
+                                {geometryLabel(feature.kind)}
+                              </span>
+                            </span>
+                          </Button>
+                        ))
+                      )}
+                    </div>
+                  </ScrollArea>
+                </aside>
+              </ResizablePanel>
+              <ResizableHandle withHandle />
+            </>
+          )}
+
+          <ResizablePanel id="map-workspace" minSize="420px">
+            <ResizablePanelGroup orientation="vertical">
+              <ResizablePanel id="map" minSize="360px">
+                <section
+                  className="relative h-full min-h-0 min-w-0 bg-surface-subtle"
+                  aria-label="Không gian bản đồ"
+                >
+                  <EditorMapCanvas
+                    activeTool={tool}
+                    restore={restore}
+                    focusRequest={focusRequest}
+                    deleteRequest={deleteRequest}
+                    command={editorCommand}
+                    onSelectionChange={setSelectedId}
+                    onSnapshot={handleSnapshot}
+                    onHistoryChange={setHistory}
+                    onError={setMapError}
+                  />
+
+                  <TooltipProvider delayDuration={300}>
+                    <nav
+                      className="absolute left-3 top-3 flex flex-col gap-1 rounded-map-control border bg-surface p-1 map-control-shadow"
+                      aria-label="Công cụ vẽ"
+                    >
+                      {!featureListOpen && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              aria-label="Mở danh sách đối tượng"
+                              onClick={() => setFeatureListOpen(true)}
+                            >
+                              <PanelLeftOpen strokeWidth={1.75} />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="right">
+                            Mở danh sách đối tượng
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                      {availableTools.map(({ id, label, icon: Icon }) => (
+                        <Tooltip key={id}>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant={tool === id ? "subtle" : "ghost"}
+                              size="icon-sm"
+                              aria-label={label}
+                              aria-pressed={tool === id}
+                              onClick={() => setTool(id)}
+                            >
+                              <Icon strokeWidth={1.75} />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="right">{label}</TooltipContent>
+                        </Tooltip>
+                      ))}
+                      <Separator className="my-1" />
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            disabled={!history.canUndo}
+                            onClick={() =>
+                              setEditorCommand((current) => ({
+                                version: current.version + 1,
+                                type: "undo",
+                              }))
+                            }
+                            aria-label="Hoàn tác"
+                          >
+                            <Undo2 strokeWidth={1.75} />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="right">
+                          Hoàn tác (Ctrl/Cmd+Z)
+                        </TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            disabled={!history.canRedo}
+                            onClick={() =>
+                              setEditorCommand((current) => ({
+                                version: current.version + 1,
+                                type: "redo",
+                              }))
+                            }
+                            aria-label="Làm lại"
+                          >
+                            <Redo2 strokeWidth={1.75} />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="right">
+                          Làm lại (Ctrl/Cmd+Shift+Z)
+                        </TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            disabled={selectedId === null}
+                            onClick={() => {
+                              if (selectedId === null) return;
+                              setEditorCommand((current) => ({
+                                version: current.version + 1,
+                                type: "duplicate",
+                                featureId: String(selectedId),
+                              }));
+                            }}
+                            aria-label="Nhân bản đối tượng đã chọn"
+                          >
+                            <Copy strokeWidth={1.75} />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="right">
+                          Nhân bản đối tượng đã chọn
+                        </TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            disabled={selectedId === null}
+                            onClick={() =>
+                              setDeleteRequest((value) => value + 1)
+                            }
+                            aria-label="Xóa đối tượng đã chọn"
+                          >
+                            <Trash2
+                              className="text-destructive"
+                              strokeWidth={1.75}
+                            />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="right">
+                          {selectedId === null
+                            ? "Chọn một đối tượng trước khi xóa"
+                            : "Xóa đối tượng đã chọn"}
+                        </TooltipContent>
+                      </Tooltip>
+                    </nav>
+                  </TooltipProvider>
+
+                  <div className="absolute right-3 top-3 flex max-w-[calc(100%-4.5rem)] flex-wrap justify-end gap-2">
+                    <EditorSyncStatus
+                      phase={syncIssues.length ? "issues" : syncPhase}
+                      hasLocalChanges={dirty}
+                      pendingCount={pendingSyncCount}
+                      issues={syncIssues}
+                      remoteChanges={remoteChanges}
+                      onKeepServer={keepServerVersion}
+                      onRetryLocal={retryLocalVersion}
+                    />
+                    {!inspectorOpen && (
+                      <Button
+                        variant="outline"
+                        size="icon-sm"
+                        className="map-control-shadow"
+                        aria-label="Mở bảng thông tin"
+                        onClick={() => setInspectorOpen(true)}
+                      >
+                        <PanelRightOpen strokeWidth={1.75} />
+                      </Button>
+                    )}
+                  </div>
+
+                  {mapError && (
+                    <div
+                      className="absolute left-16 top-3 max-w-[min(24rem,calc(100%-5rem))] rounded-control border bg-surface p-3 text-sm map-control-shadow"
+                      role="alert"
+                    >
+                      <div className="flex gap-2">
+                        <Info
+                          className="shrink-0 text-warning"
+                          strokeWidth={1.75}
+                        />
+                        <span>{mapError}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="absolute bottom-3 left-3 rounded-control bg-surface px-2.5 py-1.5 text-xs text-muted-foreground map-control-shadow">
+                    Bán kính được tính bằng mét
+                  </div>
+                  {!tableOpen && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="absolute bottom-3 right-3 map-control-shadow"
+                      aria-label="Mở bảng dữ liệu"
+                      aria-expanded="false"
+                      onClick={() => setTableOpen(true)}
+                    >
+                      <TableProperties
+                        data-icon="inline-start"
+                        strokeWidth={1.75}
+                      />
+                      Bảng dữ liệu
+                      <Badge>{featureRows.length}</Badge>
+                    </Button>
+                  )}
+                </section>
+              </ResizablePanel>
+
+              {tableOpen && (
+                <>
+                  <ResizableHandle withHandle />
+                  <ResizablePanel
+                    id="feature-table"
+                    defaultSize="28%"
+                    minSize="140px"
+                    maxSize="48%"
+                    groupResizeBehavior="preserve-pixel-size"
+                  >
+                    <section
+                      className="flex h-full min-h-0 flex-col bg-surface"
+                      aria-label="Bảng dữ liệu đối tượng"
+                    >
+                      <div className="flex min-h-11 items-center gap-2 border-b px-3">
+                        <TableProperties
+                          className="shrink-0"
+                          strokeWidth={1.75}
+                        />
+                        <h2 className="min-w-0 flex-1 truncate text-sm font-semibold">
+                          Bảng dữ liệu
+                        </h2>
+                        <Badge>{featureRows.length}</Badge>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-expanded="true"
+                          onClick={() => setTableOpen(false)}
+                        >
+                          Thu gọn
+                        </Button>
+                      </div>
+                      <div className="min-h-0 flex-1 overflow-auto">
+                        <Table className="min-w-[520px] text-xs">
+                          <TableHeader className="sticky top-0 bg-surface-subtle">
+                            <TableRow>
+                              <TableHead className="w-16">STT</TableHead>
+                              <TableHead>Tên đối tượng</TableHead>
+                              <TableHead>Loại hình học</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {featureRows.map((feature, index) => (
+                              <TableRow
+                                key={String(feature.id)}
+                                tabIndex={0}
+                                data-state={
+                                  String(selectedId) === String(feature.id)
+                                    ? "selected"
+                                    : undefined
+                                }
+                                aria-label={`Chọn ${typeof feature.properties.name === "string" && feature.properties.name.trim() ? feature.properties.name : `đối tượng ${index + 1}`}`}
+                                onClick={() =>
+                                  selectAndFocusFeature(feature.id)
+                                }
+                                onKeyDown={(event) => {
+                                  if (
+                                    event.key === "Enter" ||
+                                    event.key === " "
+                                  ) {
+                                    event.preventDefault();
+                                    selectAndFocusFeature(feature.id);
+                                  }
+                                }}
+                              >
+                                <TableCell className="font-mono text-muted-foreground">
+                                  {index + 1}
+                                </TableCell>
+                                <TableCell className="max-w-64 truncate font-medium">
+                                  {typeof feature.properties.name ===
+                                    "string" && feature.properties.name.trim()
+                                    ? feature.properties.name
+                                    : "Chưa đặt tên"}
+                                </TableCell>
+                                <TableCell>
+                                  {geometryLabel(feature.kind)}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </section>
+                  </ResizablePanel>
+                </>
               )}
-            >
-              <Icon size={21} stroke={1.75} />
-            </button>
-          ))}
-          <span className="my-1 h-px w-8 bg-border" />
-          <button
-            disabled={!history.canUndo}
-            onClick={() =>
-              setEditorCommand((current) => ({
-                version: current.version + 1,
-                type: "undo",
-              }))
-            }
-            title="Hoàn tác (Ctrl/Cmd+Z)"
-            className="grid size-10 place-items-center rounded-map-control text-muted-foreground hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-40"
-            aria-label="Hoàn tác"
-          >
-            <IconArrowBackUp size={20} stroke={1.75} />
-          </button>
-          <button
-            disabled={!history.canRedo}
-            onClick={() =>
-              setEditorCommand((current) => ({
-                version: current.version + 1,
-                type: "redo",
-              }))
-            }
-            title="Làm lại (Ctrl/Cmd+Shift+Z)"
-            className="grid size-10 place-items-center rounded-map-control text-muted-foreground hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-40"
-            aria-label="Làm lại"
-          >
-            <IconArrowForwardUp size={20} stroke={1.75} />
-          </button>
-          <button
-            disabled={selectedId === null}
-            onClick={() => {
-              if (selectedId === null) return;
-              setEditorCommand((current) => ({
-                version: current.version + 1,
-                type: "duplicate",
-                featureId: String(selectedId),
-              }));
-            }}
-            title="Nhân bản đối tượng đã chọn"
-            className="grid size-10 place-items-center rounded-map-control text-muted-foreground hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-40"
-            aria-label="Nhân bản đối tượng đã chọn"
-          >
-            <IconCopy size={20} stroke={1.75} />
-          </button>
-          <button
-            disabled={selectedId === null}
-            onClick={() => setDeleteRequest((value) => value + 1)}
-            title={
-              selectedId === null
-                ? "Chọn một đối tượng trước khi xóa"
-                : "Xóa đối tượng đã chọn"
-            }
-            className="grid size-10 place-items-center rounded-map-control text-destructive disabled:cursor-not-allowed disabled:opacity-40"
-            aria-label="Xóa đối tượng đã chọn"
-          >
-            <IconTrash size={20} stroke={1.75} />
-          </button>
-        </nav>
-        <section className="relative min-h-0 min-w-0 bg-surface-subtle">
-          <EditorMapCanvas
-            activeTool={tool}
-            restore={restore}
-            deleteRequest={deleteRequest}
-            command={editorCommand}
-            onSelectionChange={setSelectedId}
-            onSnapshot={handleSnapshot}
-            onHistoryChange={setHistory}
-            onError={setMapError}
-          />
-          {mapError && (
-            <div
-              className="absolute left-4 top-4 flex max-w-sm gap-2 rounded-control border bg-surface p-3 text-sm map-control-shadow"
-              role="alert"
-            >
-              <IconInfoCircle className="shrink-0 text-warning" size={19} />
-              {mapError}
-            </div>
-          )}
-          <div className="absolute left-3 right-3 top-3 flex justify-end">
-            <EditorSyncStatus
-              phase={syncIssues.length ? "issues" : syncPhase}
-              hasLocalChanges={dirty}
-              pendingCount={pendingSyncCount}
-              issues={syncIssues}
-              remoteChanges={remoteChanges}
-              onKeepServer={keepServerVersion}
-              onRetryLocal={retryLocalVersion}
-            />
-          </div>
-          <div className="absolute bottom-3 left-3 rounded-control bg-surface px-2.5 py-1.5 text-xs text-muted-foreground map-control-shadow">
-            Bán kính tính bằng mét
-          </div>
-        </section>
-        <aside className="row-span-2 min-w-0 overflow-y-auto border-l bg-surface">
-          <div className="border-b p-4">
-            <h2 className="text-sm font-semibold">Thông tin và gửi duyệt</h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Sửa thông tin đối tượng và chuẩn bị nội dung gửi duyệt
-            </p>
-          </div>
-          <div className="space-y-4 p-4">
-            {error !== null && (
-              <AdminErrorNotice error={error} onRetry={load} />
-            )}{" "}
-            {success && (
-              <p
-                className="rounded-control bg-success/10 p-3 text-sm text-success"
-                role="status"
+            </ResizablePanelGroup>
+          </ResizablePanel>
+
+          {inspectorOpen && (
+            <>
+              <ResizableHandle withHandle />
+              <ResizablePanel
+                id="feature-inspector"
+                defaultSize="24%"
+                minSize="260px"
+                maxSize="380px"
+                groupResizeBehavior="preserve-pixel-size"
+                className="min-w-0 bg-surface"
               >
-                {success}
-              </p>
-            )}
-            {(bundle.truncated || unsupported > 0) && (
-              <p className="rounded-control bg-warning/10 p-3 text-xs leading-5 text-warning">
-                {bundle.truncated
-                  ? "Lớp có nhiều dữ liệu hơn mức trình biên tập hiện tải được. Bạn chỉ có thể xem; chức năng lưu đang tạm khóa để bảo vệ dữ liệu. "
-                  : ""}
-                {unsupported > 0
-                  ? `${unsupported} đối tượng chưa thể sửa bằng công cụ vẽ hiện tại.`
-                  : ""}
-              </p>
-            )}
-            {fieldValidationErrors.length > 0 && (
-              <div className="rounded-control bg-destructive/10 p-3 text-xs leading-5 text-destructive">
-                <p className="font-medium">Cần sửa thông tin trước khi lưu</p>
-                <ul className="mt-1 list-disc pl-4">
-                  {fieldValidationErrors.slice(0, 3).map((message) => (
-                    <li key={message}>{message}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            <FeaturePropertiesEditor
-              key={`${selectedLogicalFeature?.id ?? "none"}:${JSON.stringify(selectedLogicalFeature?.properties ?? {})}`}
-              featureId={selectedLogicalFeature?.id ?? null}
-              properties={selectedLogicalFeature?.properties ?? null}
-              fields={bundle.fields}
-              onPatch={(properties) => {
-                if (!selectedLogicalFeature) return;
-                setEditorCommand((current) => ({
-                  version: current.version + 1,
-                  type: "properties",
-                  featureId: selectedLogicalFeature.id,
-                  properties,
-                }));
-              }}
-            />
-            <div className="border-t" />
-            <div>
-              <p className="text-xs font-medium">Tên lớp</p>
-              <p className="mt-1 text-sm">{bundle.revision.title}</p>
-            </div>
-            <div>
-              <p className="text-xs font-medium">Mô tả</p>
-              <p className="mt-1 text-sm leading-5 text-muted-foreground">
-                {bundle.revision.description || "Không có mô tả"}
-              </p>
-            </div>
-            <div>
-              <label
-                htmlFor="summary"
-                className="mb-2 block text-xs font-medium"
-              >
-                Tóm tắt thay đổi
-              </label>
-              <Input
-                id="summary"
-                value={summary}
-                onChange={(event) => {
-                  setSummary(event.target.value);
-                  workflowKeyRef.current = null;
-                }}
-                placeholder="Bắt buộc trước khi gửi duyệt"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="reviewer-note"
-                className="mb-2 block text-xs font-medium"
-              >
-                Ghi chú cho người duyệt
-              </label>
-              <textarea
-                id="reviewer-note"
-                className="min-h-20 w-full resize-y rounded-control border bg-surface p-3 text-sm"
-                value={reviewerNote}
-                onChange={(event) => {
-                  setReviewerNote(event.target.value);
-                  workflowKeyRef.current = null;
-                }}
-              />
-            </div>
-            <div className="rounded-control bg-surface-subtle p-3 text-xs leading-5 text-muted-foreground">
-              <strong className="text-foreground">
-                Phiên bản {bundle.revision.revisionNo}
-              </strong>
-              <br />
-              {bundle.fields.length} trường dữ liệu ·{" "}
-              {bundle.workspace.featureCount} đối tượng
-            </div>
-            {dirty && selectedFeature && (
-              <p className="rounded-control bg-warning/10 p-3 text-xs leading-5 text-warning">
-                Lưu thay đổi trên bản đồ trước khi cập nhật tệp đính kèm.
-              </p>
-            )}
-            <div className="border-t pt-4">
-              <FeatureAttachmentPanel
-                principalId={principal.id}
-                revisionId={revisionId}
-                feature={selectedFeature}
-                fields={bundle.fields}
-                etag={bundle.etag}
-                auth={{ csrfToken }}
-                disabled={dirty || busy !== null}
-                onFeatureChanged={attachmentChanged}
-              />
-            </div>
-          </div>
-        </aside>
-        <section
-          className={cn(
-            "col-start-3 row-start-2 overflow-hidden border-t bg-surface",
-            !tableOpen && "h-10 self-end",
+                <aside
+                  className="flex h-full min-w-0 flex-col"
+                  aria-label="Thông tin đối tượng và gửi duyệt"
+                >
+                  <div className="flex min-h-12 items-start gap-2 border-b px-4 py-2.5">
+                    <div className="min-w-0 flex-1">
+                      <h2 className="truncate text-sm font-semibold">
+                        Thông tin đối tượng
+                      </h2>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {selectedLogicalFeature
+                          ? "Chỉnh sửa thuộc tính của đối tượng đang chọn"
+                          : "Chọn một đối tượng trên bản đồ hoặc trong danh sách"}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label="Thu gọn bảng thông tin"
+                      onClick={() => setInspectorOpen(false)}
+                    >
+                      <PanelRightClose strokeWidth={1.75} />
+                    </Button>
+                  </div>
+                  <ScrollArea className="min-h-0 flex-1">
+                    <div className="flex flex-col gap-4 p-4">
+                      {error !== null && (
+                        <AdminErrorNotice error={error} onRetry={load} />
+                      )}
+                      {success && (
+                        <p
+                          className="rounded-control bg-success/10 p-3 text-sm text-success"
+                          role="status"
+                        >
+                          {success}
+                        </p>
+                      )}
+                      {(bundle.truncated || unsupported > 0) && (
+                        <p className="rounded-control bg-warning/10 p-3 text-xs leading-5 text-warning">
+                          {bundle.truncated
+                            ? "Lớp có nhiều dữ liệu hơn khả năng tải an toàn của trình biên tập. Chức năng lưu tạm khóa để tránh mất dữ liệu. "
+                            : ""}
+                          {unsupported > 0
+                            ? `${unsupported} đối tượng chưa thể chỉnh sửa bằng công cụ vẽ hiện tại.`
+                            : ""}
+                        </p>
+                      )}
+                      {fieldValidationErrors.length > 0 && (
+                        <div className="rounded-control bg-destructive/10 p-3 text-xs leading-5 text-destructive">
+                          <p className="font-medium">
+                            Cần sửa thông tin trước khi lưu
+                          </p>
+                          <ul className="mt-1 list-disc pl-4">
+                            {fieldValidationErrors
+                              .slice(0, 3)
+                              .map((message) => (
+                                <li key={message}>{message}</li>
+                              ))}
+                          </ul>
+                        </div>
+                      )}
+                      <FeaturePropertiesEditor
+                        key={`${selectedLogicalFeature?.id ?? "none"}:${JSON.stringify(selectedLogicalFeature?.properties ?? {})}`}
+                        featureId={selectedLogicalFeature?.id ?? null}
+                        properties={selectedLogicalFeature?.properties ?? null}
+                        fields={bundle.fields}
+                        onPatch={(properties) => {
+                          if (!selectedLogicalFeature) return;
+                          setEditorCommand((current) => ({
+                            version: current.version + 1,
+                            type: "properties",
+                            featureId: selectedLogicalFeature.id,
+                            properties,
+                          }));
+                        }}
+                      />
+
+                      <Separator />
+
+                      <section aria-labelledby="review-heading">
+                        <h2
+                          id="review-heading"
+                          className="text-sm font-semibold"
+                        >
+                          Chuẩn bị gửi duyệt
+                        </h2>
+                        <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                          Mô tả ngắn nội dung đã thay đổi để người kiểm duyệt dễ
+                          đối chiếu.
+                        </p>
+                        <FieldGroup className="mt-4 gap-4">
+                          <Field
+                            data-invalid={summary.length > 0 && !summary.trim()}
+                          >
+                            <FieldLabel htmlFor="summary">
+                              Tóm tắt thay đổi
+                            </FieldLabel>
+                            <Input
+                              id="summary"
+                              value={summary}
+                              aria-invalid={
+                                summary.length > 0 && !summary.trim()
+                              }
+                              onChange={(event) => {
+                                setSummary(event.target.value);
+                                workflowKeyRef.current = null;
+                              }}
+                              placeholder="Ví dụ: Cập nhật vị trí ba trụ sở"
+                            />
+                            <FieldDescription>
+                              Bắt buộc trước khi gửi duyệt.
+                            </FieldDescription>
+                          </Field>
+                          <Field>
+                            <FieldLabel htmlFor="reviewer-note">
+                              Ghi chú cho người kiểm duyệt
+                            </FieldLabel>
+                            <Textarea
+                              id="reviewer-note"
+                              className="min-h-24 resize-y"
+                              value={reviewerNote}
+                              onChange={(event) => {
+                                setReviewerNote(event.target.value);
+                                workflowKeyRef.current = null;
+                              }}
+                              placeholder="Thông tin cần lưu ý khi kiểm tra (không bắt buộc)"
+                            />
+                          </Field>
+                        </FieldGroup>
+                      </section>
+
+                      <p className="rounded-control bg-surface-subtle p-3 text-xs leading-5 text-muted-foreground">
+                        Phiên bản {bundle.revision.revisionNo}, gồm{" "}
+                        {bundle.fields.length} trường thông tin và{" "}
+                        {bundle.workspace.featureCount} đối tượng.
+                      </p>
+                      {dirty && selectedFeature && (
+                        <p className="rounded-control bg-warning/10 p-3 text-xs leading-5 text-warning">
+                          Lưu thay đổi lên máy chủ trước khi cập nhật tệp đính
+                          kèm.
+                        </p>
+                      )}
+                      <Separator />
+                      <FeatureAttachmentPanel
+                        principalId={principal.id}
+                        revisionId={revisionId}
+                        feature={selectedFeature}
+                        fields={bundle.fields}
+                        etag={bundle.etag}
+                        auth={{ csrfToken }}
+                        disabled={dirty || busy !== null}
+                        onFeatureChanged={attachmentChanged}
+                      />
+                    </div>
+                  </ScrollArea>
+                </aside>
+              </ResizablePanel>
+            </>
           )}
-        >
-          <div className="flex h-10 items-center justify-between border-b px-3">
-            <button
-              className="flex shrink-0 items-center gap-2 whitespace-nowrap text-xs font-medium"
-              aria-expanded={tableOpen}
-              onClick={() => setTableOpen((value) => !value)}
-            >
-              <IconTable size={18} />
-              Bảng dữ liệu <Badge>{featureRows.length}</Badge>
-            </button>
-            <span className="hidden text-xs text-muted-foreground xl:block">
-              Bấm vào đối tượng trong danh sách để chỉnh sửa
-            </span>
-          </div>
-          {tableOpen && (
-            <div className="overflow-auto">
-              <table className="w-full min-w-[640px] text-left text-xs">
-                <thead className="bg-surface-subtle text-muted-foreground">
-                  <tr>
-                    <th className="px-3 py-2 font-medium">STT</th>
-                    <th className="px-3 py-2 font-medium">Tên</th>
-                    <th className="px-3 py-2 font-medium">Loại đối tượng</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {featureRows.map((feature, index) => (
-                    <tr key={String(feature.id)}>
-                      <td className="px-3 py-2 font-mono text-muted-foreground">
-                        {index + 1}
-                      </td>
-                      <td className="px-3 py-2 font-medium">
-                        {typeof feature.properties.name === "string"
-                          ? feature.properties.name
-                          : "Chưa có"}
-                      </td>
-                      <td className="px-3 py-2">
-                        {geometryLabel(feature.kind)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
+        </ResizablePanelGroup>
         {recoveredDraft && (
           <div
-            className="absolute left-3 right-3 top-3 z-20 flex flex-wrap items-center gap-3 rounded-panel border border-primary/20 bg-surface p-3 map-panel-shadow xl:left-[328px] xl:right-[332px]"
+            className="absolute left-1/2 top-3 z-20 flex w-[min(42rem,calc(100%-1.5rem))] -translate-x-1/2 flex-wrap items-center gap-3 rounded-panel border border-primary/20 bg-surface p-3 map-panel-shadow"
             role="status"
           >
             <span className="grid size-9 shrink-0 place-items-center rounded-control bg-accent-subtle text-primary">
-              <IconRestore size={20} />
+              <History strokeWidth={1.75} />
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium">
@@ -1258,7 +1559,7 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
               </p>
               <p className="truncate text-xs text-muted-foreground">
                 {recoveryMatches || ledgerCanRecover
-                  ? `Lưu trên thiết bị lúc ${new Date(recoveredDraft.updatedAt).toLocaleString("vi-VN")}`
+                  ? `Đã lưu trên thiết bị lúc ${new Date(recoveredDraft.updatedAt).toLocaleString("vi-VN")}`
                   : "Dữ liệu đã có thay đổi mới. Tải bản nháp về để đối chiếu trước khi bỏ; không thể khôi phục trực tiếp."}
               </p>
             </div>

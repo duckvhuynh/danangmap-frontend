@@ -1,4 +1,4 @@
-import { IconMailForward } from "@tabler/icons-react";
+import { Forward as IconMailForward } from "lucide-react";
 import { ForgotPasswordForm } from "@/components/auth/forgot-password-form";
 import { SecurityPageShell } from "@/components/auth/security-page-shell";
 

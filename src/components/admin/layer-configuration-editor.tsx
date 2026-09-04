@@ -2,25 +2,25 @@
 
 import { useMemo, useRef, useState } from "react";
 import {
-  IconAlertTriangle,
-  IconArchive,
-  IconArrowDown,
-  IconArrowLeft,
-  IconArrowUp,
-  IconCircleCheck,
-  IconDatabase,
-  IconDeviceFloppy,
-  IconEye,
-  IconForms,
-  IconGeometry,
-  IconInfoCircle,
-  IconHistory,
-  IconGitBranch,
-  IconPlus,
-  IconRestore,
-  IconSettings,
-  IconTrash,
-} from "@tabler/icons-react";
+  TriangleAlert as IconAlertTriangle,
+  Archive as IconArchive,
+  ArrowDown as IconArrowDown,
+  ArrowLeft as IconArrowLeft,
+  ArrowUp as IconArrowUp,
+  CircleCheck as IconCircleCheck,
+  Database as IconDatabase,
+  Save as IconDeviceFloppy,
+  Eye as IconEye,
+  FormInput as IconForms,
+  Shapes as IconGeometry,
+  Info as IconInfoCircle,
+  History as IconHistory,
+  GitBranch as IconGitBranch,
+  Plus as IconPlus,
+  ArchiveRestore as IconRestore,
+  Settings as IconSettings,
+  Trash2 as IconTrash,
+} from "lucide-react";
 import Link from "next/link";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -43,6 +43,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
+import { Textarea } from "@/components/ui/textarea";
 import {
   changeGeometryMode,
   changeAllowedGeometryKinds,
@@ -179,7 +180,7 @@ function ReadOnlyNotice({
         : "Tính năng này cần máy tính có bàn phím, chuột hoặc bàn di chuột.";
   return (
     <Alert role="note">
-      <IconInfoCircle stroke={1.75} />
+      <IconInfoCircle strokeWidth={1.75} />
       <AlertTitle>{title}</AlertTitle>
       <AlertDescription>
         {description}
@@ -260,9 +261,9 @@ function OverviewSection({
         </div>
         <Field>
           <FieldLabel htmlFor="layer-description">Mô tả</FieldLabel>
-          <textarea
+          <Textarea
             id="layer-description"
-            className="min-h-24 w-full resize-y rounded-control border bg-surface p-3 text-sm outline-none focus:border-primary focus:ring-2 focus-visible:ring-ring/25 disabled:bg-surface-subtle"
+            className="min-h-24 resize-y"
             value={draft.description}
             disabled={revisionDisabled}
             onChange={(event) =>
@@ -601,6 +602,7 @@ function SchemaFieldCard({
             }
             aria-invalid={Boolean(errors[`${path}.key`])}
           />
+          <FieldDescription>Dùng để liên kết dữ liệu và không thể đổi sau khi lưu.</FieldDescription>
           <FieldError>{errors[`${path}.key`]}</FieldError>
         </Field>
         <Field data-invalid={Boolean(errors[`${path}.label`])}>
@@ -694,11 +696,11 @@ function SchemaFieldCard({
           data-invalid={Boolean(errors[`${path}.options`])}
         >
           <FieldLabel htmlFor={`field-options-${field.clientId}`}>
-            Các lựa chọn · mỗi dòng một giá trị
+            Các lựa chọn (mỗi dòng một giá trị)
           </FieldLabel>
-          <textarea
+          <Textarea
             id={`field-options-${field.clientId}`}
-            className="min-h-24 rounded-control border bg-surface p-3 text-sm"
+            className="min-h-24 resize-y"
             value={optionsValue}
             disabled={disabled}
             onChange={(event) =>
@@ -762,7 +764,7 @@ function SchemaSection({
             })
           }
         >
-          <IconPlus data-icon="inline-start" stroke={1.75} />
+          <IconPlus data-icon="inline-start" strokeWidth={1.75} />
           Thêm trường
         </Button>
       </div>
@@ -1066,10 +1068,10 @@ function PresentationSection({
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                <SelectItem value="auto">Tự động</SelectItem>
-                <SelectItem value="geojson">Tải toàn bộ dữ liệu (GeoJSON)</SelectItem>
-                <SelectItem value="mvt">Tải theo vùng nhìn (MVT)</SelectItem>
-                <SelectItem value="hybrid">Kết hợp</SelectItem>
+                <SelectItem value="auto">Tự động (khuyên dùng)</SelectItem>
+                <SelectItem value="geojson">Ưu tiên tải toàn bộ lớp</SelectItem>
+                <SelectItem value="mvt">Ưu tiên tải theo vùng đang xem</SelectItem>
+                <SelectItem value="hybrid">Tự động kết hợp</SelectItem>
               </SelectGroup>
             </SelectContent>
           </Select>
@@ -1529,15 +1531,15 @@ export function LayerConfigurationEditor({
 
   if (mode === "create" && !canAuthorContent(principalRole))
     return (
-      <main className="mx-auto max-w-2xl p-4 sm:p-6">
+      <main className="mx-auto max-w-2xl p-4 pb-24 sm:p-6 md:pb-6">
         <Button asChild variant="ghost" className="-ml-3">
           <Link href="/admin/layers">
-            <IconArrowLeft data-icon="inline-start" stroke={1.75} />
+            <IconArrowLeft data-icon="inline-start" strokeWidth={1.75} />
             Lớp dữ liệu
           </Link>
         </Button>
         <Alert className="mt-6" variant="destructive">
-          <IconAlertTriangle stroke={1.75} />
+          <IconAlertTriangle strokeWidth={1.75} />
           <AlertTitle>Không có quyền tạo lớp</AlertTitle>
           <AlertDescription>
             Bạn cần quyền biên tập hoặc quản trị hệ thống để tạo lớp và các trường dữ liệu.
@@ -1547,15 +1549,15 @@ export function LayerConfigurationEditor({
     );
   if (mode === "create" && !canAuthor)
     return (
-      <main className="mx-auto max-w-2xl p-4 sm:p-6">
+      <main className="mx-auto max-w-2xl p-4 pb-24 sm:p-6 md:pb-6">
         <Button asChild variant="ghost" className="-ml-3">
           <Link href="/admin/layers">
-            <IconArrowLeft data-icon="inline-start" stroke={1.75} />
+            <IconArrowLeft data-icon="inline-start" strokeWidth={1.75} />
             Lớp dữ liệu
           </Link>
         </Button>
         <Alert className="mt-6" role="note">
-          <IconInfoCircle stroke={1.75} />
+          <IconInfoCircle strokeWidth={1.75} />
           <AlertTitle>Tạo lớp cần máy tính</AlertTitle>
           <AlertDescription>
             Tạo và sửa lớp cần máy tính có bàn phím, chuột hoặc bàn di chuột. Trên thiết bị này, bạn vẫn có thể xem dữ liệu và duyệt nội dung.
@@ -1570,7 +1572,7 @@ export function LayerConfigurationEditor({
         <div>
           <Button asChild variant="ghost" size="sm" className="-ml-3 mb-2">
             <Link href="/admin/layers">
-              <IconArrowLeft data-icon="inline-start" stroke={1.75} />
+              <IconArrowLeft data-icon="inline-start" strokeWidth={1.75} />
               Lớp dữ liệu
             </Link>
           </Button>
@@ -1595,7 +1597,7 @@ export function LayerConfigurationEditor({
           {mode === "edit" && draft.layerId && (
             <Button asChild type="button" variant="outline">
               <Link href={`/admin/layers/${draft.layerId}/history`}>
-                <IconHistory data-icon="inline-start" stroke={1.75} />
+                <IconHistory data-icon="inline-start" strokeWidth={1.75} />
                 Lịch sử
               </Link>
             </Button>
@@ -1629,7 +1631,7 @@ export function LayerConfigurationEditor({
               ) : (
                 <IconDatabase data-icon="inline-start" />
               )}
-              Lưu sắp xếp lớp
+              Lưu thông tin chung
             </Button>
           )}
           {mode === "edit" && canRevisionMutate && (
@@ -1646,7 +1648,7 @@ export function LayerConfigurationEditor({
               {pending === "revision" ? (
                 <>
                   <Spinner />
-                  Đang phân tích...
+                  Đang kiểm tra...
                 </>
               ) : (
                 <>
@@ -1789,7 +1791,7 @@ export function LayerConfigurationEditor({
                 activeTab === id && "bg-accent-subtle text-primary",
               )}
             >
-              <Icon size={20} stroke={1.75} />
+              <Icon size={20} strokeWidth={1.75} />
               {label}
             </button>
           ))}

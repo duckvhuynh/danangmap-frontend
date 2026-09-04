@@ -1,5 +1,13 @@
 import { expect, test } from "@playwright/test";
 
+async function expectNoPageOverflow(page: import("@playwright/test").Page) {
+  const overflow = await page.evaluate(() => ({
+    viewport: document.documentElement.clientWidth,
+    page: document.documentElement.scrollWidth,
+  }));
+  expect(overflow.page).toBeLessThanOrEqual(overflow.viewport + 1);
+}
+
 test("desktop Editor creates a mixed layer and lands on its persisted layer configuration route", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name.includes("mobile"), "Desktop configuration authoring");
   await page.goto("/admin/layers");
@@ -30,14 +38,31 @@ test("desktop layer editor exposes authoring and recovery surfaces", async ({ pa
   await expect(page.getByRole("button", { name: "Vẽ vùng" })).toBeVisible();
   await expect(page.getByText("Bản đồ biên tập chưa sẵn sàng")).toBeVisible();
   await expect(page.getByRole("button", { name: /Gửi duyệt/ })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Không gian bản đồ" })).toBeInViewport();
+  await expect(page.getByRole("navigation", { name: "Công cụ vẽ" })).toBeInViewport();
+  await expectNoPageOverflow(page);
+
+  await page.getByRole("button", { name: "Bảng dữ liệu" }).click();
+  await expect(page.getByRole("region", { name: "Bảng dữ liệu đối tượng" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Không gian bản đồ" })).toBeInViewport();
+  await expectNoPageOverflow(page);
 });
 
 test("mobile editor is capability-gated to review only", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name.includes("desktop"), "Mobile capability gate");
   await page.goto("/admin/layers/wards/edit");
-  await expect(page.getByRole("heading", { name: "Biên tập cần máy tính" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Mở chế độ xem / duyệt" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Mở trình biên tập trên máy tính" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Mở chế độ xem và duyệt" })).toBeVisible();
   await expect(page.getByRole("button", { name: /Gửi duyệt/ })).toBeHidden();
+  await expectNoPageOverflow(page);
+});
+
+test("admin navigation and content remain usable without page-level horizontal overflow", async ({ page }) => {
+  for (const route of ["/admin", "/admin/layers", "/admin/settings"]) {
+    await page.goto(route);
+    await expect(page.locator("main")).toBeVisible();
+    await expectNoPageOverflow(page);
+  }
 });
 
 test("reviewer can approve or request changes on mobile", async ({ page }, testInfo) => {

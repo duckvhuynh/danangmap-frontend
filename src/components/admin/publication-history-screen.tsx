@@ -9,13 +9,13 @@ import {
   useSyncExternalStore,
 } from "react";
 import {
-  IconArrowLeft,
-  IconClock,
-  IconDatabase,
-  IconHistory,
-  IconRefresh,
-  IconShieldLock,
-} from "@tabler/icons-react";
+  ArrowLeft as IconArrowLeft,
+  Clock as IconClock,
+  Database as IconDatabase,
+  History as IconHistory,
+  RefreshCw as IconRefresh,
+  Shield as IconShieldLock,
+} from "lucide-react";
 import {
   AdminErrorNotice,
   useAdminSession,
@@ -306,7 +306,7 @@ export function PublicationHistoryScreen({
   if (loading && !revisions) return <ScreenSkeleton />;
   if (error && (!revisions || !publications || !audit))
     return (
-      <main className="mx-auto max-w-2xl p-4 sm:p-6">
+      <main className="mx-auto max-w-2xl p-4 pb-24 sm:p-6 md:pb-6">
         <AdminErrorNotice error={error} onRetry={reload} />
       </main>
     );
@@ -330,7 +330,7 @@ export function PublicationHistoryScreen({
               <IconArrowLeft
                 aria-hidden="true"
                 data-icon="inline-start"
-                stroke={1.75}
+                strokeWidth={1.75}
               />
               Cấu hình lớp
             </Link>
@@ -356,7 +356,7 @@ export function PublicationHistoryScreen({
           <IconRefresh
             aria-hidden="true"
             data-icon="inline-start"
-            stroke={1.75}
+            strokeWidth={1.75}
           />
           {loading ? "Đang làm mới..." : "Làm mới"}
         </Button>
@@ -382,7 +382,7 @@ export function PublicationHistoryScreen({
               aria-atomic="true"
               className="outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <IconHistory aria-hidden="true" stroke={1.75} />
+              <IconHistory aria-hidden="true" strokeWidth={1.75} />
               <AlertTitle>Khôi phục hoàn tất</AlertTitle>
               <AlertDescription>
                 Bản đồ công khai đã được cập nhật theo bản bạn chọn.
@@ -394,7 +394,7 @@ export function PublicationHistoryScreen({
           )}
           {publisherOnMobile && (
             <Alert>
-              <IconShieldLock aria-hidden="true" stroke={1.75} />
+              <IconShieldLock aria-hidden="true" strokeWidth={1.75} />
               <AlertTitle>Dùng máy tính để khôi phục dữ liệu</AlertTitle>
               <AlertDescription>
                 Bạn có thể xem lịch sử và kiểm duyệt trên điện thoại. Việc khôi phục dữ liệu công khai cần thực hiện trên máy tính.
@@ -422,7 +422,7 @@ export function PublicationHistoryScreen({
           </div>
           {jobsError !== null && (
             <Alert className="mt-4" role="status">
-              <IconRefresh aria-hidden="true" stroke={1.75} />
+              <IconRefresh aria-hidden="true" strokeWidth={1.75} />
               <AlertTitle>Chưa thể tải tiến độ công bố</AlertTitle>
               <AlertDescription>
                 <p>
@@ -438,7 +438,7 @@ export function PublicationHistoryScreen({
                   <IconRefresh
                     aria-hidden="true"
                     data-icon="inline-start"
-                    stroke={1.75}
+                    strokeWidth={1.75}
                   />
                   Tải lại tiến độ
                 </Button>
@@ -488,7 +488,7 @@ export function PublicationHistoryScreen({
             <Empty className="mt-4 border">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
-                  <IconDatabase stroke={1.75} />
+                  <IconDatabase strokeWidth={1.75} />
                 </EmptyMedia>
                 <EmptyTitle>Chưa có lần công bố nào</EmptyTitle>
                 <EmptyDescription>
@@ -610,7 +610,7 @@ export function PublicationHistoryScreen({
             <Empty className="mt-4 border">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
-                  <IconClock stroke={1.75} />
+                  <IconClock strokeWidth={1.75} />
                 </EmptyMedia>
                 <EmptyTitle>Chưa có phiên bản</EmptyTitle>
                 <EmptyDescription>

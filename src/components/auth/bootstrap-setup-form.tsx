@@ -3,13 +3,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  IconAlertCircle,
-  IconArrowRight,
-  IconCheck,
-  IconRefresh,
-  IconShieldCheck,
-  IconUserPlus,
-} from "@tabler/icons-react";
+  CircleAlert as IconAlertCircle,
+  ArrowRight as IconArrowRight,
+  Check as IconCheck,
+  RefreshCw as IconRefresh,
+  ShieldCheck as IconShieldCheck,
+  UserPlus as IconUserPlus,
+} from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -232,12 +232,12 @@ export function BootstrapSetupForm() {
     return (
       <div className="mt-7 flex flex-col gap-4">
         <Alert className="border-warning/30 bg-surface-subtle text-warning" role="alert">
-          <IconAlertCircle stroke={1.75} />
+          <IconAlertCircle strokeWidth={1.75} />
           <AlertTitle>Chưa kiểm tra được trạng thái</AlertTitle>
           <AlertDescription>{stage.message}</AlertDescription>
         </Alert>
         <Button onClick={retryStatus} type="button" variant="outline">
-          <IconRefresh data-icon="inline-start" stroke={1.75} />
+          <IconRefresh data-icon="inline-start" strokeWidth={1.75} />
           Thử kiểm tra lại
         </Button>
       </div>
@@ -247,7 +247,7 @@ export function BootstrapSetupForm() {
   if (stage.name === "unavailable") {
     return (
       <Alert className="mt-7 border-primary/20 bg-accent-subtle text-foreground" role="status">
-        <IconShieldCheck className="text-primary" stroke={1.75} />
+        <IconShieldCheck className="text-primary" strokeWidth={1.75} />
         <AlertTitle>Không thể khởi tạo tài khoản đầu tiên</AlertTitle>
         <AlertDescription>{stage.message}</AlertDescription>
       </Alert>
@@ -257,7 +257,7 @@ export function BootstrapSetupForm() {
   if (stage.name === "created") {
     return (
       <Alert className="mt-7 border-success/30 bg-surface-subtle text-success" role="status">
-        <IconCheck stroke={1.75} />
+        <IconCheck strokeWidth={1.75} />
         <AlertTitle>Đã tạo tài khoản quản trị</AlertTitle>
         <AlertDescription>
           {stage.mfaRequired
@@ -272,7 +272,7 @@ export function BootstrapSetupForm() {
     return (
       <div className="mt-7 flex flex-col gap-4">
         <Alert aria-live="assertive" className="border-warning/30 bg-surface-subtle text-warning">
-          <IconAlertCircle stroke={1.75} />
+          <IconAlertCircle strokeWidth={1.75} />
           <AlertTitle>Trạng thái khởi tạo chưa xác định</AlertTitle>
           <AlertDescription>
             {stage.message} Hãy quay lại đăng nhập để hệ thống áp dụng đúng chính sách xác thực hiện tại.
@@ -280,7 +280,7 @@ export function BootstrapSetupForm() {
         </Alert>
         <Button onClick={() => router.replace("/login")} type="button">
           Đi đến đăng nhập
-          <IconArrowRight data-icon="inline-end" stroke={1.75} />
+          <IconArrowRight data-icon="inline-end" strokeWidth={1.75} />
         </Button>
       </div>
     );
@@ -289,7 +289,7 @@ export function BootstrapSetupForm() {
   return (
     <div className="mt-7 flex flex-col gap-5">
       <Alert className="border-primary/20 bg-accent-subtle text-foreground" role="note">
-        <IconShieldCheck className="text-primary" stroke={1.75} />
+        <IconShieldCheck className="text-primary" strokeWidth={1.75} />
         <AlertTitle>Một lần duy nhất</AlertTitle>
         <AlertDescription>
           Tài khoản này có quyền quản lý người dùng, dữ liệu và cấu hình của hệ thống.
@@ -419,7 +419,7 @@ export function BootstrapSetupForm() {
             tabIndex={-1}
             variant="destructive"
           >
-            <IconAlertCircle stroke={1.75} />
+            <IconAlertCircle strokeWidth={1.75} />
             <AlertTitle>Không thể tạo tài khoản quản trị</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
@@ -429,7 +429,7 @@ export function BootstrapSetupForm() {
           {pending ? (
             <Spinner data-icon="inline-start" />
           ) : (
-            <IconUserPlus data-icon="inline-start" stroke={1.75} />
+            <IconUserPlus data-icon="inline-start" strokeWidth={1.75} />
           )}
           {pending ? "Đang tạo tài khoản..." : "Tạo tài khoản và tiếp tục"}
         </Button>
