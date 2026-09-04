@@ -124,6 +124,9 @@ describe("layer configuration editor", () => {
 
     const title = screen.getByLabelText("Tên lớp");
     const slug = screen.getByLabelText("Mã lớp");
+    expect(
+      title.compareDocumentPosition(slug) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).not.toBe(0);
     expect(title).toHaveAttribute(
       "placeholder",
       "Ví dụ: Nhà vệ sinh công cộng",

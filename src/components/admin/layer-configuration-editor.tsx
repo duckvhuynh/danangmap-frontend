@@ -244,29 +244,6 @@ function OverviewSection({
       </p>
       <FieldGroup className="mt-6">
         <div className="grid gap-5 md:grid-cols-2">
-          <Field data-invalid={Boolean(error.slug)}>
-            <FieldLabel htmlFor="layer-slug">Mã lớp</FieldLabel>
-            <Input
-              id="layer-slug"
-              value={draft.slug}
-              placeholder="Ví dụ: nha-ve-sinh-cong-cong"
-              disabled={catalogDisabled || Boolean(draft.layerId)}
-              onChange={(event) =>
-                onChange({
-                  ...draft,
-                  slug: event.target.value.toLocaleLowerCase("vi"),
-                })
-              }
-              aria-invalid={Boolean(error.slug)}
-              aria-describedby={
-                error.slug ? "layer-slug-error" : "layer-slug-help"
-              }
-            />
-            <FieldDescription id="layer-slug-help">
-              Dùng chữ thường không dấu, số và dấu gạch ngang, ví dụ: tru-so-phuong. Mã này không đổi sau khi tạo.
-            </FieldDescription>
-            <FieldError id="layer-slug-error">{error.slug}</FieldError>
-          </Field>
           <Field data-invalid={Boolean(error.title)}>
             <FieldLabel htmlFor="layer-title">Tên lớp</FieldLabel>
             <Input
@@ -292,6 +269,29 @@ function OverviewSection({
               aria-describedby={error.title ? "layer-title-error" : undefined}
             />
             <FieldError id="layer-title-error">{error.title}</FieldError>
+          </Field>
+          <Field data-invalid={Boolean(error.slug)}>
+            <FieldLabel htmlFor="layer-slug">Mã lớp</FieldLabel>
+            <Input
+              id="layer-slug"
+              value={draft.slug}
+              placeholder="Ví dụ: nha-ve-sinh-cong-cong"
+              disabled={catalogDisabled || Boolean(draft.layerId)}
+              onChange={(event) =>
+                onChange({
+                  ...draft,
+                  slug: event.target.value.toLocaleLowerCase("vi"),
+                })
+              }
+              aria-invalid={Boolean(error.slug)}
+              aria-describedby={
+                error.slug ? "layer-slug-error" : "layer-slug-help"
+              }
+            />
+            <FieldDescription id="layer-slug-help">
+              Dùng chữ thường không dấu, số và dấu gạch ngang, ví dụ: tru-so-phuong. Mã này không đổi sau khi tạo.
+            </FieldDescription>
+            <FieldError id="layer-slug-error">{error.slug}</FieldError>
           </Field>
         </div>
         <Field>
