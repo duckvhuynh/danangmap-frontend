@@ -6,6 +6,18 @@ const empty = (value: unknown) =>
   value === "" ||
   (Array.isArray(value) && value.length === 0);
 
+const phoneNumberPattern = /^\+?[0-9][0-9 ().-]{5,19}$/u;
+const phoneExtensionPattern =
+  /\s*\((?:số máy lẻ|máy lẻ|ext(?:ension)?\.?)\s*[0-9]+\)\s*$/iu;
+
+function validPhone(value: string) {
+  return value
+    .split(/\s*\/\s*/u)
+    .every((part) =>
+      phoneNumberPattern.test(part.replace(phoneExtensionPattern, "").trim()),
+    );
+}
+
 export function coerceFieldValue(field: AdminField, input: unknown): unknown {
   if (field.type === "boolean") return input === true || input === "true";
   if (field.type === "multi_enum")
@@ -63,7 +75,7 @@ export function validateFieldValue(field: AdminField, value: unknown) {
         errors.push(`${field.label} chưa đúng định dạng email.`);
       if (
         field.type === "phone" &&
-        !/^\+?[0-9][0-9 ().-]{5,19}$/u.test(value)
+        !validPhone(value)
       )
         errors.push(`${field.label} chưa đúng định dạng số điện thoại.`);
       if (field.type === "url") {

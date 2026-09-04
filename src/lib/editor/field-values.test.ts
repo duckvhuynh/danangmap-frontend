@@ -63,6 +63,23 @@ describe("schema-driven field values", () => {
     ).toContain("Dân số phải là một lựa chọn hợp lệ.");
   });
 
+  it("accepts public-office phone lists and extension labels", () => {
+    const phone = field({ type: "phone", label: "Điện thoại", required: false });
+
+    expect(
+      validateFieldValue(phone, "0236 3881 888 (Số máy lẻ 408)"),
+    ).toEqual([]);
+    expect(
+      validateFieldValue(
+        phone,
+        "0236 3810 607/ 0236 3812 866/ 0236 3812 277",
+      ),
+    ).toEqual([]);
+    expect(validateFieldValue(phone, "không có số")).toContain(
+      "Điện thoại chưa đúng định dạng số điện thoại.",
+    );
+  });
+
   it("validates a feature and fills versioned schema defaults", () => {
     const fields = [
       field({ key: "name", label: "Tên", type: "text" }),
