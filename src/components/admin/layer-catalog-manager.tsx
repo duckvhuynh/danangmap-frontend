@@ -34,7 +34,7 @@ import {
   subscribeDesktopAuthoringCapability,
 } from "@/lib/admin/authoring-capability";
 import { canAuthorContent } from "@/lib/admin/role-capabilities";
-import { geometryLabel } from "@/lib/admin/labels";
+import { geometryLabel, revisionStatusLabel } from "@/lib/admin/labels";
 import { AdminApiError } from "@/lib/api/admin";
 import {
   archiveLayerGroup,
@@ -47,16 +47,6 @@ import {
   type LayerGroupCatalogPage,
 } from "@/lib/api/layer-configuration";
 
-const statusLabels: Record<string, string> = {
-  draft: "Bản nháp",
-  in_review: "Chờ duyệt",
-  approved: "Đã duyệt",
-  changes_requested: "Cần chỉnh sửa",
-  publishing: "Đang công bố",
-  published: "Đã công bố",
-  unconfigured: "Chưa cấu hình",
-};
-
 function Status({ value }: { value: string }) {
   const className =
     value === "published"
@@ -64,7 +54,7 @@ function Status({ value }: { value: string }) {
       : value === "in_review" || value === "approved"
         ? "bg-warning/10 text-warning"
         : "bg-surface-subtle text-muted-foreground";
-  return <Badge className={className}>{statusLabels[value] ?? "Chưa xác định"}</Badge>;
+  return <Badge className={className}>{value === "unconfigured" ? "Chưa cấu hình" : revisionStatusLabel(value)}</Badge>;
 }
 
 function move<T>(items: T[], index: number, direction: -1 | 1) {

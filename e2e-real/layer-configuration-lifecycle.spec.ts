@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { devices, expect, test, type BrowserContext, type Page } from "@playwright/test";
+import { devices, expect, test, type APIRequestContext, type BrowserContext, type Page } from "@playwright/test";
 import { loginWithMfa, requiredEnv, type RealStackLoginEnvironment } from "./support/auth";
 
 test.skip(
@@ -28,16 +28,21 @@ async function login(page: Page, actor: Actor) {
   await loginWithMfa(page, actors[actor]);
 }
 
+function apiUrl(path: string) {
+  const baseUrl = process.env.DANANGMAP_API_BASE_URL?.replace(/\/$/u, "");
+  return baseUrl ? `${baseUrl}${path}` : path;
+}
+
 async function browserGet(page: Page, path: string) {
   return page.evaluate(async (url) => {
     const response = await fetch(url, { credentials: "include" });
     return { status: response.status, etag: response.headers.get("etag"), body: await response.json().catch(() => null) };
-  }, path);
+  }, apiUrl(path));
 }
 
 async function browserMutation(page: Page, input: { path: string; method: "POST" | "PATCH"; body?: unknown; ifMatch?: string; operationKey?: string }) {
-  return page.evaluate(async ({ path, method, body, ifMatch, operationKey }) => {
-    const csrfResponse = await fetch("/api/v1/auth/csrf", { credentials: "include" });
+  return page.evaluate(async ({ path, csrfPath, method, body, ifMatch, operationKey }) => {
+    const csrfResponse = await fetch(csrfPath, { credentials: "include" });
     const csrfBody: unknown = await csrfResponse.json();
     const csrfData = typeof csrfBody === "object" && csrfBody !== null && "data" in csrfBody ? csrfBody.data : null;
     const csrfToken = typeof csrfData === "object" && csrfData !== null && "csrfToken" in csrfData && typeof csrfData.csrfToken === "string" ? csrfData.csrfToken : "";
@@ -46,7 +51,7 @@ async function browserMutation(page: Page, input: { path: string; method: "POST"
     if (operationKey) headers["Idempotency-Key"] = operationKey;
     const response = await fetch(path, { method, credentials: "include", headers, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
     return { status: response.status, etag: response.headers.get("etag"), body: await response.json().catch(() => null) };
-  }, input);
+  }, { ...input, path: apiUrl(input.path), csrfPath: apiUrl("/api/v1/auth/csrf") });
 }
 
 async function createLayer(page: Page, slug: string, title: string) {
@@ -114,7 +119,41 @@ async function publish(page: Page, revisionId: string) {
   await expect(page.locator("main > header").getByText("Đã công bố", { exact: true }).filter({ visible: true })).toBeVisible({ timeout: 150_000 });
 }
 
-test("layer configuration lifecycle keeps version domains isolated and recovers conflicts by refetch", async ({ browser }) => {
+async function submitConfigurationForReview(
+  page: Page,
+  revisionId: string,
+  expectedTitle: string,
+  expectedPointStrokeColor: string,
+) {
+  const impactPromise = page.waitForResponse((response) => response.url().endsWith(`/api/v1/admin/revisions/${revisionId}/config:impact`) && response.request().method() === "POST");
+  const replacePromise = page.waitForResponse((response) => response.url().endsWith(`/api/v1/admin/revisions/${revisionId}/config`) && response.request().method() === "PUT");
+  const submitPromise = page.waitForResponse((response) => response.url().endsWith(`/api/v1/admin/revisions/${revisionId}:submit`) && response.request().method() === "POST");
+  await page.getByRole("button", { name: "Gửi duyệt", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Gửi bản nháp để duyệt" });
+  await expect(dialog.getByLabel("Nội dung thay đổi")).toHaveValue(new RegExp(expectedTitle.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u"));
+  await dialog.getByLabel("Ghi chú cho người duyệt (không bắt buộc)").fill("Kiểm tra tên và màu hiển thị mới trên bản đồ.");
+  await dialog.getByRole("button", { name: "Lưu và gửi duyệt" }).click();
+
+  const impact = await impactPromise;
+  expect(impact.status()).toBe(200);
+  const replacement = await replacePromise;
+  expect(replacement.status()).toBe(200);
+  expect(replacement.request().postDataJSON()).toMatchObject({
+    title: expectedTitle,
+    style: { point: { strokeColor: expectedPointStrokeColor } },
+  });
+  expect((await submitPromise).status()).toBe(202);
+  await expect(page.getByText("Đã gửi duyệt", { exact: true })).toBeVisible();
+}
+
+async function publicLayer(request: APIRequestContext, slug: string) {
+  const gateway = (process.env.DANANGMAP_API_BASE_URL ?? requiredEnv("PLAYWRIGHT_BASE_URL")).replace(/\/$/u, "");
+  const response = await request.get(`${gateway}/api/v1/public/layers/${encodeURIComponent(slug)}`);
+  expect(response.ok()).toBe(true);
+  return record(data(await response.json()));
+}
+
+test("layer configuration lifecycle keeps version domains isolated and recovers conflicts by refetch", async ({ browser, request }) => {
   const stamp = `${Date.now().toString(36)}${process.pid.toString(36)}`;
   const slug = `lifecycle-${stamp}`;
   const title = `Lifecycle ${stamp}`;
@@ -178,7 +217,7 @@ test("layer configuration lifecycle keeps version domains isolated and recovers 
     expect(layerBeforeCatalog.etag).toBeTruthy();
     await editorPage.getByLabel("Bật lớp mặc định khi mở bản đồ").click();
     const catalogSavePromise = editorPage.waitForResponse((response) => response.url().endsWith(`/api/v1/admin/layers/${layerId}`) && response.request().method() === "PATCH");
-    await editorPage.getByRole("button", { name: "Lưu sắp xếp lớp" }).click();
+    await editorPage.getByRole("button", { name: "Lưu thông tin chung" }).click();
     const catalogSave = await catalogSavePromise;
     expect(catalogSave.status()).toBe(200);
     expect(catalogSave.request().headers()["if-match"]).toBe(layerBeforeCatalog.etag);
@@ -190,7 +229,7 @@ test("layer configuration lifecycle keeps version domains isolated and recovers 
     expect(externalUpdate.status).toBe(200);
     await editorPage.getByLabel("Bật lớp mặc định khi mở bản đồ").click();
     const stalePromise = editorPage.waitForResponse((response) => response.url().endsWith(`/api/v1/admin/layers/${layerId}`) && response.request().method() === "PATCH");
-    await editorPage.getByRole("button", { name: "Lưu sắp xếp lớp" }).click();
+    await editorPage.getByRole("button", { name: "Lưu thông tin chung" }).click();
     const stale = await stalePromise;
     expect(stale.status()).toBe(412);
     expect(stale.request().headers()["if-match"]).toBe(currentLayer.etag);
@@ -218,7 +257,7 @@ test("layer configuration lifecycle keeps version domains isolated and recovers 
     await editorPage.getByLabel("Nhóm lớp").click();
     await editorPage.getByRole("option", { name: groupATitle }).click();
     const assignGroupPromise = editorPage.waitForResponse((response) => response.url().endsWith(`/api/v1/admin/layers/${layerId}`) && response.request().method() === "PATCH");
-    await editorPage.getByRole("button", { name: "Lưu sắp xếp lớp" }).click();
+    await editorPage.getByRole("button", { name: "Lưu thông tin chung" }).click();
     expect((await assignGroupPromise).status()).toBe(200);
     await editorPage.goto("/admin/layers");
     await editorPage.getByText("Quản lý nhóm lớp", { exact: true }).click();
@@ -234,10 +273,14 @@ test("layer configuration lifecycle keeps version domains isolated and recovers 
     const ungroupedLayer = record(data((await browserGet(editorPage, `/api/v1/admin/layers/${layerId}`)).body));
     expect(record(ungroupedLayer.layer).groupId).toBeNull();
 
-    await editorPage.goto(`/admin/layers/${revisionId}/edit`);
-    await editorPage.getByLabel("Tóm tắt thay đổi").fill("Lifecycle config, catalog và ETag isolation");
-    await editorPage.getByLabel("Ghi chú cho người duyệt").fill("Kiểm tra successor sau publication.");
-    await editorPage.getByRole("button", { name: "Gửi duyệt" }).click();
+    const firstPublishedTitle = `${title} lần 1`;
+    const firstPublishedColor = "#2463EB";
+    await editorPage.goto(`/admin/layers/${layerId}`);
+    await editorPage.getByRole("tab", { name: "Thông tin" }).click();
+    await editorPage.getByLabel("Tên lớp").fill(firstPublishedTitle);
+    await editorPage.getByRole("tab", { name: "Hiển thị" }).click();
+    await editorPage.getByRole("textbox", { name: "Màu viền điểm", exact: true }).fill(firstPublishedColor);
+    await submitConfigurationForReview(editorPage, revisionId, firstPublishedTitle, firstPublishedColor);
     const reviewerPage = await reviewerContext.newPage();
     await login(reviewerPage, "REVIEWER");
     await approve(reviewerPage, revisionId);
@@ -254,15 +297,31 @@ test("layer configuration lifecycle keeps version domains isolated and recovers 
     const successor = await successorPromise;
     expect(successor.status()).toBe(201);
     expect(successor.request().headers()["if-match"]).toBe(publishedRevision.etag);
+    const successorRevisionId = String(record(record(data(await successor.json())).draftRevision).id);
     await expect(editorPage.getByText("Bản nháp", { exact: true })).toBeVisible();
     await expect(editorPage.getByRole("button", { name: "Tạo bản nháp mới" })).not.toBeAttached();
     const deniedSecondSuccessor = await browserMutation(editorPage, { path: `/api/v1/admin/layers/${layerId}/drafts`, method: "POST", ifMatch: publishedRevision.etag!, operationKey: randomUUID() });
     expect(deniedSecondSuccessor.status).toBe(409);
     expect(record(deniedSecondSuccessor.body).code).toBe("DRAFT_ALREADY_EXISTS");
 
+    const secondPublishedTitle = `${title} lần 2`;
+    const secondPublishedColor = "#DDEEFF";
+    await editorPage.getByRole("tab", { name: "Thông tin" }).click();
+    await editorPage.getByLabel("Tên lớp").fill(secondPublishedTitle);
+    await editorPage.getByRole("tab", { name: "Hiển thị" }).click();
+    await editorPage.getByRole("textbox", { name: "Màu viền điểm", exact: true }).fill(secondPublishedColor);
+    await submitConfigurationForReview(editorPage, successorRevisionId, secondPublishedTitle, secondPublishedColor);
+    await approve(reviewerPage, successorRevisionId);
+    await publish(publisherPage, successorRevisionId);
+
+    const publishedLayer = await publicLayer(request, slug);
+    expect(publishedLayer.title).toBe(secondPublishedTitle);
+    expect(record(record(publishedLayer.style).point).strokeColor).toBe(secondPublishedColor);
+    expect(Number(publishedLayer.generation)).toBeGreaterThanOrEqual(2);
+
     await reviewerPage.goto(`/admin/layers/${layerId}`);
     await expect(reviewerPage.getByRole("heading", { name: "Phiên bản này chỉ được xem" })).toBeVisible();
-    await expect(reviewerPage.getByRole("button", { name: "Lưu sắp xếp lớp" })).not.toBeAttached();
+    await expect(reviewerPage.getByRole("button", { name: "Lưu thông tin chung" })).not.toBeAttached();
 
     const mobileContext = await browser.newContext({ ...devices["Pixel 7"], ...contextOptions, storageState: await editorContext.storageState() });
     extraContexts.push(mobileContext);

@@ -432,7 +432,12 @@ export async function replaceLayerRevisionConfiguration(configuration: LayerConf
   const response = assertAdminResult(result).data;
   const revisionEtag = requiredEtag(result.response, "revision");
   const next = mergeRevision(configuration, { revision: response.revision, fields: response.fields }, revisionEtag);
-  return { configuration: next, revisionEtag, layerEtag: configuration.layerEtag, impact: mapImpact(response.impact) };
+  const layerResult = await client.GET("/api/v1/admin/layers/{layerId}", {
+    params: { path: { layerId: response.revision.layerId } },
+  });
+  assertAdminResult(layerResult);
+  const layerEtag = requiredEtag(layerResult.response, "layer");
+  return { configuration: { ...next, layerEtag }, revisionEtag, layerEtag, impact: mapImpact(response.impact) };
 }
 
 export async function updateLayerCatalogConfiguration(configuration: LayerConfigurationDraft, context: LayerConfigurationVersionedContext, auth: { csrfToken: string }, client: ApiClient = apiClient): Promise<LayerConfigurationSaveResult> {
@@ -467,7 +472,12 @@ export async function createLayerSuccessor(configuration: LayerConfigurationDraf
   const result = await client.POST("/api/v1/admin/layers/{layerId}/drafts", { params: { path: { layerId: configuration.layerId }, header: { "X-CSRF-Token": auth.csrfToken, "Idempotency-Key": context.operationKey, "If-Match": context.etag } } });
   const response = assertAdminResult(result).data;
   const revisionEtag = requiredEtag(result.response, "successor draft");
-  return { configuration: { ...configuration, revisionId: response.draftRevision.id, revisionStatus: response.draftRevision.status, revisionEtag }, revisionEtag, layerEtag: configuration.layerEtag };
+  const layerResult = await client.GET("/api/v1/admin/layers/{layerId}", {
+    params: { path: { layerId: configuration.layerId } },
+  });
+  assertAdminResult(layerResult);
+  const layerEtag = requiredEtag(layerResult.response, "layer");
+  return { configuration: { ...configuration, revisionId: response.draftRevision.id, revisionStatus: response.draftRevision.status, revisionEtag, layerEtag }, revisionEtag, layerEtag };
 }
 
 async function reorderCatalog(path: "/api/v1/admin/layer-groups:reorder" | "/api/v1/admin/layers:reorder", items: ReorderBody["items"], context: LayerConfigurationVersionedContext, auth: { csrfToken: string }, client: ApiClient): Promise<CatalogReorderResult> {

@@ -203,11 +203,11 @@ function MobileCapabilityGate({ revisionId }: { revisionId: string }) {
           </h1>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
             Tính năng này cần máy tính có chuột hoặc trackpad và bàn phím. Trên
-            thiết bị này, bạn vẫn có thể xem và kiểm duyệt dữ liệu.
+            thiết bị này, bạn vẫn có thể xem dữ liệu và theo dõi trạng thái.
           </p>
           <Button asChild className="mt-6 w-full">
             <Link href={`/admin/layers/${revisionId}/review`}>
-              Mở chế độ xem và duyệt
+              Xem dữ liệu
             </Link>
           </Button>
         </section>
@@ -813,7 +813,7 @@ export function LayerEditor({ revisionId }: { revisionId: string }) {
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
             Bạn cần quyền biên tập hoặc quản trị hệ thống để sửa dữ liệu. Bạn
-            vẫn có thể mở chế độ xem và duyệt.
+            vẫn có thể xem dữ liệu và theo dõi trạng thái.
           </p>
           <Button asChild className="mt-5">
             <Link href={`/admin/layers/${revisionId}/review`}>Xem dữ liệu</Link>

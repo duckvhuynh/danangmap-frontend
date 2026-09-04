@@ -107,6 +107,55 @@ function bundleFor(id: string, title: string): RevisionBundle {
   };
 }
 
+function historyWithParticipants(
+  status: "in_review" | "approved",
+  participants: Array<{
+    userId: string;
+    type: "edit" | "review" | "publish";
+  }>,
+) {
+  return {
+    historyEtag: '"history-v1"',
+    data: {
+      revision: {
+        id: revisionId,
+        layerId,
+        revisionNo: 4,
+        status,
+        title: bundle.revision.title,
+        description: bundle.revision.description,
+        geometryMode: bundle.revision.geometryMode,
+        allowedGeometryKinds: bundle.revision.allowedGeometryKinds,
+        schemaVersion: 1,
+        lockVersion: 3,
+        supersedesRevisionId: null,
+        createdBy: bundle.revision.createdBy,
+        createdByDisplayName: "Biên tập viên",
+        submittedAt: "2026-08-22T01:00:00.000Z",
+        approvedAt: status === "approved" ? "2026-08-22T01:01:00.000Z" : null,
+        publishedAt: null,
+        createdAt: "2026-08-22T00:59:00.000Z",
+        updatedAt: "2026-08-22T01:01:00.000Z",
+        successorRevisionId: null,
+      },
+      validation: { status: "valid", featureCount: 10, issues: [] },
+      participants: participants.map((participant) => ({
+        ...participant,
+        participatedAt: "2026-08-22T01:00:00.000Z",
+        displayName: "Quản trị hệ thống",
+        role: "system_admin",
+      })),
+      events: [],
+      publications: [],
+      historyLimits: {
+        participants: { returned: participants.length, hasMore: false, limit: 100 },
+        events: { returned: 0, hasMore: false, limit: 100 },
+        publications: { returned: 0, hasMore: false, limit: 100 },
+      },
+    },
+  };
+}
+
 function realTransport(input: {
   jobs?: PublicationJob[];
   publish?: ReturnType<typeof vi.fn>;
@@ -115,7 +164,7 @@ function realTransport(input: {
 } = {}): RevisionReviewTransport {
   return {
     bundle: (input.bundle ?? vi.fn().mockResolvedValue(bundle)) as RevisionReviewTransport["bundle"],
-    history: vi.fn().mockRejectedValue(new Error("history fixture unavailable")) as RevisionReviewTransport["history"],
+    history: vi.fn().mockResolvedValue(historyWithParticipants("approved", [])) as RevisionReviewTransport["history"],
     workflow: vi.fn().mockResolvedValue({ historyEtag: '"workflow-v1"', data: { items: [], nextCursor: null, hasMore: false, limit: 25 } }) as RevisionReviewTransport["workflow"],
     audit: vi.fn().mockResolvedValue({ historyEtag: '"audit-v1"', data: { items: [], nextCursor: null, hasMore: false, limit: 25 } }) as RevisionReviewTransport["audit"],
     jobs: vi.fn().mockResolvedValue({ etag: '"jobs-v1"', retryAfterMs: 1, requestId: "request-jobs", data: { items: input.jobs ?? [], nextCursor: null, hasMore: false, limit: 25 } }) as RevisionReviewTransport["jobs"],
@@ -213,6 +262,59 @@ describe("revision review publication capability", () => {
     expect(screen.getByRole("button", { name: "Yêu cầu chỉnh sửa" })).toBeInTheDocument();
   });
 
+  it("explains separation of duties instead of offering an action that the API will reject", async () => {
+    delete process.env.NEXT_PUBLIC_DANANGMAP_DEMO_MODE;
+    setCapability({ mediaMatches: true, userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", platform: "Win32", maxTouchPoints: 0 });
+    const adminPrincipal = { ...principal, role: "system_admin" as const };
+    vi.mocked(useAdminSession).mockReturnValue({ principal: adminPrincipal, csrfToken: "csrf-fixed", refreshCsrf: vi.fn(), clearClientPrincipal: vi.fn() });
+    const reviewBundle: RevisionBundle = {
+      ...bundle,
+      revision: { ...bundle.revision, status: "in_review" },
+      workspace: { ...bundle.workspace, status: "in_review" },
+    };
+    const transport = realTransport({ bundle: vi.fn().mockResolvedValue(reviewBundle) });
+    transport.history = vi.fn().mockResolvedValue(
+      historyWithParticipants("in_review", [
+        { userId: adminPrincipal.id, type: "edit" },
+      ]),
+    ) as RevisionReviewTransport["history"];
+
+    render(<RevisionReview revisionId={revisionId} transport={transport} />);
+
+    expect(
+      await screen.findByText(/Cần một người khác kiểm duyệt/u),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Duyệt thay đổi" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Yêu cầu chỉnh sửa" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not offer publication to an administrator who reviewed the revision", async () => {
+    delete process.env.NEXT_PUBLIC_DANANGMAP_DEMO_MODE;
+    setCapability({ mediaMatches: true, userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", platform: "Win32", maxTouchPoints: 0 });
+    const adminPrincipal = { ...principal, role: "system_admin" as const };
+    vi.mocked(useAdminSession).mockReturnValue({ principal: adminPrincipal, csrfToken: "csrf-fixed", refreshCsrf: vi.fn(), clearClientPrincipal: vi.fn() });
+    const transport = realTransport();
+    transport.history = vi.fn().mockResolvedValue(
+      historyWithParticipants("approved", [
+        { userId: adminPrincipal.id, type: "review" },
+      ]),
+    ) as RevisionReviewTransport["history"];
+
+    render(<RevisionReview revisionId={revisionId} transport={transport} />);
+
+    expect(
+      await screen.findByText(/Cần một người khác thực hiện công bố/u),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Ghi chú công bố")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Công bố dữ liệu" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("uses a compact map-first mobile review and keeps both reviewer decisions operable", async () => {
     setCapability({ mediaMatches: false, userAgent: "Mozilla/5.0 (Linux; Android 15; Mobile)", platform: "Linux armv8l", maxTouchPoints: 5 });
     vi.mocked(useAdminSession).mockReturnValue({ principal: { ...principal, role: "reviewer" }, csrfToken: "csrf-fixed", refreshCsrf: vi.fn(), clearClientPrincipal: vi.fn() });
@@ -235,7 +337,7 @@ describe("revision review publication capability", () => {
     render(<RevisionReview revisionId={revisionId} layerId={layerId} transport={transport}/>);
 
     expect(await screen.findByRole("heading", { name: "Duyệt Ranh giới phường, xã" })).toBeInTheDocument();
-    expect(screen.getAllByText("Chờ duyệt")).toHaveLength(2);
+    expect(screen.getAllByText("Đang chờ duyệt")).toHaveLength(2);
     expect(screen.getByText("18 đối tượng trong phiên bản")).toBeInTheDocument();
     const mapTab = screen.getByRole("tab", { name: "Bản đồ" });
     const changesTab = screen.getByRole("tab", { name: "Thay đổi" });

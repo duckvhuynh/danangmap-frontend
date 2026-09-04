@@ -99,7 +99,7 @@ describe("LayerEditor desktop-only authoring", () => {
       screen.getByRole("heading", { name: "Mở trình biên tập trên máy tính" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "Mở chế độ xem và duyệt" }),
+      screen.getByRole("link", { name: "Xem dữ liệu" }),
     ).toHaveAttribute("href", "/admin/layers/revision-1/review");
     expect(screen.queryByTestId("drawing-canvas")).not.toBeInTheDocument();
     expect(

@@ -17,6 +17,7 @@ import {
   History as IconHistory,
   GitBranch as IconGitBranch,
   Plus as IconPlus,
+  Send as IconSend,
   ArchiveRestore as IconRestore,
   Settings as IconSettings,
   Trash2 as IconTrash,
@@ -26,6 +27,15 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Field,
   FieldDescription,
@@ -1271,7 +1281,13 @@ function PresentationSection({
 }
 
 type PendingAction =
-  "create" | "catalog" | "revision" | "archive" | "unarchive" | "successor";
+  | "create"
+  | "catalog"
+  | "revision"
+  | "submit"
+  | "archive"
+  | "unarchive"
+  | "successor";
 
 function revisionBaseline(
   previous: LayerConfigurationDraft,
@@ -1354,6 +1370,9 @@ export function LayerConfigurationEditor({
   const [serverImpact, setServerImpact] =
     useState<LayerConfigurationSaveResult["impact"]>(undefined);
   const [archiveConfirmation, setArchiveConfirmation] = useState("");
+  const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
+  const [submitSummary, setSubmitSummary] = useState("");
+  const [reviewerNote, setReviewerNote] = useState("");
   const operationKeys = useRef<Partial<Record<PendingAction, string>>>({});
   const submitLock = useRef(false);
   const errorRef = useRef<HTMLDivElement>(null);
@@ -1575,6 +1594,91 @@ export function LayerConfigurationEditor({
     );
   }
 
+  function openSubmitDialog() {
+    if (!submitSummary.trim())
+      setSubmitSummary(`Cập nhật cấu hình lớp ${draft.title.trim() || "dữ liệu"}`);
+    setSubmitDialogOpen(true);
+  }
+
+  async function submitForReview() {
+    if (
+      !canRevisionMutate ||
+      !actions.submitForReview ||
+      !draft.revisionId ||
+      !submitSummary.trim() ||
+      !validateRevision() ||
+      submitLock.current
+    )
+      return;
+
+    submitLock.current = true;
+    setPending("submit");
+    setError(null);
+    setSuccess(null);
+    try {
+      let submissionDraft = draft;
+      if (revisionDirty) {
+        if (
+          !actions.previewImpact ||
+          !actions.replaceRevision ||
+          !draft.revisionEtag
+        )
+          return;
+        const retryKey = operationKeys.current.revision;
+        const impact = retryKey
+          ? serverImpact
+          : await actions.previewImpact(draft, { etag: draft.revisionEtag });
+        if (impact) setServerImpact(impact);
+        if (impact?.blocking) {
+          setSubmitDialogOpen(false);
+          queueMicrotask(() => errorRef.current?.focus());
+          return;
+        }
+        const saved = await actions.replaceRevision(draft, {
+          etag: draft.revisionEtag,
+          operationKey: retryKey ?? operationKey("revision"),
+        });
+        submissionDraft = structuredClone(saved.configuration);
+        setDraft(submissionDraft);
+        setBaseline((previous) =>
+          structuredClone(revisionBaseline(previous, saved.configuration)),
+        );
+        setServerImpact(saved.impact ?? impact);
+        delete operationKeys.current.revision;
+        onSaved?.(saved);
+      }
+
+      const result = await actions.submitForReview(submissionDraft, {
+        summary: submitSummary.trim(),
+        reviewerNote: reviewerNote.trim(),
+        operationKey: operationKey("submit"),
+      });
+      const submittedDraft = {
+        ...submissionDraft,
+        revisionStatus: result.status || "in_review",
+        layerEtag: result.layerEtag,
+      };
+      setDraft(submittedDraft);
+      setBaseline((previous) =>
+        structuredClone(revisionBaseline(previous, submittedDraft)),
+      );
+      setSubmitDialogOpen(false);
+      setSuccess("Bản nháp đã được gửi đến người duyệt. Bạn vẫn có thể theo dõi trạng thái tại lịch sử lớp.");
+      delete operationKeys.current.submit;
+    } catch (reason) {
+      if (reason instanceof AdminApiError) {
+        delete operationKeys.current.submit;
+        delete operationKeys.current.revision;
+      }
+      setError(reason);
+      setSubmitDialogOpen(false);
+      queueMicrotask(() => errorRef.current?.focus());
+    } finally {
+      setPending(null);
+      submitLock.current = false;
+    }
+  }
+
   if (mode === "create" && !canAuthorContent(principalRole))
     return (
       <main className="mx-auto max-w-2xl p-4 pb-24 sm:p-6 md:pb-6">
@@ -1606,7 +1710,7 @@ export function LayerConfigurationEditor({
           <IconInfoCircle strokeWidth={1.75} />
           <AlertTitle>Tạo lớp cần máy tính</AlertTitle>
           <AlertDescription>
-            Tạo và sửa lớp cần máy tính có bàn phím, chuột hoặc bàn di chuột. Trên thiết bị này, bạn vẫn có thể xem dữ liệu và duyệt nội dung.
+            Tạo và sửa lớp cần máy tính có bàn phím, chuột hoặc bàn di chuột. Trên thiết bị này, bạn vẫn có thể xem dữ liệu và theo dõi trạng thái.
           </AlertDescription>
         </Alert>
       </main>
@@ -1683,6 +1787,7 @@ export function LayerConfigurationEditor({
           {mode === "edit" && canRevisionMutate && (
             <Button
               type="button"
+              variant="outline"
               disabled={
                 pending !== null ||
                 !revisionDirty ||
@@ -1702,6 +1807,21 @@ export function LayerConfigurationEditor({
                   Lưu cấu hình
                 </>
               )}
+            </Button>
+          )}
+          {mode === "edit" && canRevisionMutate && (
+            <Button
+              type="button"
+              disabled={
+                pending !== null ||
+                !actions.submitForReview ||
+                (revisionDirty &&
+                  (!actions.replaceRevision || !actions.previewImpact))
+              }
+              onClick={openSubmitDialog}
+            >
+              <IconSend data-icon="inline-start" strokeWidth={1.75} />
+              Gửi duyệt
             </Button>
           )}
           {mode === "edit" &&
@@ -1804,7 +1924,10 @@ export function LayerConfigurationEditor({
                   variant="outline"
                   onClick={onReload}
                 >
-                  Tải lại bản mới nhất
+                  {error instanceof AdminApiError &&
+                  error.code === "DRAFT_ALREADY_EXISTS"
+                    ? "Mở bản nháp hiện tại"
+                    : "Tải lại bản mới nhất"}
                 </Button>
               )}
             </AlertDescription>
@@ -1814,10 +1937,89 @@ export function LayerConfigurationEditor({
       {success && (
         <Alert className="mt-4 border-success/30 text-success" role="status">
           <IconCircleCheck />
-          <AlertTitle>Đã lưu</AlertTitle>
+          <AlertTitle>
+            {draft.revisionStatus === "in_review" ? "Đã gửi duyệt" : "Đã lưu"}
+          </AlertTitle>
           <AlertDescription>{success}</AlertDescription>
         </Alert>
       )}
+      <Dialog
+        open={submitDialogOpen}
+        onOpenChange={(open) => {
+          if (pending !== "submit") setSubmitDialogOpen(open);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Gửi bản nháp để duyệt</DialogTitle>
+            <DialogDescription>
+              {revisionDirty
+                ? "Hệ thống sẽ lưu các thay đổi cấu hình, kiểm tra dữ liệu rồi gửi bản nháp trong một thao tác."
+                : "Bản nháp hiện tại sẽ được chuyển đến người duyệt."}
+            </DialogDescription>
+          </DialogHeader>
+          <FieldGroup>
+            <Field data-invalid={!submitSummary.trim()}>
+              <FieldLabel htmlFor="configuration-submit-summary">
+                Nội dung thay đổi
+              </FieldLabel>
+              <Input
+                id="configuration-submit-summary"
+                value={submitSummary}
+                onChange={(event) => {
+                  setSubmitSummary(event.target.value);
+                  delete operationKeys.current.submit;
+                }}
+                placeholder="Ví dụ: Cập nhật tên và màu hiển thị của lớp"
+                aria-invalid={!submitSummary.trim()}
+              />
+              <FieldDescription>
+                Viết ngắn gọn để người duyệt biết cần kiểm tra nội dung nào.
+              </FieldDescription>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="configuration-reviewer-note">
+                Ghi chú cho người duyệt (không bắt buộc)
+              </FieldLabel>
+              <Textarea
+                id="configuration-reviewer-note"
+                value={reviewerNote}
+                onChange={(event) => {
+                  setReviewerNote(event.target.value);
+                  delete operationKeys.current.submit;
+                }}
+                placeholder="Ví dụ: Màu mới giúp ranh giới dễ nhìn hơn trên nền bản đồ sáng"
+              />
+            </Field>
+          </FieldGroup>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline" disabled={pending === "submit"}>
+                Hủy
+              </Button>
+            </DialogClose>
+            <Button
+              type="button"
+              disabled={!submitSummary.trim() || pending === "submit"}
+              onClick={() => {
+                void submitForReview();
+              }}
+            >
+              {pending === "submit" ? (
+                <>
+                  <Spinner />
+                  {revisionDirty ? "Đang lưu và gửi..." : "Đang gửi..."}
+                </>
+              ) : (
+                <>
+                  <IconSend data-icon="inline-start" strokeWidth={1.75} />
+                  {revisionDirty ? "Lưu và gửi duyệt" : "Gửi duyệt"}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <div className="mt-6 grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
         <nav
           className="h-fit rounded-panel border bg-surface p-2 map-panel-shadow"

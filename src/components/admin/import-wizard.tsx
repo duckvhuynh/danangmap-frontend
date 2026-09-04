@@ -1066,7 +1066,7 @@ export function ImportWizard({
             Nhập dữ liệu cần máy tính
           </h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Nhập dữ liệu cần máy tính có bàn phím, chuột hoặc bàn di chuột. Trên di động, bạn vẫn có thể xem và duyệt nội dung.
+            Nhập dữ liệu cần máy tính có bàn phím, chuột hoặc bàn di chuột. Trên di động, bạn vẫn có thể xem dữ liệu và theo dõi trạng thái.
           </p>
           <Button asChild variant="outline" className="mt-5">
             <Link href="/admin/layers">

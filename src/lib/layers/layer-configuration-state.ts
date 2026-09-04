@@ -147,6 +147,12 @@ export interface LayerConfigurationSaveResult {
   impact?: LayerConfigurationImpact;
 }
 
+export interface LayerConfigurationSubmitContext {
+  summary: string;
+  reviewerNote: string;
+  operationKey: string;
+}
+
 export interface LayerConfigurationActions {
   create?(configuration: LayerConfigurationDraft, context: LayerConfigurationCreateContext): Promise<LayerConfigurationSaveResult>;
   previewImpact?(configuration: LayerConfigurationDraft, context: LayerConfigurationImpactContext): Promise<LayerConfigurationImpact>;
@@ -155,6 +161,10 @@ export interface LayerConfigurationActions {
   archive?(configuration: LayerConfigurationDraft, context: LayerConfigurationVersionedContext): Promise<LayerConfigurationSaveResult>;
   unarchive?(configuration: LayerConfigurationDraft, context: LayerConfigurationVersionedContext): Promise<LayerConfigurationSaveResult>;
   createSuccessor?(configuration: LayerConfigurationDraft, context: LayerConfigurationVersionedContext): Promise<LayerConfigurationSaveResult>;
+  submitForReview?(configuration: LayerConfigurationDraft, context: LayerConfigurationSubmitContext): Promise<{
+    status: LayerConfigurationDraft["revisionStatus"];
+    layerEtag: string | null;
+  }>;
 }
 
 const geometryKindsByMode: Record<Exclude<LayerGeometryMode, "mixed">, LayerGeometryKind[]> = {

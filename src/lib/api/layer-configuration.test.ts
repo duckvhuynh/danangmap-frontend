@@ -274,8 +274,10 @@ describe("generated layer configuration adapter", () => {
     expect(requests[1]!.headers.get("if-match")).toBe('"revision-v4"');
     expect(requests[1]!.headers.get("idempotency-key")).toBe(operationKey);
     expect(record(requests[1]!.body).style).not.toHaveProperty("line");
-    expect(requests[2]!.headers.get("if-match")).toBe('"layer-v7"');
-    expect(requests[2]!.headers.get("idempotency-key")).toBe("55555555-5555-4555-8555-555555555555");
+    expect(requests[2]!.url.pathname).toBe(`/api/v1/admin/layers/${layerId}`);
+    expect(requests[2]!.headers.get("if-match")).toBeNull();
+    expect(requests[3]!.headers.get("if-match")).toBe('"layer-v7"');
+    expect(requests[3]!.headers.get("idempotency-key")).toBe("55555555-5555-4555-8555-555555555555");
   });
 
   it("selects the active published pointer after rollback and uses its revision ETag for successor", async () => {

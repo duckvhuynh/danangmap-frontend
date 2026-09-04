@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { AdminErrorNotice, useAdminSession } from "@/components/admin/admin-session";
 import { LayerConfigurationEditor } from "@/components/admin/layer-configuration-editor";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AdminApiError, submitRevision } from "@/lib/api/admin";
 import {
   getDesktopAuthoringCapability,
   getServerDesktopAuthoringCapability,
@@ -29,6 +30,7 @@ export interface LayerConfigurationTransport {
   archive: typeof archiveLayerConfiguration;
   unarchive: typeof unarchiveLayerConfiguration;
   createSuccessor: typeof createLayerSuccessor;
+  submit: typeof submitRevision;
 }
 
 const defaultTransport: LayerConfigurationTransport = {
@@ -39,6 +41,7 @@ const defaultTransport: LayerConfigurationTransport = {
   archive: archiveLayerConfiguration,
   unarchive: unarchiveLayerConfiguration,
   createSuccessor: createLayerSuccessor,
+  submit: submitRevision,
 };
 
 export function LayerConfigurationScreen({ layerId: layerIdProp, transport = defaultTransport }: { layerId?: string; transport?: LayerConfigurationTransport }) {
@@ -84,6 +87,27 @@ export function LayerConfigurationScreen({ layerId: layerIdProp, transport = def
       archive: (configuration, context) => transport.archive(configuration, context, auth),
       unarchive: (configuration, context) => transport.unarchive(configuration, context, auth),
       createSuccessor: (configuration, context) => transport.createSuccessor(configuration, context, auth),
+      submitForReview: (configuration, context) => {
+        if (!configuration.revisionId)
+          throw new AdminApiError(
+            409,
+            "REVISION_REQUIRED",
+            "Không tìm thấy bản nháp cần gửi duyệt.",
+          );
+        return transport.submit(
+          configuration.revisionId,
+          context.summary,
+          context.reviewerNote,
+          context.operationKey,
+          auth,
+        ).then(async () => {
+          const refreshed = await transport.load(configuration.layerId!);
+          return {
+            status: "in_review" as const,
+            layerEtag: refreshed.configuration.layerEtag,
+          };
+        });
+      },
     }}
     onReload={reload}
     mode="edit"

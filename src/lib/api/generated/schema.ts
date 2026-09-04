@@ -1,6 +1,6 @@
 // This file is generated. Do not edit it by hand.
 // Source: openapi/openapi.json
-// Source SHA-256: d4a38eb3c98d637605c4d0d1144453e3d033759306664392579fc46e77463080
+// Source SHA-256: fde9e8da57a42f3d37ebc2a8d6e6135360044e8e2e3e042c9ae8413bbe806184
 export interface paths {
     "/api/v1/auth/bootstrap/status": {
         parameters: {
@@ -7575,6 +7575,41 @@ export interface operations {
                             comparison: "parent" | "active";
                             /** Format: uuid */
                             baseRevisionId: string | null;
+                            configuration: {
+                                changedKeys: ("title" | "description" | "geometryMode" | "allowedGeometryKinds" | "style" | "renderConfig" | "popupConfig")[];
+                                before: {
+                                    title: string | null;
+                                    description: string | null;
+                                    /** @enum {string|null} */
+                                    geometryMode: "point" | "circle" | "polyline" | "polygon" | "mixed" | null;
+                                    allowedGeometryKinds: ("point" | "multipoint" | "line" | "multiline" | "polygon" | "multipolygon" | "circle")[];
+                                    style: {
+                                        [key: string]: unknown;
+                                    };
+                                    renderConfig: {
+                                        [key: string]: unknown;
+                                    };
+                                    popupConfig: {
+                                        [key: string]: unknown;
+                                    };
+                                } | null;
+                                after: {
+                                    title: string | null;
+                                    description: string | null;
+                                    /** @enum {string|null} */
+                                    geometryMode: "point" | "circle" | "polyline" | "polygon" | "mixed" | null;
+                                    allowedGeometryKinds: ("point" | "multipoint" | "line" | "multiline" | "polygon" | "multipolygon" | "circle")[];
+                                    style: {
+                                        [key: string]: unknown;
+                                    };
+                                    renderConfig: {
+                                        [key: string]: unknown;
+                                    };
+                                    popupConfig: {
+                                        [key: string]: unknown;
+                                    };
+                                };
+                            };
                             geometry: {
                                 currentFeatureCount: number;
                                 baseFeatureCount: number;

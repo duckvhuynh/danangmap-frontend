@@ -106,6 +106,81 @@ function PublicFieldKeys({ label, keys, fieldLabels }: { label: string; keys: st
 type AttachmentDiff = RevisionDiff["entries"][number]["attachments"];
 type AttachmentDescriptor = AttachmentDiff["added"][number];
 
+type ConfigurationDiff = RevisionDiff["configuration"];
+type ConfigurationKey = ConfigurationDiff["changedKeys"][number];
+type ConfigurationState = ConfigurationDiff["after"];
+
+const configurationLabels: Record<ConfigurationKey, string> = {
+  title: "Tên lớp",
+  description: "Mô tả",
+  geometryMode: "Loại lớp",
+  allowedGeometryKinds: "Loại đối tượng được phép",
+  style: "Màu sắc và nét hiển thị",
+  renderConfig: "Phạm vi hiển thị trên bản đồ",
+  popupConfig: "Thông tin khi chọn đối tượng",
+};
+
+function nestedRecord(value: unknown, key: string) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const nested = (value as Record<string, unknown>)[key];
+  return nested && typeof nested === "object" && !Array.isArray(nested)
+    ? (nested as Record<string, unknown>)
+    : null;
+}
+
+function presentationSummary(value: Record<string, unknown>) {
+  const point = nestedRecord(value, "point");
+  const line = nestedRecord(value, "line");
+  const polygon = nestedRecord(value, "polygon");
+  const parts = [
+    ["Màu điểm", point?.color],
+    ["Màu đường", line?.color],
+    ["Màu nền vùng", polygon?.fillColor],
+    ["Màu viền vùng", polygon?.strokeColor],
+  ]
+    .filter((entry): entry is [string, string] => typeof entry[1] === "string")
+    .map(([label, color]) => `${label}: ${color}`);
+  return parts.length ? parts.join(" · ") : "Cách hiển thị đã thay đổi";
+}
+
+function configurationValue(
+  key: ConfigurationKey,
+  state: ConfigurationState | null,
+) {
+  if (!state) return "Chưa có phiên bản trước";
+  if (key === "title") return state.title?.trim() || "Chưa đặt tên";
+  if (key === "description") return state.description?.trim() || "Không có mô tả";
+  if (key === "geometryMode")
+    return state.geometryMode ? geometryLabel(state.geometryMode) : "Chưa xác định";
+  if (key === "allowedGeometryKinds")
+    return state.allowedGeometryKinds.length
+      ? state.allowedGeometryKinds.map(geometryLabel).join(", ")
+      : "Chưa chọn";
+  if (key === "style") return presentationSummary(state.style);
+  if (key === "renderConfig") {
+    const min = state.renderConfig.minZoom;
+    const max = state.renderConfig.maxZoom;
+    return typeof min === "number" && typeof max === "number"
+      ? `Hiển thị từ mức thu phóng ${min} đến ${max}`
+      : "Phạm vi hiển thị đã thay đổi";
+  }
+  const titleField = state.popupConfig.titleField;
+  const fieldKeys = state.popupConfig.fieldKeys;
+  const parts = [
+    typeof titleField === "string" && titleField
+      ? `Tiêu đề: ${titleField}`
+      : null,
+    Array.isArray(fieldKeys) && fieldKeys.length
+      ? `Hiển thị ${fieldKeys.length.toLocaleString("vi-VN")} trường`
+      : "Không có trường thông tin",
+  ].filter(Boolean);
+  return parts.join(" · ");
+}
+
+function configurationDiff(diff: RevisionDiff): ConfigurationDiff {
+  return diff.configuration;
+}
+
 function formatFileSize(sizeBytes: number) {
   if (sizeBytes < 1024) return `${sizeBytes.toLocaleString("vi-VN")} B`;
   if (sizeBytes < 1024 * 1024) return `${(sizeBytes / 1024).toLocaleString("vi-VN", { maximumFractionDigits: 1 })} KB`;
@@ -233,6 +308,7 @@ export function RevisionDiffView({ revisionId, fieldLabels = {}, transport = def
 
   const diff = resource?.data;
   if (!diff) return null;
+  const configuration = configurationDiff(diff);
   const entryInstructionsId = `revision-diff-entry-instructions-${revisionId}`;
   const activeEntryIndex = activeEntry.identity === diffIdentity ? activeEntry.index : 0;
 
@@ -253,6 +329,47 @@ export function RevisionDiffView({ revisionId, fieldLabels = {}, transport = def
       </Select>
       <FieldDescription>Chọn phiên bản muốn đối chiếu để xem những gì đã thêm, xóa hoặc sửa.</FieldDescription>
     </Field>
+
+    {configuration && (
+      <section className="rounded-panel border bg-surface p-4" aria-labelledby="configuration-diff-title">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 id="configuration-diff-title" className="text-sm font-semibold">
+              Thay đổi cấu hình lớp
+            </h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              So sánh tên, loại đối tượng và cách lớp xuất hiện trên bản đồ.
+            </p>
+          </div>
+          <Badge>{configuration.changedKeys.length.toLocaleString("vi-VN")} thay đổi</Badge>
+        </div>
+        {configuration.changedKeys.length === 0 ? (
+          <p className="mt-4 text-sm text-muted-foreground">Cấu hình lớp không thay đổi.</p>
+        ) : (
+          <ul className="mt-4 divide-y rounded-control border" aria-label="Danh sách thay đổi cấu hình lớp">
+            {configuration.changedKeys.map((key) => (
+              <li key={key} className="p-3 sm:p-4">
+                <h4 className="text-sm font-medium">{configurationLabels[key]}</h4>
+                <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div className="min-w-0 rounded-control bg-surface-subtle p-3">
+                    <dt className="text-xs text-muted-foreground">Trước</dt>
+                    <dd className="mt-1 break-words text-sm">
+                      {configurationValue(key, configuration.before)}
+                    </dd>
+                  </div>
+                  <div className="min-w-0 rounded-control bg-accent-subtle p-3">
+                    <dt className="text-xs text-muted-foreground">Sau</dt>
+                    <dd className="mt-1 break-words text-sm font-medium">
+                      {configurationValue(key, configuration.after)}
+                    </dd>
+                  </div>
+                </dl>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    )}
 
     <dl className="grid gap-3 sm:grid-cols-3" aria-label="Tóm tắt thay đổi đối tượng">
       <div className="rounded-control border bg-surface p-4"><dt className="text-sm text-muted-foreground">Đã thêm</dt><dd className="mt-1 text-2xl font-semibold tabular-nums">{diff.geometry.added.toLocaleString("vi-VN")}</dd></div>

@@ -86,12 +86,13 @@ function renderEdit(
   actions: LayerConfigurationActions,
   status = "draft",
   onReload?: () => void,
+  role: AdminRole = "editor",
 ) {
   return render(
     <LayerConfigurationEditor
       initial={editConfiguration(status)}
       groups={groups}
-      principalRole="editor"
+      principalRole={role}
       canAuthor
       actions={actions}
       onReload={onReload}
@@ -468,6 +469,102 @@ describe("layer configuration editor", () => {
     expect(replaceRevision.mock.calls[1]![1]).toEqual(
       replaceRevision.mock.calls[0]![1],
     );
+  });
+
+  it("saves a configuration-only change and submits it for review in one flow", async () => {
+    const calls: string[] = [];
+    const previewImpact = vi
+      .fn<NonNullable<LayerConfigurationActions["previewImpact"]>>()
+      .mockImplementation(async () => {
+        calls.push("preview");
+        return {
+          featureCount: 2,
+          blocking: false,
+          schemaVersionWillIncrement: false,
+          reasons: [],
+        };
+      });
+    const replaceRevision = vi
+      .fn<NonNullable<LayerConfigurationActions["replaceRevision"]>>()
+      .mockImplementation(async (configuration) => {
+        calls.push("save");
+        return {
+          configuration: { ...configuration, revisionEtag: '"revision-v5"' },
+          revisionEtag: '"revision-v5"',
+          layerEtag: configuration.layerEtag,
+        };
+      });
+    const submitForReview = vi
+      .fn<NonNullable<LayerConfigurationActions["submitForReview"]>>()
+      .mockImplementation(async () => {
+        calls.push("submit");
+        return { status: "in_review", layerEtag: '"layer-v8"' };
+      });
+    renderEdit({ previewImpact, replaceRevision, submitForReview });
+
+    fireEvent.change(screen.getByLabelText("Tên lớp"), {
+      target: { value: "Trụ sở thành phố" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Gửi duyệt" }));
+    expect(screen.getByLabelText("Nội dung thay đổi")).toHaveValue(
+      "Cập nhật cấu hình lớp Trụ sở thành phố",
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Lưu và gửi duyệt" }),
+    );
+
+    await waitFor(() => expect(submitForReview).toHaveBeenCalledTimes(1));
+    expect(calls).toEqual(["preview", "save", "submit"]);
+    expect(submitForReview).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Trụ sở thành phố",
+        revisionEtag: '"revision-v5"',
+      }),
+      expect.objectContaining({
+        summary: "Cập nhật cấu hình lớp Trụ sở thành phố",
+      }),
+    );
+    expect(await screen.findByText("Đã gửi duyệt")).toBeInTheDocument();
+    expect(screen.getByText("Đang chờ duyệt")).toBeInTheDocument();
+  });
+
+  it("submits an already saved draft without saving it again", async () => {
+    const previewImpact =
+      vi.fn<NonNullable<LayerConfigurationActions["previewImpact"]>>();
+    const replaceRevision =
+      vi.fn<NonNullable<LayerConfigurationActions["replaceRevision"]>>();
+    const submitForReview = vi
+      .fn<NonNullable<LayerConfigurationActions["submitForReview"]>>()
+      .mockResolvedValue({ status: "in_review", layerEtag: '"layer-v8"' });
+    renderEdit({ previewImpact, replaceRevision, submitForReview });
+
+    fireEvent.click(screen.getByRole("button", { name: "Gửi duyệt" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Gửi duyệt" }));
+
+    await waitFor(() => expect(submitForReview).toHaveBeenCalledTimes(1));
+    expect(previewImpact).not.toHaveBeenCalled();
+    expect(replaceRevision).not.toHaveBeenCalled();
+  });
+
+  it("lets a System Admin submit a draft but does not expose author actions to reviewer or publisher", () => {
+    const submitForReview =
+      vi.fn<NonNullable<LayerConfigurationActions["submitForReview"]>>();
+    const adminView = renderEdit(
+      { submitForReview },
+      "draft",
+      undefined,
+      "system_admin",
+    );
+    expect(screen.getByRole("button", { name: "Gửi duyệt" })).toBeEnabled();
+    adminView.unmount();
+
+    for (const role of ["reviewer", "publisher"] as const) {
+      const view = renderEdit({ submitForReview }, "draft", undefined, role);
+      expect(
+        screen.queryByRole("button", { name: "Gửi duyệt" }),
+      ).not.toBeInTheDocument();
+      view.unmount();
+    }
   });
 
   it("keeps unsaved catalog fields dirty when archive only advances lifecycle state", async () => {

@@ -54,6 +54,7 @@ import {
   canPublishContent,
   canReviewContent,
 } from "@/lib/admin/role-capabilities";
+import { revisionStatusLabel } from "@/lib/admin/labels";
 import {
   AdminApiError,
   approveRevision,
@@ -196,17 +197,17 @@ const mobileReviewTabs: Array<{ id: MobileReviewSection; label: string }> = [
 function reviewStatus(status: RevisionBundle["revision"]["status"]) {
   if (status === "in_review")
     return {
-      label: "Chờ duyệt",
+      label: revisionStatusLabel(status),
       className: "border border-warning/40 bg-amber-50 text-warning",
     };
   if (status === "approved")
-    return { label: "Đã duyệt", className: "bg-emerald-50 text-success" };
+    return { label: revisionStatusLabel(status), className: "bg-emerald-50 text-success" };
   if (status === "published")
-    return { label: "Đã công bố", className: "bg-emerald-50 text-success" };
+    return { label: revisionStatusLabel(status), className: "bg-emerald-50 text-success" };
   if (status === "changes_requested")
-    return { label: "Cần chỉnh sửa", className: "bg-red-50 text-destructive" };
+    return { label: revisionStatusLabel(status), className: "bg-red-50 text-destructive" };
   return {
-    label: "Bản nháp",
+    label: revisionStatusLabel(status),
     className: "bg-surface-subtle text-muted-foreground",
   };
 }
@@ -678,8 +679,22 @@ function RevisionReviewSession({
     publicationStale && typeof error.details.activeRevisionId === "string"
       ? error.details.activeRevisionId
       : null;
+  const participantTypes = new Set(
+    (history?.data.participants ?? [])
+      .filter((participant) => participant.userId === principal.id)
+      .map((participant) => participant.type),
+  );
+  const workflowEligibilityKnown =
+    process.env.NEXT_PUBLIC_DANANGMAP_DEMO_MODE === "true" || history !== null;
+  const reviewSeparationBlocked =
+    bundle.revision.createdBy === principal.id || participantTypes.has("edit");
+  const publishSeparationBlocked =
+    participantTypes.has("edit") || participantTypes.has("review");
   const reviewerActions =
-    canReviewContent(principal.role) && bundle.revision.status === "in_review";
+    canReviewContent(principal.role) &&
+    bundle.revision.status === "in_review" &&
+    workflowEligibilityKnown &&
+    !reviewSeparationBlocked;
   const publicationActive = publicationJob
     ? !isTerminalPublicationJob(publicationJob)
     : false;
@@ -699,6 +714,8 @@ function RevisionReviewSession({
   const publisherAction =
     canPublishContent(principal.role) &&
     bundle.revision.status === "approved" &&
+    workflowEligibilityKnown &&
+    !publishSeparationBlocked &&
     !publicationStale &&
     canPublishHere &&
     !publicationActive &&
@@ -1121,7 +1138,21 @@ function RevisionReviewSession({
           )}
           {!reviewerActions && !publisherAction && !publicationJob && (
             <section className="rounded-panel border bg-surface p-4 text-sm text-muted-foreground">
-              {bundle.revision.status === "draft"
+              {!workflowEligibilityKnown &&
+              ((bundle.revision.status === "in_review" &&
+                canReviewContent(principal.role)) ||
+                (bundle.revision.status === "approved" &&
+                  canPublishContent(principal.role)))
+                ? "Đang kiểm tra người có thể thực hiện bước tiếp theo."
+                : bundle.revision.status === "in_review" &&
+                    canReviewContent(principal.role) &&
+                    reviewSeparationBlocked
+                  ? "Bạn đã tham gia biên tập phiên bản này. Cần một người khác kiểm duyệt để bảo đảm tách nhiệm vụ."
+                  : bundle.revision.status === "approved" &&
+                      canPublishContent(principal.role) &&
+                      publishSeparationBlocked
+                    ? "Bạn đã tham gia biên tập hoặc kiểm duyệt phiên bản này. Cần một người khác thực hiện công bố."
+              : bundle.revision.status === "draft"
                 ? "Bản nháp chưa được gửi duyệt. Mở lớp dữ liệu để tiếp tục biên tập."
                 : bundle.revision.status === "changes_requested"
                   ? "Nội dung cần chỉnh sửa. Bản nháp mới đã được tạo để biên tập viên cập nhật."

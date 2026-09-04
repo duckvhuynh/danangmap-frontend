@@ -19,6 +19,27 @@ function diffResource(overrides: Partial<RevisionDiff> = {}): HistoryResource<Re
       properties: { featuresModified: 1, publicFieldKeysChanged: ["name"] },
       attachments: { available: true, featuresModified: 1, added: 1, removed: 1, reordered: 1, redactedChangeCount: 1 },
       schema: { publicFieldsAdded: [], publicFieldsRemoved: [], publicFieldsChanged: [], redactedChangeCount: 1 },
+      configuration: {
+        changedKeys: [],
+        before: {
+          title: "Lớp trước",
+          description: null,
+          geometryMode: "polygon",
+          allowedGeometryKinds: ["polygon"],
+          style: {},
+          renderConfig: {},
+          popupConfig: {},
+        },
+        after: {
+          title: "Lớp hiện tại",
+          description: null,
+          geometryMode: "polygon",
+          allowedGeometryKinds: ["polygon"],
+          style: {},
+          renderConfig: {},
+          popupConfig: {},
+        },
+      },
       entries: [{
         featureId: "44444444-4444-4444-8444-444444444444",
         changeType: "modified",
@@ -94,6 +115,41 @@ describe("revision diff view", () => {
     render(<RevisionDiffView revisionId={revisionId} transport={{ load } as RevisionDiffTransport}/>);
     expect(await screen.findByText("Không có thay đổi đối tượng")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Thay đổi tệp đính kèm" })).toBeInTheDocument();
+  });
+
+  it("shows friendly title and color evidence when only layer configuration changed", async () => {
+    const resource = diffResource({ entries: [], nextCursor: null, hasMore: false });
+    resource.data.configuration = {
+      changedKeys: ["title", "style"],
+      before: {
+        title: "Ranh giới cũ",
+        description: null,
+        geometryMode: "polygon",
+        allowedGeometryKinds: ["polygon"],
+        style: { polygon: { fillColor: "#EAF3FF", strokeColor: "#1A73E8" } },
+        renderConfig: {},
+        popupConfig: {},
+      },
+      after: {
+        title: "Ranh giới mới",
+        description: null,
+        geometryMode: "polygon",
+        allowedGeometryKinds: ["polygon"],
+        style: { polygon: { fillColor: "#DDEEFF", strokeColor: "#1A73E8" } },
+        renderConfig: {},
+        popupConfig: {},
+      },
+    };
+    const load = vi.fn().mockResolvedValue(resource);
+
+    render(<RevisionDiffView revisionId={revisionId} transport={{ load } as RevisionDiffTransport}/>);
+
+    const section = (await screen.findByText("Thay đổi cấu hình lớp")).closest("section")!;
+    expect(section).toHaveTextContent("Ranh giới cũ");
+    expect(section).toHaveTextContent("Ranh giới mới");
+    expect(section).toHaveTextContent("Màu nền vùng: #EAF3FF");
+    expect(section).toHaveTextContent("Màu nền vùng: #DDEEFF");
+    expect(screen.getByText("Không có thay đổi đối tượng")).toBeInTheDocument();
   });
 
   it("does not expose technical history tokens in the review UI", async () => {
