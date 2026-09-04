@@ -61,6 +61,27 @@ export function toImportMappingDto(mapping: ImportMappingDraft, mode: ImportMode
   };
 }
 
+export async function getRevisionEtag(
+  revisionId: string,
+  client: ApiClient = apiClient,
+): Promise<string> {
+  if (process.env.NEXT_PUBLIC_DANANGMAP_DEMO_MODE === "true")
+    return `"rev-${revisionId}-v3"`;
+  const result = await client.GET("/api/v1/admin/revisions/{revisionId}", {
+    params: { path: { revisionId } },
+    cache: "no-store",
+  });
+  resultEnvelope(result);
+  const etag = result.response.headers.get("etag");
+  if (!etag)
+    throw new AdminApiError(
+      502,
+      "ETAG_MISSING",
+      "API không trả ETag của bản nháp.",
+    );
+  return etag;
+}
+
 export async function createSpatialImport(
   revisionId: string,
   file: File,

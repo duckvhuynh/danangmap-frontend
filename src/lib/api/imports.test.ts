@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createDanangMapClient } from "./generated/client";
-import { applySpatialImport, createSpatialImport, getSpatialImport, listSpatialImportIssues, toImportMappingDto, updateSpatialImportMapping, validateSpatialImport } from "./imports";
+import { applySpatialImport, createSpatialImport, getRevisionEtag, getSpatialImport, listSpatialImportIssues, toImportMappingDto, updateSpatialImportMapping, validateSpatialImport } from "./imports";
 
 const revisionId = "11111111-1111-4111-8111-111111111111";
 const importId = "22222222-2222-4222-8222-222222222222";
@@ -20,6 +20,30 @@ function transport() {
 }
 
 describe("typed import API adapter", () => {
+  it("reads the latest revision ETag without loading the map workspace", async () => {
+    vi.stubEnv("NEXT_PUBLIC_DANANGMAP_DEMO_MODE", "false");
+    let requestedUrl = "";
+    const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request = input instanceof Request ? input : new Request(input, init);
+      requestedUrl = request.url;
+      return new Response(envelope({ revision: {}, fields: [] }), {
+        status: 200,
+        headers: {
+          "content-type": "application/json",
+          etag: 'W/"rev-latest-v7"',
+        },
+      });
+    });
+
+    await expect(
+      getRevisionEtag(revisionId, createDanangMapClient(fetcher)),
+    ).resolves.toBe('W/"rev-latest-v7"');
+    expect(fetcher).toHaveBeenCalledOnce();
+    expect(new URL(requestedUrl).pathname).toBe(
+      `/api/v1/admin/revisions/${revisionId}`,
+    );
+  });
+
   it("uploads real multipart data with credentials and caller-owned mutation headers", async () => {
     vi.stubEnv("NEXT_PUBLIC_DANANGMAP_DEMO_MODE", "false");
     const { client, requests } = transport();

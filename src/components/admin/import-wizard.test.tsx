@@ -1,13 +1,14 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ImportWizard } from "./import-wizard";
-import { loadRevisionBundle, type RevisionBundle } from "@/lib/api/admin";
-import { applySpatialImport, createSpatialImport, getSpatialImport, listSpatialImportIssues, saveSpatialImportMappingDraft, validateSpatialImport } from "@/lib/api/imports";
+import { AdminApiError, loadRevisionBundle, type RevisionBundle } from "@/lib/api/admin";
+import { applySpatialImport, createSpatialImport, getRevisionEtag, getSpatialImport, listSpatialImportIssues, saveSpatialImportMappingDraft, validateSpatialImport } from "@/lib/api/imports";
 
 vi.mock("@/lib/api/admin", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/api/admin")>()), loadRevisionBundle: vi.fn() }));
 vi.mock("@/lib/api/imports", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/imports")>()),
   createSpatialImport: vi.fn(),
+  getRevisionEtag: vi.fn(),
   getSpatialImport: vi.fn(),
   saveSpatialImportMappingDraft: vi.fn(),
   validateSpatialImport: vi.fn(),
@@ -31,6 +32,7 @@ afterEach(() => { cleanup(); vi.clearAllMocks(); vi.unstubAllEnvs(); window.sess
 beforeEach(() => {
   vi.stubEnv("NEXT_PUBLIC_DANANGMAP_DEMO_MODE", "true");
   vi.mocked(loadRevisionBundle).mockResolvedValue(bundle);
+  vi.mocked(getRevisionEtag).mockResolvedValue(bundle.etag);
 });
 
 describe("admin import wizard", () => {
@@ -92,6 +94,56 @@ describe("admin import wizard", () => {
     expect(retry[4]).toBe(first[4]);
     expect(retry[6]).toBe(first[6]);
     expect(Object.keys(window.sessionStorage).some((key) => key.startsWith("danangmap:import:upload:"))).toBe(false);
+  });
+
+  it("refreshes a stale revision ETag immediately before uploading", async () => {
+    vi.mocked(getRevisionEtag).mockResolvedValue('"rev-v2"');
+    vi.mocked(createSpatialImport).mockResolvedValue({ ...baseJob, status: "uploaded" });
+    vi.mocked(getSpatialImport).mockResolvedValue({ ...baseJob, status: "mapping_required", progress: 100 });
+    render(<ImportWizard revisionId={revisionId} principalRole="editor" csrfToken="csrf-1" canAuthor/>);
+    await screen.findByRole("heading", { name: "Nhập dữ liệu" });
+    const file = new File(["xlsx"], "layers.xlsx", { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    fireEvent.change(screen.getByLabelText(/Chọn tệp CSV/), { target: { files: [file] } });
+    fireEvent.click(screen.getByRole("button", { name: /Tải lên và tiếp tục/ }));
+
+    await screen.findByRole("heading", { name: "2. Ghép cột dữ liệu" });
+    expect(createSpatialImport).toHaveBeenCalledWith(
+      revisionId,
+      file,
+      "xlsx",
+      "append",
+      expect.any(String),
+      '"rev-v2"',
+      expect.any(String),
+      { csrfToken: "csrf-1" },
+    );
+  });
+
+  it("retries once when the revision changes between refresh and upload", async () => {
+    vi.mocked(getRevisionEtag)
+      .mockResolvedValueOnce('"rev-v2"')
+      .mockResolvedValueOnce('"rev-v3"');
+    vi.mocked(createSpatialImport)
+      .mockRejectedValueOnce(new AdminApiError(412, "ETAG_MISMATCH", "stale"))
+      .mockResolvedValueOnce({ ...baseJob, status: "uploaded" });
+    vi.mocked(getSpatialImport).mockResolvedValue({ ...baseJob, status: "mapping_required", progress: 100 });
+    render(<ImportWizard revisionId={revisionId} principalRole="editor" csrfToken="csrf-1" canAuthor/>);
+    await screen.findByRole("heading", { name: "Nhập dữ liệu" });
+    const file = new File(["csv"], "retry-stale.csv", { type: "text/csv" });
+    fireEvent.change(screen.getByLabelText(/Chọn tệp CSV/), { target: { files: [file] } });
+    fireEvent.click(screen.getByRole("button", { name: /Tải lên và tiếp tục/ }));
+
+    await screen.findByRole("heading", { name: "2. Ghép cột dữ liệu" });
+    expect(vi.mocked(createSpatialImport).mock.calls.map((call) => call[5])).toEqual([
+      '"rev-v2"',
+      '"rev-v3"',
+    ]);
+    expect(vi.mocked(createSpatialImport).mock.calls[1]?.[4]).toBe(
+      vi.mocked(createSpatialImport).mock.calls[0]?.[4],
+    );
+    expect(vi.mocked(createSpatialImport).mock.calls[1]?.[6]).toBe(
+      vi.mocked(createSpatialImport).mock.calls[0]?.[6],
+    );
   });
 
   it("selects XLSX sheets only from the inspected backend job", async () => {

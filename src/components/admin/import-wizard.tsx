@@ -39,6 +39,7 @@ import { canAuthorContent } from "@/lib/admin/role-capabilities";
 import {
   applySpatialImport,
   createSpatialImport,
+  getRevisionEtag,
   getSpatialImport,
   listSpatialImportIssues,
   saveSpatialImportMappingDraft,
@@ -972,16 +973,36 @@ export function ImportWizard({
               operationKey: crypto.randomUUID(),
             };
       uploadAttemptRef.current = attempt;
-      const next = await createSpatialImport(
-        revisionId,
-        selected,
-        format,
-        mode,
-        attempt.clientRequestId,
-        bundle.etag,
-        attempt.operationKey,
-        { csrfToken },
+      const createWithEtag = (etag: string) =>
+        createSpatialImport(
+          revisionId,
+          selected,
+          format,
+          mode,
+          attempt.clientRequestId,
+          etag,
+          attempt.operationKey,
+          { csrfToken },
+        );
+      let latestEtag = await getRevisionEtag(revisionId);
+      setBundle((current) =>
+        current ? { ...current, etag: latestEtag } : current,
       );
+      let next: SpatialImportJob;
+      try {
+        next = await createWithEtag(latestEtag);
+      } catch (reason) {
+        if (
+          !(reason instanceof AdminApiError) ||
+          reason.code !== "ETAG_MISMATCH"
+        )
+          throw reason;
+        latestEtag = await getRevisionEtag(revisionId);
+        setBundle((current) =>
+          current ? { ...current, etag: latestEtag } : current,
+        );
+        next = await createWithEtag(latestEtag);
+      }
       uploadAttemptRef.current = null;
       setJob(next);
       setStep("inspecting");
