@@ -34,4 +34,4 @@ Role report ngày 04/09 (11/11) là evidence lịch sử độc lập. Không g�
 
 ## Delivery và governance
 
-Hai repository đã public; main được bảo vệ bằng required CI và PR review. Chi tiết tại backend `docs/DELIVERY-STATUS-2026-09-05.md`. Bản cập nhật tài liệu này dùng PR, không bypass để merge. M7/M8 vẫn deferred theo product owner.
+Hai repository đã public. Owner đã phê duyệt policy một maintainer ngày 05/09: main bắt buộc PR và CI xanh, không bắt buộc approval/CODEOWNER review. Up-to-date checks, resolved conversations, enforce admins và cấm force-push/delete vẫn giữ nguyên; không dùng admin bypass. Chi tiết tại backend `docs/DELIVERY-STATUS-2026-09-05.md`. M7/M8 vẫn deferred theo product owner.
