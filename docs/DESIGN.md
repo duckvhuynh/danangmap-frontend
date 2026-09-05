@@ -3,7 +3,7 @@
 > Trạng thái: `SELECTED_READY_TO_SCAFFOLD`
 > Phạm vi: `danangmap-frontend`, gồm bản đồ công khai tại `/` và quản trị tại `/admin`
 > Nguồn tham chiếu: DanangMap v1, nhận diện thành phố Đà Nẵng và mô hình thao tác của geojson.io
-> Cập nhật: 2026-08-21
+> Cập nhật: 2026-09-05 (đồng bộ checkpoint; quyết định Lucide ngày 2026-09-04)
 > Quyết định: Product owner đã phê duyệt **Direction 1 - Civic Focus (refined)** ngày 2026-08-21
 
 ## 1. Mục đích tài liệu
